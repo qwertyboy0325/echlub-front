@@ -102,9 +102,9 @@ echlub_front/
 
 ## 聯繫方式
 
-- 專案維護者：[Your Name]
-- 電子郵件：[your.email@example.com]
-- 專案鏈接：[https://github.com/yourusername/echlub_front](https://github.com/yourusername/echlub_front)
+- 專案維護者：[Ezra Wu]
+- 電子郵件：[Ezra40907@gmail.com]
+- 專案鏈接：[https://github.com/televoidstudio/echlub_front](https://github.com/televoidstudio/echlub_front)
 
 ## 致謝
 
