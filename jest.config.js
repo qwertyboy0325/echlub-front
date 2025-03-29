@@ -24,5 +24,10 @@ export default {
             lines: 80,
             statements: 80
         }
+    },
+    globals: {
+        crypto: {
+            randomUUID: () => 'test-uuid'
+        }
     }
 }; 

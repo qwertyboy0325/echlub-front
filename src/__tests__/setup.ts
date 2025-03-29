@@ -1,6 +1,15 @@
 import '@testing-library/jest-dom';
 import 'jest-canvas-mock';
 
+// Mock crypto
+if (!global.crypto) {
+    global.crypto = {
+        randomUUID: () => 'test-uuid',
+        subtle: {} as SubtleCrypto,
+        getRandomValues: <T extends ArrayBufferView>(array: T) => array
+    } as Crypto;
+}
+
 // Mock Tone.js
 jest.mock('tone', () => ({
   Context: jest.fn().mockImplementation(() => ({
