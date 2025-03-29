@@ -1,0 +1,35 @@
+name: Test and Coverage
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run tests with coverage
+      run: npm run test:coverage
+    
+    - name: Check coverage threshold
+      run: |
+        COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')
+        if (( $(echo "$COVERAGE < 65" | bc -l) )); then
+          echo "Coverage is below 65% (current: $COVERAGE%)"
+          exit 1
+        fi
+        echo "Coverage check passed: $COVERAGE%" 

@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Jest
+.jest/
+jest.config.js
