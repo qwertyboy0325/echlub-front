@@ -1,4 +1,5 @@
 import { Track } from './Track';
+import { UUIDGenerator } from '../../utils/uuid';
 
 /**
  * Project Model
@@ -28,7 +29,7 @@ export class ProjectFactory {
     static createProject(params: Partial<Project>): Project {
         const now = Date.now();
         return {
-            id: params.id || crypto.randomUUID(),
+            id: params.id || UUIDGenerator.generate(),
             name: params.name || 'New Project',
             description: params.description || '',
             tracks: params.tracks || [],

@@ -1,3 +1,5 @@
+import { UUIDGenerator } from '../../utils/uuid';
+
 /**
  * Track Model
  * Represents an audio track in the DAW
@@ -67,7 +69,7 @@ export class TrackFactory {
     static createTrack(params: Partial<Track>): Track {
         const now = Date.now();
         return {
-            id: params.id || crypto.randomUUID(),
+            id: params.id || UUIDGenerator.generate(),
             name: params.name || 'New Track',
             type: params.type || 'audio',
             volume: params.volume ?? 1,
@@ -85,7 +87,7 @@ export class TrackFactory {
     static createAudioClip(params: Partial<AudioClip>): AudioClip {
         const now = Date.now();
         return {
-            id: params.id || crypto.randomUUID(),
+            id: params.id || UUIDGenerator.generate(),
             trackId: params.trackId || '',
             name: params.name || 'New Clip',
             startTime: params.startTime ?? 0,
@@ -108,7 +110,7 @@ export class TrackFactory {
     static createEffect(params: Partial<Effect>): Effect {
         const now = Date.now();
         return {
-            id: params.id || crypto.randomUUID(),
+            id: params.id || UUIDGenerator.generate(),
             type: params.type || '',
             parameters: params.parameters || {},
             enabled: params.enabled ?? true,
