@@ -207,13 +207,9 @@ export class ProjectFactory {
     
     // Update track in project
     static updateTrack(project: Project, trackId: string, updates: Partial<Track>): Project {
-        return this.updateProject(project, {
-            tracks: project.tracks.map(id =>
-                id === trackId
-                    ? trackId
-                    : id
-            )
-        });
+        // Since we only store track IDs in the project, we can't update the track content here
+        // This method should be moved to the TrackRepository
+        return project;
     }
     
     // Get track by ID
