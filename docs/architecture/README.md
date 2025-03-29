@@ -7,6 +7,7 @@
 ## 文檔結構
 
 ### 1. 基礎架構文檔
+
 這些文檔描述了系統的基礎架構和核心機制。
 
 1. [分層架構設計](layered-architecture.md)
@@ -34,6 +35,7 @@
    - 狀態持久化
 
 ### 2. 核心功能文檔
+
 這些文檔描述了系統的核心功能和實現細節。
 
 1. [音頻處理](audio-processing.md)
@@ -63,6 +65,7 @@
    - 軌道渲染
 
 ### 3. 開發指南文檔
+
 這些文檔提供了開發流程和規範指導。
 
 1. [開發順序](development-sequence.md)
@@ -166,4 +169,4 @@ graph TD
 
 - [TypeScript 文檔](https://www.typescriptlang.org/docs/)
 - [PixiJS 文檔](https://pixijs.io/guides)
-- [Web Audio API 文檔](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) 
+- [Web Audio API 文檔](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)

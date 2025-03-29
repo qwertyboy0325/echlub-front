@@ -3,6 +3,7 @@
 ## 1. 基礎架構
 
 ### 1.1 渲染引擎設置
+
 ```typescript
 interface RenderEngineConfig {
   width: number;
@@ -30,6 +31,7 @@ class RenderEngine {
 ```
 
 ### 1.2 場景管理
+
 ```typescript
 interface SceneConfig {
   name: string;
@@ -65,6 +67,7 @@ class SceneManager {
 ## 2. 音頻可視化組件
 
 ### 2.1 波形顯示器
+
 ```typescript
 interface WaveformConfig {
   width: number;
@@ -96,6 +99,7 @@ class WaveformDisplay extends PIXI.Container {
 ```
 
 ### 2.2 頻譜分析器
+
 ```typescript
 interface SpectrumConfig {
   width: number;
@@ -128,6 +132,7 @@ class SpectrumAnalyzer extends PIXI.Container {
 ## 3. 交互控制
 
 ### 3.1 拖拽系統
+
 ```typescript
 interface DragConfig {
   threshold: number;
@@ -159,6 +164,7 @@ class DragSystem {
 ```
 
 ### 3.2 縮放系統
+
 ```typescript
 interface ZoomConfig {
   minScale: number;
@@ -186,6 +192,7 @@ class ZoomSystem {
 ## 4. 性能優化
 
 ### 4.1 渲染優化
+
 ```typescript
 class RenderOptimizer {
   private visibleObjects: Set<PIXI.DisplayObject>;
@@ -208,6 +215,7 @@ class RenderOptimizer {
 ```
 
 ### 4.2 資源管理
+
 ```typescript
 class ResourceManager {
   private textures: Map<string, PIXI.Texture>;
@@ -232,6 +240,7 @@ class ResourceManager {
 ## 5. 動畫系統
 
 ### 5.1 動畫控制器
+
 ```typescript
 interface AnimationConfig {
   duration: number;
@@ -254,6 +263,7 @@ class AnimationController {
 ```
 
 ### 5.2 過渡效果
+
 ```typescript
 interface TransitionConfig {
   type: 'fade' | 'slide' | 'scale';
@@ -277,6 +287,7 @@ class TransitionManager {
 ## 6. 事件系統整合
 
 ### 6.1 PixiJS 事件轉換器
+
 ```typescript
 class PixiEventTranslator {
   translate(event: PIXI.FederatedPointerEvent): DAWEvent {
@@ -294,6 +305,7 @@ class PixiEventTranslator {
 ```
 
 ### 6.2 事件處理器
+
 ```typescript
 class PixiEventHandler {
   private eventBus: EventBus;
@@ -312,6 +324,7 @@ class PixiEventHandler {
 ## 7. 開發指南
 
 ### 7.1 最佳實踐
+
 1. **性能優化**
    - 使用 `PIXI.Container` 進行分組
    - 實現對象池
@@ -334,6 +347,7 @@ class PixiEventHandler {
    - 實現平滑動畫
 
 ### 7.2 調試工具
+
 1. **性能監視器**
    - FPS 顯示
    - 內存使用監控
@@ -345,6 +359,7 @@ class PixiEventHandler {
    - 幀率控制
 
 ### 7.3 測試策略
+
 1. **單元測試**
    - 組件渲染測試
    - 事件處理測試
@@ -353,4 +368,4 @@ class PixiEventHandler {
 2. **性能測試**
    - 幀率測試
    - 內存洩漏測試
-   - 負載測試 
+   - 負載測試

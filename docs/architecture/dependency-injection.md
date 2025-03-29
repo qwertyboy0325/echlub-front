@@ -159,4 +159,4 @@ class AudioContext implements IAudioContext {
 
 ## 測試
 
-測試示例可以參考 `src/__tests__/examples/di-example.test.ts`。 
+測試示例可以參考 `src/__tests__/examples/di-example.test.ts`。

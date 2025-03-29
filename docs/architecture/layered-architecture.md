@@ -56,59 +56,62 @@
 
 #### 2.2.1 類型定義 (types.ts)
 
-```typescript
-// 定義服務標識符
-export const TYPES = {
-    AudioContext: Symbol.for("AudioContext"),
-    EventBus: Symbol.for("EventBus"),
-    AudioEngine: Symbol.for("AudioEngine")
-};
+    ```typescript
+    // 定義服務標識符
+    export const TYPES = {
+        AudioContext: Symbol.for("AudioContext"),
+        EventBus: Symbol.for("EventBus"),
+        AudioEngine: Symbol.for("AudioEngine")
+    };
 
-// 定義介面
-export interface IAudioContext {
-    onInit(): void;
-    onDestroy(): void;
-}
+    // 定義介面
+    export interface IAudioContext {
+        onInit(): void;
+        onDestroy(): void;
+    }
 
-// ... 其他介面定義
-```
+    // ... 其他介面定義
+    ```
 
 #### 2.2.2 容器配置 (container.ts)
 
-```typescript
-@injectable()
-export class AudioContext implements IAudioContext {
-    constructor() {
-        this.onInit();
+    ```typescript
+    @injectable()
+    export class AudioContext implements IAudioContext {
+        constructor() {
+            this.onInit();
+        }
+        // ... 實現
     }
-    // ... 實現
-}
 
-// 服務註冊
-export function registerServices(): void {
-    container.bind<IAudioContext>(TYPES.AudioContext)
-        .to(AudioContext)
-        .inSingletonScope();
-    // ... 其他服務註冊
-}
-```
+    // 服務註冊
+    export function registerServices(): void {
+        container.bind<IAudioContext>(TYPES.AudioContext)
+            .to(AudioContext)
+            .inSingletonScope();
+        // ... 其他服務註冊
+    }
+    ```
 
 ### 2.3 使用方式
 
 1. **註冊服務**
-```typescript
-registerServices();
-```
+
+    ```typescript
+    registerServices();
+    ```
 
 2. **獲取服務**
-```typescript
-const engine = container.get<IAudioEngine>(TYPES.AudioEngine);
-```
+
+    ```typescript
+    const engine = container.get<IAudioEngine>(TYPES.AudioEngine);
+    ```
 
 3. **使用服務**
-```typescript
-engine.onInit();
-```
+
+    ```typescript
+    engine.onInit();
+    ```
 
 ### 2.4 最佳實踐
 
@@ -150,89 +153,89 @@ engine.onInit();
 
 ### 3.1 基礎服務接口
 
-```typescript
-interface BaseService {
-    initialize(): void;
-    destroy(): void;
-    isInitialized(): boolean;
-}
+    ```typescript
+    interface BaseService {
+        initialize(): void;
+        destroy(): void;
+        isInitialized(): boolean;
+    }
 
-class BaseServiceImpl implements BaseService {
-    private initialized: boolean = false;
-    
-    initialize(): void {
-        if (this.initialized) return;
-        this.setup();
-        this.initialized = true;
+    class BaseServiceImpl implements BaseService {
+        private initialized: boolean = false;
+        
+        initialize(): void {
+            if (this.initialized) return;
+            this.setup();
+            this.initialized = true;
+        }
+        
+        destroy(): void {
+            if (!this.initialized) return;
+            this.cleanup();
+            this.initialized = false;
+        }
+        
+        isInitialized(): boolean {
+            return this.initialized;
+        }
+        
+        protected setup(): void {
+            // 由子類實現
+        }
+        
+        protected cleanup(): void {
+            // 由子類實現
+        }
     }
-    
-    destroy(): void {
-        if (!this.initialized) return;
-        this.cleanup();
-        this.initialized = false;
-    }
-    
-    isInitialized(): boolean {
-        return this.initialized;
-    }
-    
-    protected setup(): void {
-        // 由子類實現
-    }
-    
-    protected cleanup(): void {
-        // 由子類實現
-    }
-}
-```
+    ```
 
 ### 3.2 基礎組件接口
 
-```typescript
-interface BaseComponent {
-    initialize(): void;
-    setup(): void;
-    update(): void;
-    destroy(): void;
-    isInitialized(): boolean;
-}
+    ```typescript
+    interface BaseComponent {
+        initialize(): void;
+        setup(): void;
+        update(): void;
+        destroy(): void;
+        isInitialized(): boolean;
+    }
 
-abstract class BaseComponentImpl implements BaseComponent {
-    private initialized: boolean = false;
-    protected eventHandlers: EventHandlerManager;
-    
-    constructor() {
-        this.eventHandlers = new EventHandlerManager();
+    abstract class BaseComponentImpl implements BaseComponent {
+        private initialized: boolean = false;
+        protected eventHandlers: EventHandlerManager;
+        
+        constructor() {
+            this.eventHandlers = new EventHandlerManager();
+        }
+        
+        initialize(): void {
+            if (this.initialized) return;
+            this.setup();
+            this.initialized = true;
+        }
+        
+        abstract setup(): void;
+        
+        update(): void {
+            if (!this.initialized) return;
+            // 由子類實現
+        }
+        
+        destroy(): void {
+            if (!this.initialized) return;
+            this.cleanup();
+            this.initialized = false;
+        }
+        
+        isInitialized(): boolean {
+            return this.initialized;
+        }
+        
+        protected cleanup(): void {
+            this.eventHandlers.clear();
+        }
     }
-    
-    initialize(): void {
-        if (this.initialized) return;
-        this.setup();
-        this.initialized = true;
-    }
-    
-    abstract setup(): void;
-    
-    update(): void {
-        if (!this.initialized) return;
-        // 由子類實現
-    }
-    
-    destroy(): void {
-        if (!this.initialized) return;
-        this.cleanup();
-        this.initialized = false;
-    }
-    
-    isInitialized(): boolean {
-        return this.initialized;
-    }
-    
-    protected cleanup(): void {
-        this.eventHandlers.clear();
-    }
-}
-```
+    ```
 
 ## 4. 各層職責
 
@@ -270,182 +273,182 @@ abstract class BaseComponentImpl implements BaseComponent {
 
 ### 5.1 事件驅動通信
 
-```typescript
-// 1. 定義事件轉換器
-class EventTranslator {
-    constructor(
-        private uiEventBus: UIEventBus,
-        private domainEventBus: DomainEventBus
-    ) {
-        this.setupTranslations();
-    }
+    ```typescript
+    // 1. 定義事件轉換器
+    class EventTranslator {
+        constructor(
+            private uiEventBus: UIEventBus,
+            private domainEventBus: DomainEventBus
+        ) {
+            this.setupTranslations();
+        }
 
-    private setupTranslations(): void {
-        // UI -> Domain 事件轉換
-        this.setupUIToDomainTranslations();
-        
-        // Domain -> UI 事件轉換
-        this.setupDomainToUITranslations();
-    }
+        private setupTranslations(): void {
+            // UI -> Domain 事件轉換
+            this.setupUIToDomainTranslations();
+            
+            // Domain -> UI 事件轉換
+            this.setupDomainToUITranslations();
+        }
 
-    private setupUIToDomainTranslations(): void {
-        // 播放控制事件轉換
-        this.uiEventBus.on('ui:playback:start', () => {
-            this.domainEventBus.emit('domain:audio:playback:started');
-        });
-
-        // 軌道事件轉換
-        this.uiEventBus.on('ui:track:add', (payload) => {
-            const track = this.createTrackFromPayload(payload);
-            this.domainEventBus.emit('domain:track:added', { track });
-        });
-
-        // 片段事件轉換
-        this.uiEventBus.on('ui:clip:move', (payload) => {
-            this.domainEventBus.emit('domain:clip:moved', {
-                clipId: payload.clipId,
-                newStartTime: payload.newPosition
+        private setupUIToDomainTranslations(): void {
+            // 播放控制事件轉換
+            this.uiEventBus.on('ui:playback:start', () => {
+                this.domainEventBus.emit('domain:audio:playback:started');
             });
-        });
-    }
 
-    private setupDomainToUITranslations(): void {
-        // 音頻事件轉換
-        this.domainEventBus.on('domain:audio:playback:started', () => {
-            this.uiEventBus.emit('ui:playback:start');
-        });
-
-        // 軌道事件轉換
-        this.domainEventBus.on('domain:track:added', (payload) => {
-            this.uiEventBus.emit('ui:track:created', {
-                trackId: payload.track.id,
-                type: payload.track.type
+            // 軌道事件轉換
+            this.uiEventBus.on('ui:track:add', (payload) => {
+                const track = this.createTrackFromPayload(payload);
+                this.domainEventBus.emit('domain:track:added', { track });
             });
-        });
 
-        // 片段事件轉換
-        this.domainEventBus.on('domain:clip:moved', (payload) => {
-            this.uiEventBus.emit('ui:clip:updated', {
-                clipId: payload.clipId,
-                position: payload.newStartTime
+            // 片段事件轉換
+            this.uiEventBus.on('ui:clip:move', (payload) => {
+                this.domainEventBus.emit('domain:clip:moved', {
+                    clipId: payload.clipId,
+                    newStartTime: payload.newPosition
+                });
             });
-        });
+        }
+
+        private setupDomainToUITranslations(): void {
+            // 音頻事件轉換
+            this.domainEventBus.on('domain:audio:playback:started', () => {
+                this.uiEventBus.emit('ui:playback:start');
+            });
+
+            // 軌道事件轉換
+            this.domainEventBus.on('domain:track:added', (payload) => {
+                this.uiEventBus.emit('ui:track:created', {
+                    trackId: payload.track.id,
+                    type: payload.track.type
+                });
+            });
+
+            // 片段事件轉換
+            this.domainEventBus.on('domain:clip:moved', (payload) => {
+                this.uiEventBus.emit('ui:clip:updated', {
+                    clipId: payload.clipId,
+                    position: payload.newStartTime
+                });
+            });
+        }
+
+        private createTrackFromPayload(payload: any): Track {
+            // 實現從 UI 事件數據創建領域模型的邏輯
+            return new Track({
+                id: payload.trackId,
+                type: payload.type,
+                // ... 其他屬性
+            });
+        }
     }
 
-    private createTrackFromPayload(payload: any): Track {
-        // 實現從 UI 事件數據創建領域模型的邏輯
-        return new Track({
-            id: payload.trackId,
-            type: payload.type,
-            // ... 其他屬性
-        });
-    }
-}
-
-// 2. 在依賴注入容器中註冊
-const container = Container.getInstance();
-container.register('EventTranslator', new EventTranslator(
-    container.get('UIEventBus'),
-    container.get('DomainEventBus')
-));
-```
+    // 2. 在依賴注入容器中註冊
+    const container = Container.getInstance();
+    container.register('EventTranslator', new EventTranslator(
+        container.get('UIEventBus'),
+        container.get('DomainEventBus')
+    ));
+    ```
 
 ### 5.2 服務調用通信
 
-```typescript
-// 1. 定義服務接口
-interface ITrackPresenter {
-    addTrack(name: string): void;
-    removeTrack(id: string): void;
-    playTrack(id: string): void;
-    stopTrack(id: string): void;
-}
-
-interface IAudioPresenter {
-    play(): void;
-    stop(): void;
-    pause(): void;
-}
-
-// 2. 實現 Presenter
-class TrackPresenter implements ITrackPresenter {
-    constructor(
-        private trackService: TrackService,
-        private uiEventBus: UIEventBus,
-        private domainEventBus: DomainEventBus
-    ) {
-        this.setupEventHandlers();
+    ```typescript
+    // 1. 定義服務接口
+    interface ITrackPresenter {
+        addTrack(name: string): void;
+        removeTrack(id: string): void;
+        playTrack(id: string): void;
+        stopTrack(id: string): void;
     }
 
-    private setupEventHandlers(): void {
-        // 處理 Domain 事件
-        this.domainEventBus.on('domain:track:added', (payload) => {
-            this.uiEventBus.emit('ui:track:created', {
-                trackId: payload.track.id
+    interface IAudioPresenter {
+        play(): void;
+        stop(): void;
+        pause(): void;
+    }
+
+    // 2. 實現 Presenter
+    class TrackPresenter implements ITrackPresenter {
+        constructor(
+            private trackService: TrackService,
+            private uiEventBus: UIEventBus,
+            private domainEventBus: DomainEventBus
+        ) {
+            this.setupEventHandlers();
+        }
+
+        private setupEventHandlers(): void {
+            // 處理 Domain 事件
+            this.domainEventBus.on('domain:track:added', (payload) => {
+                this.uiEventBus.emit('ui:track:created', {
+                    trackId: payload.track.id
+                });
             });
-        });
+        }
+
+        addTrack(name: string): void {
+            this.trackService.addTrack(name);
+        }
+
+        removeTrack(id: string): void {
+            this.trackService.removeTrack(id);
+        }
+
+        playTrack(id: string): void {
+            this.trackService.playTrack(id);
+        }
+
+        stopTrack(id: string): void {
+            this.trackService.stopTrack(id);
+        }
     }
 
-    addTrack(name: string): void {
-        this.trackService.addTrack(name);
+    // 3. 在組件中使用
+    class TrackComponent extends BaseComponent {
+        constructor(
+            private trackPresenter: ITrackPresenter,
+            private audioPresenter: IAudioPresenter
+        ) {
+            super();
+        }
+
+        private handleAddTrack(): void {
+            this.trackPresenter.addTrack('New Track');
+        }
+
+        private handlePlayTrack(id: string): void {
+            this.trackPresenter.playTrack(id);
+            this.audioPresenter.play();
+        }
     }
 
-    removeTrack(id: string): void {
-        this.trackService.removeTrack(id);
+    // 4. 依賴注入配置
+    class PresentationModule {
+        static configure(container: Container): void {
+            // 註冊 Presenters
+            container.register('TrackPresenter', new TrackPresenter(
+                container.get('TrackService'),
+                container.get('UIEventBus'),
+                container.get('DomainEventBus')
+            ));
+
+            container.register('AudioPresenter', new AudioPresenter(
+                container.get('AudioService'),
+                container.get('UIEventBus'),
+                container.get('DomainEventBus')
+            ));
+
+            // 註冊組件
+            container.register('TrackComponent', new TrackComponent(
+                container.get('TrackPresenter'),
+                container.get('AudioPresenter')
+            ));
+        }
     }
-
-    playTrack(id: string): void {
-        this.trackService.playTrack(id);
-    }
-
-    stopTrack(id: string): void {
-        this.trackService.stopTrack(id);
-    }
-}
-
-// 3. 在組件中使用
-class TrackComponent extends BaseComponent {
-    constructor(
-        private trackPresenter: ITrackPresenter,
-        private audioPresenter: IAudioPresenter
-    ) {
-        super();
-    }
-
-    private handleAddTrack(): void {
-        this.trackPresenter.addTrack('New Track');
-    }
-
-    private handlePlayTrack(id: string): void {
-        this.trackPresenter.playTrack(id);
-        this.audioPresenter.play();
-    }
-}
-
-// 4. 依賴注入配置
-class PresentationModule {
-    static configure(container: Container): void {
-        // 註冊 Presenters
-        container.register('TrackPresenter', new TrackPresenter(
-            container.get('TrackService'),
-            container.get('UIEventBus'),
-            container.get('DomainEventBus')
-        ));
-
-        container.register('AudioPresenter', new AudioPresenter(
-            container.get('AudioService'),
-            container.get('UIEventBus'),
-            container.get('DomainEventBus')
-        ));
-
-        // 註冊組件
-        container.register('TrackComponent', new TrackComponent(
-            container.get('TrackPresenter'),
-            container.get('AudioPresenter')
-        ));
-    }
-}
-```
+    ```
 
 ### 5.3 跨層通信最佳實踐
 
@@ -483,292 +486,292 @@ class PresentationModule {
 
 ### 6.1 錯誤類型定義
 
-```typescript
-class DAWError extends Error {
-    constructor(
-        message: string,
-        public code: string,
-        public component: string
-    ) {
-        super(message);
-        this.name = 'DAWError';
+    ```typescript
+    class DAWError extends Error {
+        constructor(
+            message: string,
+            public code: string,
+            public component: string
+        ) {
+            super(message);
+            this.name = 'DAWError';
+        }
     }
-}
 
-class ValidationError extends DAWError {
-    constructor(message: string, component: string) {
-        super(message, 'VALIDATION_ERROR', component);
+    class ValidationError extends DAWError {
+        constructor(message: string, component: string) {
+            super(message, 'VALIDATION_ERROR', component);
+        }
     }
-}
 
-class BusinessError extends DAWError {
-    constructor(message: string, component: string) {
-        super(message, 'BUSINESS_ERROR', component);
+    class BusinessError extends DAWError {
+        constructor(message: string, component: string) {
+            super(message, 'BUSINESS_ERROR', component);
+        }
     }
-}
-```
+    ```
 
 ### 6.2 錯誤處理服務
 
-```typescript
-class ErrorHandlingService {
-    private static instance: ErrorHandlingService;
-    
-    static getInstance(): ErrorHandlingService {
-        if (!ErrorHandlingService.instance) {
-            ErrorHandlingService.instance = new ErrorHandlingService();
+    ```typescript
+    class ErrorHandlingService {
+        private static instance: ErrorHandlingService;
+        
+        static getInstance(): ErrorHandlingService {
+            if (!ErrorHandlingService.instance) {
+                ErrorHandlingService.instance = new ErrorHandlingService();
+            }
+            return ErrorHandlingService.instance;
         }
-        return ErrorHandlingService.instance;
+        
+        handleError(error: DAWError): void {
+            console.error(`[${error.component}] ${error.code}: ${error.message}`);
+            // 可以添加錯誤報告邏輯
+        }
     }
-    
-    handleError(error: DAWError): void {
-        console.error(`[${error.component}] ${error.code}: ${error.message}`);
-        // 可以添加錯誤報告邏輯
-    }
-}
-```
+    ```
 
 ## 7. 系統整合
 
 ### 7.1 事件系統與狀態管理整合
 
-```typescript
-// 狀態變更事件
-interface StateChangeEvent<T> extends Event {
-    type: 'domain:state:changed';
-    payload: {
-        stateKey: string;
-        oldValue: T;
-        newValue: T;
-        timestamp: number;
-    };
-}
+    ```typescript
+    // 狀態變更事件
+    interface StateChangeEvent<T> extends Event {
+        type: 'domain:state:changed';
+        payload: {
+            stateKey: string;
+            oldValue: T;
+            newValue: T;
+            timestamp: number;
+        };
+    }
 
-// 狀態管理器與事件系統整合
-class StateManager {
-    constructor(
-        private eventBus: EventBus,
-        private stateStore: StateStore
-    ) {
-        this.setupEventHandlers();
-    }
-    
-    private setupEventHandlers(): void {
-        // 監聽狀態變更事件
-        this.eventBus.on('domain:state:changed', (event: StateChangeEvent<any>) => {
-            this.handleStateChange(event.payload);
-        });
-    }
-    
-    private handleStateChange<T>(payload: {
-        stateKey: string;
-        oldValue: T;
-        newValue: T;
-        timestamp: number;
-    }): void {
-        // 更新狀態
-        this.stateStore.update(payload.stateKey, payload.newValue);
+    // 狀態管理器與事件系統整合
+    class StateManager {
+        constructor(
+            private eventBus: EventBus,
+            private stateStore: StateStore
+        ) {
+            this.setupEventHandlers();
+        }
         
-        // 觸發 UI 更新事件
-        this.eventBus.emit('ui:state:updated', {
-            stateKey: payload.stateKey,
-            value: payload.newValue
-        });
+        private setupEventHandlers(): void {
+            // 監聽狀態變更事件
+            this.eventBus.on('domain:state:changed', (event: StateChangeEvent<any>) => {
+                this.handleStateChange(event.payload);
+            });
+        }
+        
+        private handleStateChange<T>(payload: {
+            stateKey: string;
+            oldValue: T;
+            newValue: T;
+            timestamp: number;
+        }): void {
+            // 更新狀態
+            this.stateStore.update(payload.stateKey, payload.newValue);
+            
+            // 觸發 UI 更新事件
+            this.eventBus.emit('ui:state:updated', {
+                stateKey: payload.stateKey,
+                value: payload.newValue
+            });
+        }
     }
-}
-```
+    ```
 
 ### 7.2 依賴注入與分層整合
 
-```typescript
-// 分層模組配置
-class PresentationModule {
-    static configure(container: Container): void {
-        // 註冊 UI 組件
-        container.register('TrackComponent', {
-            implementation: TrackComponent,
-            scope: 'transient',
-            dependencies: ['TrackService', 'EventBus']
-        });
-        
-        // 註冊容器組件
-        container.register('TrackContainer', {
-            implementation: TrackContainer,
-            scope: 'singleton',
-            dependencies: ['TrackComponent', 'StateManager']
-        });
+    ```typescript
+    // 分層模組配置
+    class PresentationModule {
+        static configure(container: Container): void {
+            // 註冊 UI 組件
+            container.register('TrackComponent', {
+                implementation: TrackComponent,
+                scope: 'transient',
+                dependencies: ['TrackService', 'EventBus']
+            });
+            
+            // 註冊容器組件
+            container.register('TrackContainer', {
+                implementation: TrackContainer,
+                scope: 'singleton',
+                dependencies: ['TrackComponent', 'StateManager']
+            });
+        }
     }
-}
 
-class DomainModule {
-    static configure(container: Container): void {
-        // 註冊領域服務
-        container.register('TrackService', {
-            implementation: TrackService,
-            scope: 'singleton',
-            dependencies: ['TrackRepository', 'AudioService']
-        });
-        
-        // 註冊事件處理器
-        container.register('TrackEventHandler', {
-            implementation: TrackEventHandler,
-            scope: 'singleton',
-            dependencies: ['EventBus', 'StateManager']
-        });
+    class DomainModule {
+        static configure(container: Container): void {
+            // 註冊領域服務
+            container.register('TrackService', {
+                implementation: TrackService,
+                scope: 'singleton',
+                dependencies: ['TrackRepository', 'AudioService']
+            });
+            
+            // 註冊事件處理器
+            container.register('TrackEventHandler', {
+                implementation: TrackEventHandler,
+                scope: 'singleton',
+                dependencies: ['EventBus', 'StateManager']
+            });
+        }
     }
-}
 
-class DataModule {
-    static configure(container: Container): void {
-        // 註冊數據倉庫
-        container.register('TrackRepository', {
-            implementation: TrackRepository,
-            scope: 'singleton',
-            dependencies: ['DatabaseService']
-        });
-        
-        // 註冊狀態存儲
-        container.register('StateStore', {
-            implementation: StateStore,
-            scope: 'singleton',
-            dependencies: ['PersistenceService']
-        });
+    class DataModule {
+        static configure(container: Container): void {
+            // 註冊數據倉庫
+            container.register('TrackRepository', {
+                implementation: TrackRepository,
+                scope: 'singleton',
+                dependencies: ['DatabaseService']
+            });
+            
+            // 註冊狀態存儲
+            container.register('StateStore', {
+                implementation: StateStore,
+                scope: 'singleton',
+                dependencies: ['PersistenceService']
+            });
+        }
     }
-}
 
-class InfrastructureModule {
-    static configure(container: Container): void {
-        // 註冊基礎設施服務
-        container.register('DatabaseService', {
-            implementation: DatabaseService,
-            scope: 'singleton',
-            dependencies: ['ConfigService']
-        });
-        
-        container.register('PersistenceService', {
-            implementation: PersistenceService,
-            scope: 'singleton',
-            dependencies: ['DatabaseService']
-        });
-        
-        container.register('EventBus', {
-            implementation: EventBus,
-            scope: 'singleton'
-        });
+    class InfrastructureModule {
+        static configure(container: Container): void {
+            // 註冊基礎設施服務
+            container.register('DatabaseService', {
+                implementation: DatabaseService,
+                scope: 'singleton',
+                dependencies: ['ConfigService']
+            });
+            
+            container.register('PersistenceService', {
+                implementation: PersistenceService,
+                scope: 'singleton',
+                dependencies: ['DatabaseService']
+            });
+            
+            container.register('EventBus', {
+                implementation: EventBus,
+                scope: 'singleton'
+            });
+        }
     }
-}
-```
+    ```
 
 ### 7.3 音頻處理與性能優化整合
 
-```typescript
-// 音頻處理優化器
-class AudioProcessingOptimizer {
-    constructor(
-        private audioEngine: AudioEngine,
-        private performanceMonitor: PerformanceMonitor
-    ) {
-        this.setupOptimization();
-    }
-    
-    private setupOptimization(): void {
-        // 監控音頻處理性能
-        this.performanceMonitor.track('audio:processing', () => {
-            return this.audioEngine.getProcessingTime();
-        });
+    ```typescript
+    // 音頻處理優化器
+    class AudioProcessingOptimizer {
+        constructor(
+            private audioEngine: AudioEngine,
+            private performanceMonitor: PerformanceMonitor
+        ) {
+            this.setupOptimization();
+        }
         
-        // 動態調整緩衝區大小
-        this.performanceMonitor.onThreshold('audio:processing', 16, () => {
-            this.audioEngine.increaseBufferSize();
-        });
+        private setupOptimization(): void {
+            // 監控音頻處理性能
+            this.performanceMonitor.track('audio:processing', () => {
+                return this.audioEngine.getProcessingTime();
+            });
+            
+            // 動態調整緩衝區大小
+            this.performanceMonitor.onThreshold('audio:processing', 16, () => {
+                this.audioEngine.increaseBufferSize();
+            });
+            
+            // 優化音頻路由
+            this.audioEngine.on('route:created', (route) => {
+                this.optimizeAudioRoute(route);
+            });
+        }
         
-        // 優化音頻路由
-        this.audioEngine.on('route:created', (route) => {
-            this.optimizeAudioRoute(route);
-        });
+        private optimizeAudioRoute(route: AudioRoute): void {
+            // 實現音頻路由優化邏輯
+            route.setBufferSize(this.calculateOptimalBufferSize());
+            route.setProcessingPriority(this.calculateProcessingPriority());
+        }
+        
+        private calculateOptimalBufferSize(): number {
+            // 根據系統性能動態計算緩衝區大小
+            const processingTime = this.performanceMonitor.getMetric('audio:processing');
+            return Math.max(256, Math.min(2048, processingTime * 1000));
+        }
+        
+        private calculateProcessingPriority(): number {
+            // 根據音頻重要性計算處理優先級
+            return this.audioEngine.getActiveTracks().length > 8 ? 1 : 0;
+        }
     }
-    
-    private optimizeAudioRoute(route: AudioRoute): void {
-        // 實現音頻路由優化邏輯
-        route.setBufferSize(this.calculateOptimalBufferSize());
-        route.setProcessingPriority(this.calculateProcessingPriority());
-    }
-    
-    private calculateOptimalBufferSize(): number {
-        // 根據系統性能動態計算緩衝區大小
-        const processingTime = this.performanceMonitor.getMetric('audio:processing');
-        return Math.max(256, Math.min(2048, processingTime * 1000));
-    }
-    
-    private calculateProcessingPriority(): number {
-        // 根據音頻重要性計算處理優先級
-        return this.audioEngine.getActiveTracks().length > 8 ? 1 : 0;
-    }
-}
-```
+    ```
 
 ### 7.4 系統啟動流程
 
-```typescript
-class SystemBootstrap {
-    constructor(private container: Container) {}
-    
-    async initialize(): Promise<void> {
-        // 1. 初始化基礎設施
-        await this.initializeInfrastructure();
+    ```typescript
+    class SystemBootstrap {
+        constructor(private container: Container) {}
         
-        // 2. 初始化數據層
-        await this.initializeDataLayer();
+        async initialize(): Promise<void> {
+            // 1. 初始化基礎設施
+            await this.initializeInfrastructure();
+            
+            // 2. 初始化數據層
+            await this.initializeDataLayer();
+            
+            // 3. 初始化領域層
+            await this.initializeDomainLayer();
+            
+            // 4. 初始化表現層
+            await this.initializePresentationLayer();
+            
+            // 5. 啟動性能監控
+            this.startPerformanceMonitoring();
+        }
         
-        // 3. 初始化領域層
-        await this.initializeDomainLayer();
+        private async initializeInfrastructure(): Promise<void> {
+            const infrastructureModule = new InfrastructureModule();
+            infrastructureModule.configure(this.container);
+            
+            // 初始化基礎服務
+            await this.container.get('DatabaseService').initialize();
+            await this.container.get('EventBus').initialize();
+        }
         
-        // 4. 初始化表現層
-        await this.initializePresentationLayer();
+        private async initializeDataLayer(): Promise<void> {
+            const dataModule = new DataModule();
+            dataModule.configure(this.container);
+            
+            // 初始化數據服務
+            await this.container.get('StateStore').initialize();
+        }
         
-        // 5. 啟動性能監控
-        this.startPerformanceMonitoring();
+        private async initializeDomainLayer(): Promise<void> {
+            const domainModule = new DomainModule();
+            domainModule.configure(this.container);
+            
+            // 初始化領域服務
+            await this.container.get('TrackService').initialize();
+        }
+        
+        private async initializePresentationLayer(): Promise<void> {
+            const presentationModule = new PresentationModule();
+            presentationModule.configure(this.container);
+            
+            // 初始化 UI 組件
+            await this.container.get('TrackContainer').initialize();
+        }
+        
+        private startPerformanceMonitoring(): void {
+            const monitor = this.container.get('PerformanceMonitor');
+            monitor.start();
+        }
     }
-    
-    private async initializeInfrastructure(): Promise<void> {
-        const infrastructureModule = new InfrastructureModule();
-        infrastructureModule.configure(this.container);
-        
-        // 初始化基礎服務
-        await this.container.get('DatabaseService').initialize();
-        await this.container.get('EventBus').initialize();
-    }
-    
-    private async initializeDataLayer(): Promise<void> {
-        const dataModule = new DataModule();
-        dataModule.configure(this.container);
-        
-        // 初始化數據服務
-        await this.container.get('StateStore').initialize();
-    }
-    
-    private async initializeDomainLayer(): Promise<void> {
-        const domainModule = new DomainModule();
-        domainModule.configure(this.container);
-        
-        // 初始化領域服務
-        await this.container.get('TrackService').initialize();
-    }
-    
-    private async initializePresentationLayer(): Promise<void> {
-        const presentationModule = new PresentationModule();
-        presentationModule.configure(this.container);
-        
-        // 初始化 UI 組件
-        await this.container.get('TrackContainer').initialize();
-    }
-    
-    private startPerformanceMonitoring(): void {
-        const monitor = this.container.get('PerformanceMonitor');
-        monitor.start();
-    }
-}
-```
+    ```
 
 ## 8. 開發規範
 
