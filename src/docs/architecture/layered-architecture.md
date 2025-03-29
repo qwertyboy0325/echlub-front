@@ -28,198 +28,123 @@
     │   ├── models/          # 數據模型
     │   └── store/           # 狀態管理
     │
+    ├── core/                 # 核心功能
+    │   ├── di/              # 依賴注入
+    │   │   ├── types.ts     # 類型定義
+    │   │   └── container.ts # 容器配置
+    │   └── events/          # 事件系統
+    │
     ├── types/                # 類型定義
     ├── config/               # 配置文件
-    ├── utils/                # 工具函數
-    └── events/               # 事件系統
+    └── utils/                # 工具函數
     ```
 
 ## 2. 依賴注入系統
 
-### 2.1 依賴注入容器
+### 2.1 概述
+
+本專案使用 Inversify 作為依賴注入容器，提供了完整的依賴注入功能，包括：
+
+- 類型安全的依賴注入
+- 裝飾器支援
+- 生命週期管理
+- 作用域管理
+- 工廠模式支援
+- 循環依賴處理
+
+### 2.2 核心組件
+
+#### 2.2.1 類型定義 (types.ts)
 
 ```typescript
-class Container {
-    private static instance: Container;
-    private services: Map<string, any> = new Map();
-    private factories: Map<string, () => any> = new Map();
-    
-    private constructor() {}
-    
-    static getInstance(): Container {
-        if (!Container.instance) {
-            Container.instance = new Container();
-        }
-        return Container.instance;
+// 定義服務標識符
+export const TYPES = {
+    AudioContext: Symbol.for("AudioContext"),
+    EventBus: Symbol.for("EventBus"),
+    AudioEngine: Symbol.for("AudioEngine")
+};
+
+// 定義介面
+export interface IAudioContext {
+    onInit(): void;
+    onDestroy(): void;
+}
+
+// ... 其他介面定義
+```
+
+#### 2.2.2 容器配置 (container.ts)
+
+```typescript
+@injectable()
+export class AudioContext implements IAudioContext {
+    constructor() {
+        this.onInit();
     }
-    
-    // 註冊單例服務
-    register<T>(key: string, service: T): void {
-        this.services.set(key, service);
-    }
-    
-    // 註冊工廠函數
-    registerFactory<T>(key: string, factory: () => T): void {
-        this.factories.set(key, factory);
-    }
-    
-    // 獲取服務實例
-    get<T>(key: string): T {
-        if (this.services.has(key)) {
-            return this.services.get(key);
-        }
-        if (this.factories.has(key)) {
-            const service = this.factories.get(key)!();
-            this.services.set(key, service);
-            return service;
-        }
-        throw new Error(`Service ${key} not found`);
-    }
-    
-    // 檢查服務是否存在
-    has(key: string): boolean {
-        return this.services.has(key) || this.factories.has(key);
-    }
-    
-    // 移除服務
-    remove(key: string): void {
-        this.services.delete(key);
-        this.factories.delete(key);
-    }
-    
-    // 清空容器
-    clear(): void {
-        this.services.clear();
-        this.factories.clear();
-    }
+    // ... 實現
+}
+
+// 服務註冊
+export function registerServices(): void {
+    container.bind<IAudioContext>(TYPES.AudioContext)
+        .to(AudioContext)
+        .inSingletonScope();
+    // ... 其他服務註冊
 }
 ```
 
-### 2.2 服務註冊裝飾器
+### 2.3 使用方式
 
+1. **註冊服務**
 ```typescript
-// 服務註冊裝飾器
-function Injectable() {
-    return function (target: any) {
-        const serviceName = target.name;
-        Container.getInstance().register(serviceName, new target());
-    };
-}
-
-// 工廠註冊裝飾器
-function InjectableFactory() {
-    return function (target: any) {
-        const serviceName = target.name;
-        Container.getInstance().registerFactory(serviceName, () => new target());
-    };
-}
-
-// 使用示例
-@Injectable()
-class TrackService {
-    constructor(
-        private trackRepository: TrackRepository,
-        private audioService: AudioService
-    ) {}
-}
-
-@InjectableFactory()
-class AudioService {
-    constructor(
-        private audioContext: AudioContext,
-        private deviceManager: DeviceManager
-    ) {}
-}
+registerServices();
 ```
 
-### 2.3 依賴注入使用示例
-
+2. **獲取服務**
 ```typescript
-// 1. 基礎服務定義
-interface IAudioService {
-    play(): void;
-    stop(): void;
-    pause(): void;
-}
-
-// 2. 服務實現
-class AudioService implements IAudioService {
-    constructor(
-        private audioContext: AudioContext,
-        private deviceManager: DeviceManager
-    ) {}
-    
-    play(): void {
-        // 實現播放邏輯
-    }
-    
-    stop(): void {
-        // 實現停止邏輯
-    }
-    
-    pause(): void {
-        // 實現暫停邏輯
-    }
-}
-
-// 3. 組件使用
-class TrackComponent {
-    constructor(
-        private trackService: TrackService,
-        private audioService: IAudioService
-    ) {}
-    
-    playTrack(): void {
-        this.audioService.play();
-    }
-}
-
-// 4. 服務註冊
-const container = Container.getInstance();
-container.register('AudioContext', new AudioContext());
-container.register('DeviceManager', new DeviceManager());
-container.register('AudioService', new AudioService(
-    container.get('AudioContext'),
-    container.get('DeviceManager')
-));
-container.register('TrackService', new TrackService(
-    new TrackRepository(),
-    container.get('AudioService')
-));
-
-// 5. 創建組件
-const trackComponent = new TrackComponent(
-    container.get('TrackService'),
-    container.get('AudioService')
-);
+const engine = container.get<IAudioEngine>(TYPES.AudioEngine);
 ```
 
-### 2.4 依賴注入最佳實踐
+3. **使用服務**
+```typescript
+engine.onInit();
+```
 
-1. **服務註冊**
-   - 使用有意義的服務名稱
-   - 根據需要選擇單例或工廠模式
-   - 注意服務的初始化順序
+### 2.4 最佳實踐
 
-2. **依賴管理**
-   - 避免循環依賴
-   - 使用接口而不是具體實現
-   - 保持依賴的單向性
+1. **使用介面**
+   - 總是為服務定義介面
+   - 使用介面而不是具體實現
 
-3. **生命週期管理**
-   - 及時清理不需要的服務
-   - 處理服務的初始化和銷毀
-   - 管理資源的釋放
+2. **使用 Symbol 作為 Token**
+   - 避免使用字串作為 Token
+   - 使用 Symbol 確保唯一性
 
-4. **錯誤處理**
-   - 處理服務未找到的情況
-   - 處理服務初始化失敗
-   - 提供清晰的錯誤信息
+3. **適當的作用域**
+   - 使用單例作用域共享狀態
+   - 使用瞬態作用域避免狀態共享
 
-5. **測試支持**
-   - 支持服務的模擬替換
-   - 方便進行單元測試
-   - 支持測試環境配置
+4. **生命週期管理**
+   - 實現 `onInit` 和 `onDestroy` 方法
+   - 在適當的時機調用這些方法
+
+5. **錯誤處理**
+   - 使用 try-catch 處理初始化錯誤
+   - 提供適當的錯誤信息
+
+### 2.5 與其他層的整合
+
+1. **表現層**
+   - UI 組件通過 DI 獲取服務
+   - 使用裝飾器注入依賴
+
+2. **領域層**
+   - 領域服務通過 DI 獲取依賴
+   - 使用介面定義服務契約
+
+3. **數據層**
+   - 數據倉庫通過 DI 獲取配置
+   - 使用工廠模式創建實例
 
 ## 3. 基礎接口定義
 

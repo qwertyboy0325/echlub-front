@@ -8,22 +8,54 @@ DAW 的狀態管理系統主要負責：
 3. UI 狀態管理
 4. 狀態持久化
 
+系統通過依賴注入（DI）進行整合，確保狀態管理的靈活性和可測試性。
+
+### 1.1 DI 整合
+
+狀態管理系統的核心組件通過 DI 容器進行管理：
+
+```typescript
+// types.ts
+export const TYPES = {
+    StateManager: Symbol.for('StateManager'),
+    StateStore: Symbol.for('StateStore'),
+    StateSlice: Symbol.for('StateSlice')
+};
+
+export interface IStateManager {
+    getStore<T>(name: string): StateStore<T>;
+    registerSlice<T>(slice: StateSlice<T>): void;
+    dispatch(action: any): void;
+}
+
+export interface IStateStore<T> {
+    getState(): T;
+    setState(state: T): void;
+    subscribe(listener: (state: T) => void): () => void;
+}
+```
+
+### 1.2 服務註冊
+
+狀態管理系統的服務在 DI 容器中註冊：
+
+```typescript
+// container.ts
+container.bind<IStateManager>(TYPES.StateManager).to(StateManager).inSingletonScope();
+container.bind<IStateStore<any>>(TYPES.StateStore).to(StateStoreImpl).inTransientScope();
+container.bind<IStateSlice<any>>(TYPES.StateSlice).to(StateSliceImpl).inTransientScope();
+```
+
 ## 2. 核心組件
 
 ### 2.1 狀態存儲
 
 ```typescript
-export interface StateStore<T> {
-    getState(): T;
-    setState(state: T): void;
-    subscribe(listener: (state: T) => void): () => void;
-}
-
-export class StateStoreImpl<T> implements StateStore<T> {
-    private state: T;
-    private listeners: Set<(state: T) => void>;
-    
-    constructor(initialState: T) {
+@injectable()
+export class StateStoreImpl<T> implements IStateStore<T> {
+    constructor(
+        @inject(TYPES.EventBus) private eventBus: IEventBus<StateEvents>
+    ) {
         this.state = initialState;
         this.listeners = new Set();
     }
@@ -51,14 +83,10 @@ export class StateStoreImpl<T> implements StateStore<T> {
 ### 2.2 狀態切片
 
 ```typescript
-export interface StateSlice<T> {
-    name: string;
-    initialState: T;
-    reducers: Record<string, (state: T, action: any) => T>;
-}
-
-export class StateSliceImpl<T> implements StateSlice<T> {
+@injectable()
+export class StateSliceImpl<T> implements IStateSlice<T> {
     constructor(
+        @inject(TYPES.EventBus) private eventBus: IEventBus<StateEvents>,
         public name: string,
         public initialState: T,
         public reducers: Record<string, (state: T, action: any) => T>
@@ -94,27 +122,20 @@ export class StateSliceImpl<T> implements StateSlice<T> {
 ### 2.3 狀態管理器
 
 ```typescript
-export class StateManager {
-    private static instance: StateManager;
-    private stores: Map<string, StateStore<any>>;
-    private slices: Map<string, StateSlice<any>>;
-    
-    private constructor() {
+@injectable()
+export class StateManager implements IStateManager {
+    constructor(
+        @inject(TYPES.EventBus) private eventBus: IEventBus<StateEvents>,
+        @inject(TYPES.StateStore) private storeFactory: Factory<IStateStore<any>>
+    ) {
         this.stores = new Map();
         this.slices = new Map();
-    }
-    
-    static getInstance(): StateManager {
-        if (!StateManager.instance) {
-            StateManager.instance = new StateManager();
-        }
-        return StateManager.instance;
     }
     
     // 註冊狀態切片
     registerSlice<T>(slice: StateSlice<T>): void {
         this.slices.set(slice.name, slice);
-        this.stores.set(slice.name, new StateStoreImpl(slice.initialState));
+        this.stores.set(slice.name, this.storeFactory.createNew());
     }
     
     // 獲取狀態存儲

@@ -7,6 +7,50 @@ DAW 的事件系統分為兩個主要層次：
 1. UI 事件層：處理用戶界面交互
 2. Domain 事件層：處理業務邏輯
 
+事件系統通過依賴注入（DI）進行整合，確保系統的鬆耦合性和可測試性。
+
+### 1.1 DI 整合
+
+事件系統的核心組件通過 DI 容器進行管理：
+
+```typescript
+// types.ts
+export const TYPES = {
+    EventBus: Symbol.for('EventBus'),
+    EventLogService: Symbol.for('EventLogService'),
+    EventFilterChain: Symbol.for('EventFilterChain')
+};
+
+export interface IEventBus<T extends Record<string, any>> {
+    emit<K extends keyof T>(event: K, payload: T[K]): void;
+    emitAsync<K extends keyof T>(event: K, payload: T[K]): Promise<void>;
+    on<K extends keyof T>(
+        event: K,
+        handler: (payload: T[K]) => void | Promise<void>,
+        options?: EventHandlerOptions
+    ): void;
+    off<K extends keyof T>(event: K, handler: (payload: T[K]) => void): void;
+    once<K extends keyof T>(
+        event: K,
+        handler: (payload: T[K]) => void | Promise<void>,
+        options?: EventHandlerOptions
+    ): void;
+    setDebugMode(enabled: boolean): void;
+    addFilter<K extends keyof T>(event: K, filter: EventFilter<T[K]>): void;
+}
+```
+
+### 1.2 服務註冊
+
+事件系統的服務在 DI 容器中註冊：
+
+```typescript
+// container.ts
+container.bind<IEventBus<EventMap>>(TYPES.EventBus).to(EventBus).inSingletonScope();
+container.bind<EventLogService>(TYPES.EventLogService).to(EventLogService).inSingletonScope();
+container.bind<EventFilterChain>(TYPES.EventFilterChain).to(EventFilterChain).inSingletonScope();
+```
+
 ## 2. 事件類型定義
 
 ### 2.1 事件優先級

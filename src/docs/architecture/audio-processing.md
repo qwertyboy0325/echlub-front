@@ -8,18 +8,63 @@ DAW 的音頻處理系統基於 Tone.js 構建，主要負責：
 3. 音頻路由管理
 4. 實時音頻處理
 
+系統通過依賴注入（DI）進行整合，確保組件之間的鬆耦合性和可測試性。
+
+### 1.1 DI 整合
+
+音頻處理系統的核心組件通過 DI 容器進行管理：
+
+```typescript
+// types.ts
+export const TYPES = {
+    AudioEngine: Symbol.for('AudioEngine'),
+    AudioContext: Symbol.for('AudioContext'),
+    AudioTrack: Symbol.for('AudioTrack')
+};
+
+export interface IAudioEngine {
+    start(): Promise<void>;
+    stop(): void;
+    pause(): void;
+    setBPM(bpm: number): void;
+    getCurrentTime(): number;
+    getMaster(): Tone.Gain;
+}
+
+export interface IAudioContext {
+    sampleRate: number;
+    latencyHint: 'interactive' | 'playback';
+    state: AudioContextState;
+}
+```
+
+### 1.2 服務註冊
+
+音頻處理系統的服務在 DI 容器中註冊：
+
+```typescript
+// container.ts
+container.bind<IAudioEngine>(TYPES.AudioEngine).to(AudioEngine).inSingletonScope();
+container.bind<IAudioContext>(TYPES.AudioContext).to(AudioContext).inSingletonScope();
+container.bind<IAudioTrack>(TYPES.AudioTrack).to(AudioTrack).inTransientScope();
+```
+
 ## 2. 核心組件
 
 ### 2.1 音頻引擎
 
 ```typescript
-export class AudioEngine {
+@injectable()
+export class AudioEngine implements IAudioEngine {
     private static instance: AudioEngine;
     private context: Tone.Context;
     private master: Tone.Gain;
     private transport: Tone.Transport;
     
-    private constructor() {
+    constructor(
+        @inject(TYPES.AudioContext) private context: IAudioContext,
+        @inject(TYPES.EventBus) private eventBus: IEventBus<AudioEvents>
+    ) {
         // 初始化 Tone.js 上下文
         this.context = new Tone.Context();
         this.master = new Tone.Gain().toDestination();

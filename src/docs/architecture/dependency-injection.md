@@ -1,298 +1,162 @@
-# DAW 依賴注入系統設計文檔
+# 依賴注入系統
 
-## 1. 系統概述
+## 概述
 
-DAW 的依賴注入系統主要負責：
-1. 服務註冊和管理
-2. 依賴解析和注入
-3. 生命週期管理
-4. 工廠模式支持
+本專案使用 Inversify 作為依賴注入容器。Inversify 是一個強大的 TypeScript 依賴注入容器，提供了完整的依賴注入功能，包括：
 
-## 2. 核心組件
+- 類型安全的依賴注入
+- 裝飾器支援
+- 生命週期管理
+- 作用域管理
+- 工廠模式支援
+- 循環依賴處理
 
-### 2.1 容器接口
+## 安裝
 
-```typescript
-export interface Container {
-    register<T>(token: string, provider: Provider<T>): void;
-    registerSingleton<T>(token: string, provider: Provider<T>): void;
-    registerFactory<T>(token: string, factory: Factory<T>): void;
-    resolve<T>(token: string): T;
-    has(token: string): boolean;
-    clear(): void;
+```bash
+npm install inversify reflect-metadata
+```
+
+## 配置
+
+在 `tsconfig.json` 中啟用裝飾器支援：
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
 }
 ```
 
-### 2.2 依賴注入裝飾器
+## 基本用法
+
+### 1. 定義介面
 
 ```typescript
-// 服務註冊裝飾器
-export function Injectable(options: InjectableOptions = {}): ClassDecorator {
-    return (target: any) => {
-        Reflect.defineMetadata('injectable', true, target);
-        Reflect.defineMetadata('singleton', options.singleton || false, target);
-        Reflect.defineMetadata('dependencies', options.dependencies || [], target);
-    };
-}
-
-// 依賴注入裝飾器
-export function Inject(token: string): PropertyDecorator {
-    return (target: any, propertyKey: string | symbol) => {
-        const dependencies = Reflect.getMetadata('dependencies', target.constructor) || [];
-        dependencies.push({ token, propertyKey });
-        Reflect.defineMetadata('dependencies', dependencies, target.constructor);
-    };
-}
-
-// 工廠註冊裝飾器
-export function InjectableFactory(): MethodDecorator {
-    return (target: any, propertyKey: string | symbol, descriptor: PropertyDescriptor) => {
-        Reflect.defineMetadata('factory', true, descriptor.value);
-        return descriptor;
-    };
+interface IAudioContext {
+    onInit(): void;
+    onDestroy(): void;
 }
 ```
 
-### 2.3 容器實現
+### 2. 定義 Token
 
 ```typescript
-export class ContainerImpl implements Container {
-    private providers: Map<string, Provider<any>>;
-    private instances: Map<string, any>;
-    private factories: Map<string, Factory<any>>;
-    
+const TYPES = {
+    AudioContext: Symbol.for("AudioContext")
+};
+```
+
+### 3. 實現類別
+
+```typescript
+@injectable()
+class AudioContext implements IAudioContext {
     constructor() {
-        this.providers = new Map();
-        this.instances = new Map();
-        this.factories = new Map();
+        console.log("AudioContext constructed");
     }
-    
-    // 註冊服務
-    register<T>(token: string, provider: Provider<T>): void {
-        this.providers.set(token, provider);
+
+    onInit(): void {
+        console.log("AudioContext initialized");
     }
-    
-    // 註冊單例服務
-    registerSingleton<T>(token: string, provider: Provider<T>): void {
-        this.providers.set(token, {
-            ...provider,
-            singleton: true
-        });
-    }
-    
-    // 註冊工廠
-    registerFactory<T>(token: string, factory: Factory<T>): void {
-        this.factories.set(token, factory);
-    }
-    
-    // 解析依賴
-    resolve<T>(token: string): T {
-        // 檢查工廠
-        if (this.factories.has(token)) {
-            return this.factories.get(token)!(this);
-        }
-        
-        // 檢查單例
-        if (this.instances.has(token)) {
-            return this.instances.get(token);
-        }
-        
-        // 檢查提供者
-        const provider = this.providers.get(token);
-        if (!provider) {
-            throw new Error(`No provider found for token: ${token}`);
-        }
-        
-        // 創建實例
-        const instance = this.createInstance(provider);
-        
-        // 如果是單例，保存實例
-        if (provider.singleton) {
-            this.instances.set(token, instance);
-        }
-        
-        return instance;
-    }
-    
-    // 創建實例
-    private createInstance<T>(provider: Provider<T>): T {
-        const dependencies = provider.dependencies || [];
-        const resolvedDependencies = dependencies.map(dep => this.resolve(dep));
-        
-        return new provider.useClass(...resolvedDependencies);
-    }
-    
-    // 檢查服務是否存在
-    has(token: string): boolean {
-        return this.providers.has(token) || this.factories.has(token);
-    }
-    
-    // 清理容器
-    clear(): void {
-        this.providers.clear();
-        this.instances.clear();
-        this.factories.clear();
+
+    onDestroy(): void {
+        console.log("AudioContext destroyed");
     }
 }
 ```
 
-## 3. 服務註冊
-
-### 3.1 基礎服務註冊
+### 4. 註冊服務
 
 ```typescript
-// 註冊基礎服務
-container.register('AudioEngine', {
-    useClass: AudioEngine,
-    dependencies: ['AudioContext', 'EventBus']
-});
-
-container.register('EventBus', {
-    useClass: EventBus,
-    dependencies: []
-});
-
-// 註冊單例服務
-container.registerSingleton('AudioContext', {
-    useClass: AudioContext,
-    dependencies: []
-});
-
-// 註冊工廠服務
-container.registerFactory('AudioBuffer', (container) => {
-    return new AudioBuffer(container.resolve('AudioContext'));
-});
+const container = new Container();
+container.bind<IAudioContext>(TYPES.AudioContext).to(AudioContext).inSingletonScope();
 ```
 
-### 3.2 使用裝飾器註冊
+### 5. 使用服務
 
 ```typescript
-@Injectable({ singleton: true })
+const context = container.get<IAudioContext>(TYPES.AudioContext);
+```
+
+## 進階用法
+
+### 1. 依賴注入
+
+```typescript
+@injectable()
 class AudioEngine {
     constructor(
-        @Inject('AudioContext') private context: AudioContext,
-        @Inject('EventBus') private eventBus: EventBus
+        @inject(TYPES.AudioContext) private context: IAudioContext,
+        @inject(TYPES.EventBus) private eventBus: IEventBus
     ) {}
-}
-
-@Injectable()
-class EventBus {
-    constructor() {}
-}
-
-@Injectable()
-class AudioContext {
-    constructor() {}
 }
 ```
 
-## 4. 生命週期管理
-
-### 4.1 生命週期鉤子
+### 2. 作用域管理
 
 ```typescript
-export interface LifecycleHooks {
-    onInit?(): void;
-    onDestroy?(): void;
-}
+// 單例作用域
+container.bind<IAudioContext>(TYPES.AudioContext).to(AudioContext).inSingletonScope();
 
-export class BaseComponent implements LifecycleHooks {
+// 瞬態作用域
+container.bind<IAudioContext>(TYPES.AudioContext).to(AudioContext).inTransientScope();
+
+// 請求作用域
+container.bind<IAudioContext>(TYPES.AudioContext).to(AudioContext).inRequestScope();
+```
+
+### 3. 工廠模式
+
+```typescript
+container.bind<IAudioContext>(TYPES.AudioContext).toFactory((context) => {
+    return () => new AudioContext();
+});
+```
+
+### 4. 生命週期管理
+
+```typescript
+@injectable()
+class AudioContext implements IAudioContext {
     onInit(): void {
         // 初始化邏輯
     }
-    
+
     onDestroy(): void {
         // 清理邏輯
     }
 }
 ```
 
-### 4.2 生命週期管理器
+## 最佳實踐
 
-```typescript
-export class LifecycleManager {
-    private static instance: LifecycleManager;
-    private components: Set<LifecycleHooks>;
-    
-    private constructor() {
-        this.components = new Set();
-    }
-    
-    static getInstance(): LifecycleManager {
-        if (!LifecycleManager.instance) {
-            LifecycleManager.instance = new LifecycleManager();
-        }
-        return LifecycleManager.instance;
-    }
-    
-    // 註冊組件
-    registerComponent(component: LifecycleHooks): void {
-        this.components.add(component);
-        if (component.onInit) {
-            component.onInit();
-        }
-    }
-    
-    // 註銷組件
-    unregisterComponent(component: LifecycleHooks): void {
-        if (component.onDestroy) {
-            component.onDestroy();
-        }
-        this.components.delete(component);
-    }
-    
-    // 清理所有組件
-    destroyAll(): void {
-        this.components.forEach(component => {
-            if (component.onDestroy) {
-                component.onDestroy();
-            }
-        });
-        this.components.clear();
-    }
-}
-```
+1. **使用介面**
+   - 總是為服務定義介面
+   - 使用介面而不是具體實現
 
-## 5. 依賴注入最佳實踐
+2. **使用 Symbol 作為 Token**
+   - 避免使用字串作為 Token
+   - 使用 Symbol 確保唯一性
 
-1. **服務註冊原則**
-   - 使用接口定義服務
-   - 遵循單一職責原則
-   - 避免循環依賴
-   - 合理使用單例模式
+3. **適當的作用域**
+   - 使用單例作用域共享狀態
+   - 使用瞬態作用域避免狀態共享
 
-2. **依賴注入方式**
-   - 優先使用構造函數注入
-   - 避免使用屬性注入
-   - 使用工廠模式創建複雜對象
-   - 使用裝飾器簡化註冊
+4. **生命週期管理**
+   - 實現 `onInit` 和 `onDestroy` 方法
+   - 在適當的時機調用這些方法
 
-3. **生命週期管理**
-   - 實現生命週期鉤子
-   - 及時清理資源
-   - 避免內存洩漏
-   - 處理異步初始化
+5. **錯誤處理**
+   - 使用 try-catch 處理初始化錯誤
+   - 提供適當的錯誤信息
 
-4. **錯誤處理**
-   - 處理依賴解析錯誤
-   - 提供錯誤恢復機制
-   - 記錄錯誤日誌
-   - 實現優雅降級
+## 示例
 
-5. **性能優化**
-   - 使用依賴緩存
-   - 延遲加載服務
-   - 優化依賴圖
-   - 避免不必要的實例化
+完整的示例可以參考 `src/docs/examples/di-example.ts`。
 
-6. **測試策略**
-   - 使用依賴注入進行單元測試
-   - 模擬依賴服務
-   - 測試生命週期鉤子
-   - 驗證依賴關係
+## 測試
 
-7. **調試支持**
-   - 提供依賴圖可視化
-   - 支持依賴追蹤
-   - 記錄服務生命週期
-   - 提供診斷工具 
+測試示例可以參考 `src/__tests__/examples/di-example.test.ts`。 
