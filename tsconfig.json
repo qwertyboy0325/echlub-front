@@ -20,6 +20,6 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": ["src"],
+  "include": ["src", "docs"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
