@@ -1,21 +1,179 @@
+import { BaseModel, BaseModelImpl } from './BaseModel';
+import { Clip } from './Clip';
 import { UUIDGenerator } from '../../utils/uuid';
 
 /**
- * Track Model
- * Represents an audio track in the DAW
+ * Track model interface
  */
-export interface Track {
-    id: string;
-    name: string;
-    type: 'audio' | 'midi' | 'instrument';
-    volume: number;
-    pan: number;
-    muted: boolean;
-    soloed: boolean;
-    clips: AudioClip[];
-    effects: Effect[];
-    createdAt: number;
-    updatedAt: number;
+export interface Track extends BaseModel {
+  name: string;
+  type: 'audio' | 'midi' | 'aux';
+  clips: string[];
+  volume: number;
+  pan: number;
+  muted: boolean;
+  soloed: boolean;
+  effects: string[];
+  automation: Record<string, number[]>;
+  inputGain: number;
+  outputGain: number;
+  color: string;
+  height: number;
+  visible: boolean;
+}
+
+/**
+ * Track model implementation
+ */
+export class TrackImpl extends BaseModelImpl implements Track {
+  name: string;
+  type: 'audio' | 'midi' | 'aux';
+  clips: string[];
+  volume: number;
+  pan: number;
+  muted: boolean;
+  soloed: boolean;
+  effects: string[];
+  automation: Record<string, number[]>;
+  inputGain: number;
+  outputGain: number;
+  color: string;
+  height: number;
+  visible: boolean;
+
+  constructor(data: Partial<Track>) {
+    super(data);
+    this.name = data.name || 'Untitled Track';
+    this.type = data.type || 'audio';
+    this.clips = data.clips || [];
+    this.volume = data.volume ?? 1;
+    this.pan = data.pan ?? 0;
+    this.muted = data.muted || false;
+    this.soloed = data.soloed || false;
+    this.effects = data.effects || [];
+    this.automation = data.automation || {};
+    this.inputGain = data.inputGain ?? 1;
+    this.outputGain = data.outputGain ?? 1;
+    this.color = data.color || '#808080';
+    this.height = data.height || 100;
+    this.visible = data.visible ?? true;
+  }
+
+  /**
+   * Add clip to track
+   */
+  addClip(clipId: string): void {
+    if (!this.clips.includes(clipId)) {
+      this.clips.push(clipId);
+      this.update();
+    }
+  }
+
+  /**
+   * Remove clip from track
+   */
+  removeClip(clipId: string): void {
+    this.clips = this.clips.filter(id => id !== clipId);
+    this.update();
+  }
+
+  /**
+   * Update track volume
+   */
+  updateVolume(volume: number): void {
+    this.volume = Math.max(0, Math.min(1, volume));
+    this.update();
+  }
+
+  /**
+   * Update track pan
+   */
+  updatePan(pan: number): void {
+    this.pan = Math.max(-1, Math.min(1, pan));
+    this.update();
+  }
+
+  /**
+   * Toggle track mute
+   */
+  toggleMute(): void {
+    this.muted = !this.muted;
+    this.update();
+  }
+
+  /**
+   * Toggle track solo
+   */
+  toggleSolo(): void {
+    this.soloed = !this.soloed;
+    this.update();
+  }
+
+  /**
+   * Add effect to track
+   */
+  addEffect(effectId: string): void {
+    if (!this.effects.includes(effectId)) {
+      this.effects.push(effectId);
+      this.update();
+    }
+  }
+
+  /**
+   * Remove effect from track
+   */
+  removeEffect(effectId: string): void {
+    this.effects = this.effects.filter(id => id !== effectId);
+    this.update();
+  }
+
+  /**
+   * Update automation data
+   */
+  updateAutomation(parameter: string, data: number[]): void {
+    this.automation[parameter] = data;
+    this.update();
+  }
+
+  /**
+   * Update track input gain
+   */
+  updateInputGain(gain: number): void {
+    this.inputGain = Math.max(0, gain);
+    this.update();
+  }
+
+  /**
+   * Update track output gain
+   */
+  updateOutputGain(gain: number): void {
+    this.outputGain = Math.max(0, gain);
+    this.update();
+  }
+
+  /**
+   * Update track color
+   */
+  updateColor(color: string): void {
+    this.color = color;
+    this.update();
+  }
+
+  /**
+   * Update track height
+   */
+  updateHeight(height: number): void {
+    this.height = Math.max(50, Math.min(300, height));
+    this.update();
+  }
+
+  /**
+   * Toggle track visibility
+   */
+  toggleVisibility(): void {
+    this.visible = !this.visible;
+    this.update();
+  }
 }
 
 /**
@@ -79,7 +237,13 @@ export class TrackFactory {
             clips: params.clips || [],
             effects: params.effects || [],
             createdAt: params.createdAt || now,
-            updatedAt: now
+            updatedAt: now,
+            automation: params.automation || {},
+            inputGain: params.inputGain ?? 1,
+            outputGain: params.outputGain ?? 1,
+            color: params.color || '#808080',
+            height: params.height || 100,
+            visible: params.visible ?? true
         };
     }
     

@@ -1,155 +1,177 @@
-import { ProjectRepository } from '../../../data/repositories/ProjectRepository';
-import { Project } from '../../../data/models/Project';
-import { Track } from '../../../data/models/Track';
+import { ProjectRepositoryImpl } from '../../../data/repositories/ProjectRepository';
+import { ProjectImpl } from '../../../data/models/Project';
+import { TrackImpl } from '../../../data/models/Track';
 
-describe('ProjectRepository', () => {
-    let projectRepository: ProjectRepository;
+describe('ProjectRepositoryImpl', () => {
+    let repository: ProjectRepositoryImpl;
     
     beforeEach(() => {
-        projectRepository = new ProjectRepository();
-    });
-    
-    afterEach(() => {
-        projectRepository.clear();
+        repository = new ProjectRepositoryImpl();
     });
     
     test('should create project', () => {
-        const project = projectRepository.createProject({
+        const project = repository.create({});
+        expect(project).toBeDefined();
+        expect(project.name).toBe('Untitled Project');
+        expect(project.description).toBe('');
+        expect(project.tracks).toEqual([]);
+        expect(project.tempo).toBe(120);
+        expect(project.timeSignature).toEqual([4, 4]);
+        expect(project.sampleRate).toBe(44100);
+        expect(project.bitDepth).toBe(24);
+        expect(project.startTime).toBe(0);
+        expect(project.endTime).toBe(0);
+        expect(project.loopStart).toBe(0);
+        expect(project.loopEnd).toBe(0);
+        expect(project.markers).toEqual({});
+        expect(project.metadata).toEqual({});
+    });
+    
+    test('should create project with provided values', () => {
+        const project = repository.create({
             name: 'Test Project',
-            description: 'Test Description'
+            description: 'Test Description',
+            tracks: ['track1', 'track2'],
+            tempo: 140,
+            timeSignature: [3, 4],
+            sampleRate: 48000,
+            bitDepth: 32,
+            startTime: 10,
+            endTime: 100,
+            loopStart: 20,
+            loopEnd: 80,
+            markers: { 'Verse 1': 0, 'Chorus': 32 },
+            metadata: { artist: 'Test Artist', genre: 'Test Genre' }
         });
-        
-        expect(project.id).toBeDefined();
+
         expect(project.name).toBe('Test Project');
         expect(project.description).toBe('Test Description');
-        expect(project.tracks).toHaveLength(0);
-        expect(project.bpm).toBe(120);
-        expect(project.timeSignature).toEqual({ numerator: 4, denominator: 4 });
-        expect(project.sampleRate).toBe(44100);
+        expect(project.tracks).toEqual(['track1', 'track2']);
+        expect(project.tempo).toBe(140);
+        expect(project.timeSignature).toEqual([3, 4]);
+        expect(project.sampleRate).toBe(48000);
+        expect(project.bitDepth).toBe(32);
+        expect(project.startTime).toBe(10);
+        expect(project.endTime).toBe(100);
+        expect(project.loopStart).toBe(20);
+        expect(project.loopEnd).toBe(80);
+        expect(project.markers).toEqual({ 'Verse 1': 0, 'Chorus': 32 });
+        expect(project.metadata).toEqual({ artist: 'Test Artist', genre: 'Test Genre' });
     });
     
     test('should get project by ID', () => {
-        const project = projectRepository.createProject({
-            name: 'Test Project'
-        });
-        
-        const retrievedProject = projectRepository.getProject(project.id);
+        const project = repository.create({ name: 'Test Project' });
+        const retrievedProject = repository.getById(project.id);
         expect(retrievedProject).toBeDefined();
         expect(retrievedProject?.id).toBe(project.id);
     });
     
     test('should update project', () => {
-        const project = projectRepository.createProject({
-            name: 'Test Project'
-        });
-        
-        const updatedProject = projectRepository.updateProject(project.id, {
+        const project = repository.create({ name: 'Test Project' });
+        const updatedProject = repository.update(project.id, {
             name: 'Updated Project',
-            bpm: 140
+            tempo: 140
         });
-        
+
         expect(updatedProject).toBeDefined();
         expect(updatedProject?.name).toBe('Updated Project');
-        expect(updatedProject?.bpm).toBe(140);
+        expect(updatedProject?.tempo).toBe(140);
     });
     
     test('should delete project', () => {
-        const project = projectRepository.createProject({
-            name: 'Test Project'
-        });
-        
-        const deleted = projectRepository.deleteProject(project.id);
+        const project = repository.create({ name: 'Test Project' });
+        const deleted = repository.delete(project.id);
         expect(deleted).toBe(true);
-        expect(projectRepository.getProject(project.id)).toBeUndefined();
+        expect(repository.getById(project.id)).toBeUndefined();
     });
     
     test('should manage tracks in project', () => {
-        const project = projectRepository.createProject({
-            name: 'Test Project'
-        });
-        
-        const track: Track = {
-            id: 'track1',
-            name: 'Test Track',
-            type: 'audio',
-            volume: 1,
-            pan: 0,
-            muted: false,
-            soloed: false,
-            clips: [],
-            effects: [],
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-        };
-        
+        const project = repository.create({ name: 'Test Project' });
+        const track = new TrackImpl({ name: 'Test Track' });
+
         // Add track
-        const projectWithTrack = projectRepository.addTrack(project.id, track);
-        expect(projectWithTrack?.tracks).toHaveLength(1);
-        expect(projectWithTrack?.tracks[0].id).toBe(track.id);
-        
-        // Update track
-        const updatedProject = projectRepository.updateTrack(project.id, track.id, {
-            name: 'Updated Track',
-            volume: 0.8
-        });
-        expect(updatedProject?.tracks[0].name).toBe('Updated Track');
-        expect(updatedProject?.tracks[0].volume).toBe(0.8);
-        
-        // Get track
-        const retrievedTrack = projectRepository.getTrack(project.id, track.id);
-        expect(retrievedTrack).toBeDefined();
-        expect(retrievedTrack?.id).toBe(track.id);
-        
-        // Move track
-        const movedProject = projectRepository.moveTrack(project.id, track.id, 0);
-        expect(movedProject?.tracks[0].id).toBe(track.id);
-        
+        project.addTrack(track.id);
+        expect(project.tracks).toContain(track.id);
+
         // Remove track
-        const projectWithoutTrack = projectRepository.removeTrack(project.id, track.id);
-        expect(projectWithoutTrack?.tracks).toHaveLength(0);
+        project.removeTrack(track.id);
+        expect(project.tracks).not.toContain(track.id);
     });
     
     test('should update project settings', () => {
-        const project = projectRepository.createProject({
-            name: 'Test Project'
-        });
-        
-        // Update BPM
-        const projectWithNewBPM = projectRepository.updateBPM(project.id, 140);
-        expect(projectWithNewBPM?.bpm).toBe(140);
-        
+        const project = repository.create({ name: 'Test Project' });
+
+        // Update tempo
+        project.updateTempo(140);
+        expect(project.tempo).toBe(140);
+
         // Update time signature
-        const projectWithNewTimeSignature = projectRepository.updateTimeSignature(
-            project.id,
-            6,
-            8
-        );
-        expect(projectWithNewTimeSignature?.timeSignature).toEqual({
-            numerator: 6,
-            denominator: 8
-        });
-        
+        project.updateTimeSignature(3, 4);
+        expect(project.timeSignature).toEqual([3, 4]);
+
         // Update sample rate
-        const projectWithNewSampleRate = projectRepository.updateSampleRate(
-            project.id,
-            48000
-        );
-        expect(projectWithNewSampleRate?.sampleRate).toBe(48000);
+        project.updateSampleRate(48000);
+        expect(project.sampleRate).toBe(48000);
+
+        // Update bit depth
+        project.updateBitDepth(32);
+        expect(project.bitDepth).toBe(32);
+
+        // Update time range
+        project.updateTimeRange(10, 100);
+        expect(project.startTime).toBe(10);
+        expect(project.endTime).toBe(100);
+
+        // Update loop points
+        project.updateLoopPoints(20, 80);
+        expect(project.loopStart).toBe(20);
+        expect(project.loopEnd).toBe(80);
     });
     
     test('should handle non-existent project operations', () => {
         const nonExistentId = 'non-existent';
-        
-        expect(projectRepository.getProject(nonExistentId)).toBeUndefined();
-        expect(projectRepository.updateProject(nonExistentId, { name: 'New Name' })).toBeUndefined();
-        expect(projectRepository.deleteProject(nonExistentId)).toBe(false);
-        expect(projectRepository.addTrack(nonExistentId, {} as Track)).toBeUndefined();
-        expect(projectRepository.removeTrack(nonExistentId, 'track1')).toBeUndefined();
-        expect(projectRepository.updateTrack(nonExistentId, 'track1', { name: 'New Name' })).toBeUndefined();
-        expect(projectRepository.getTrack(nonExistentId, 'track1')).toBeUndefined();
-        expect(projectRepository.moveTrack(nonExistentId, 'track1', 0)).toBeUndefined();
-        expect(projectRepository.updateBPM(nonExistentId, 140)).toBeUndefined();
-        expect(projectRepository.updateTimeSignature(nonExistentId, 6, 8)).toBeUndefined();
-        expect(projectRepository.updateSampleRate(nonExistentId, 48000)).toBeUndefined();
+        expect(repository.getById(nonExistentId)).toBeUndefined();
+        expect(repository.update(nonExistentId, { name: 'New Name' })).toBeUndefined();
+        expect(repository.delete(nonExistentId)).toBe(false);
+    });
+    
+    test('should get projects by name', () => {
+        repository.create({ name: 'Test Project' });
+        repository.create({ name: 'Test Project' });
+        repository.create({ name: 'Other Project' });
+
+        const projects = repository.getByName('Test Project');
+        expect(projects).toHaveLength(2);
+        expect(projects.every(project => project.name === 'Test Project')).toBe(true);
+    });
+    
+    test('should get active project', () => {
+        const project = repository.create({ name: 'Test Project' });
+        repository.setActive(project.id);
+        const activeProject = repository.getActive();
+        expect(activeProject).toBeDefined();
+        expect(activeProject?.id).toBe(project.id);
+    });
+    
+    test('should get projects by tempo', () => {
+        repository.create({ tempo: 120 });
+        repository.create({ tempo: 120 });
+        repository.create({ tempo: 140 });
+
+        const projects = repository.getByTempo(120);
+        expect(projects).toHaveLength(2);
+        expect(projects.every(project => project.tempo === 120)).toBe(true);
+    });
+    
+    test('should get projects by time signature', () => {
+        repository.create({ timeSignature: [4, 4] });
+        repository.create({ timeSignature: [4, 4] });
+        repository.create({ timeSignature: [3, 4] });
+
+        const projects = repository.getByTimeSignature(4, 4);
+        expect(projects).toHaveLength(2);
+        expect(projects.every(project => 
+            project.timeSignature[0] === 4 && project.timeSignature[1] === 4
+        )).toBe(true);
     });
 }); 

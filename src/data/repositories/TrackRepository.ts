@@ -1,133 +1,81 @@
-import { Track, AudioClip, Effect } from '../models/Track';
-import { TrackFactory } from '../models/Track';
+import { BaseRepository, BaseRepositoryImpl } from './BaseRepository';
+import { Track, TrackImpl } from '../models/Track';
 
 /**
- * Track Repository
- * Manages track data persistence and retrieval
+ * Track repository interface
  */
-export class TrackRepository {
-    private tracks: Map<string, Track> = new Map();
-    
-    // Create new track
-    createTrack(params: Partial<Track>): Track {
-        const track = TrackFactory.createTrack(params);
-        this.tracks.set(track.id, track);
-        return track;
-    }
-    
-    // Get track by ID
-    getTrack(id: string): Track | undefined {
-        return this.tracks.get(id);
-    }
-    
-    // Get all tracks
-    getAllTracks(): Track[] {
-        return Array.from(this.tracks.values());
-    }
-    
-    // Update track
-    updateTrack(id: string, updates: Partial<Track>): Track | undefined {
-        const track = this.tracks.get(id);
-        if (!track) return undefined;
-        
-        const updatedTrack = TrackFactory.updateTrack(track, updates);
-        this.tracks.set(id, updatedTrack);
-        return updatedTrack;
-    }
-    
-    // Delete track
-    deleteTrack(id: string): boolean {
-        return this.tracks.delete(id);
-    }
-    
-    // Add clip to track
-    addClip(trackId: string, clip: AudioClip): Track | undefined {
-        const track = this.tracks.get(trackId);
-        if (!track) return undefined;
-        
-        const updatedTrack = TrackFactory.updateTrack(track, {
-            clips: [...track.clips, clip]
-        });
-        
-        this.tracks.set(trackId, updatedTrack);
-        return updatedTrack;
-    }
-    
-    // Remove clip from track
-    removeClip(trackId: string, clipId: string): Track | undefined {
-        const track = this.tracks.get(trackId);
-        if (!track) return undefined;
-        
-        const updatedTrack = TrackFactory.updateTrack(track, {
-            clips: track.clips.filter(clip => clip.id !== clipId)
-        });
-        
-        this.tracks.set(trackId, updatedTrack);
-        return updatedTrack;
-    }
-    
-    // Add effect to track
-    addEffect(trackId: string, effect: Effect): Track | undefined {
-        const track = this.tracks.get(trackId);
-        if (!track) return undefined;
-        
-        const updatedTrack = TrackFactory.updateTrack(track, {
-            effects: [...track.effects, effect]
-        });
-        
-        this.tracks.set(trackId, updatedTrack);
-        return updatedTrack;
-    }
-    
-    // Remove effect from track
-    removeEffect(trackId: string, effectId: string): Track | undefined {
-        const track = this.tracks.get(trackId);
-        if (!track) return undefined;
-        
-        const updatedTrack = TrackFactory.updateTrack(track, {
-            effects: track.effects.filter(effect => effect.id !== effectId)
-        });
-        
-        this.tracks.set(trackId, updatedTrack);
-        return updatedTrack;
-    }
-    
-    // Update clip in track
-    updateClip(trackId: string, clipId: string, updates: Partial<AudioClip>): Track | undefined {
-        const track = this.tracks.get(trackId);
-        if (!track) return undefined;
-        
-        const updatedTrack = TrackFactory.updateTrack(track, {
-            clips: track.clips.map(clip =>
-                clip.id === clipId
-                    ? TrackFactory.updateAudioClip(clip, updates)
-                    : clip
-            )
-        });
-        
-        this.tracks.set(trackId, updatedTrack);
-        return updatedTrack;
-    }
-    
-    // Update effect in track
-    updateEffect(trackId: string, effectId: string, updates: Partial<Effect>): Track | undefined {
-        const track = this.tracks.get(trackId);
-        if (!track) return undefined;
-        
-        const updatedTrack = TrackFactory.updateTrack(track, {
-            effects: track.effects.map(effect =>
-                effect.id === effectId
-                    ? TrackFactory.updateEffect(effect, updates)
-                    : effect
-            )
-        });
-        
-        this.tracks.set(trackId, updatedTrack);
-        return updatedTrack;
-    }
-    
-    // Clear all tracks
-    clear(): void {
-        this.tracks.clear();
-    }
+export interface TrackRepository extends BaseRepository<Track> {
+  /**
+   * Get tracks by name
+   */
+  getByName(name: string): Track[];
+
+  /**
+   * Get tracks by type
+   */
+  getByType(type: 'audio' | 'midi' | 'aux'): Track[];
+
+  /**
+   * Get visible tracks
+   */
+  getVisible(): Track[];
+
+  /**
+   * Get muted tracks
+   */
+  getMuted(): Track[];
+
+  /**
+   * Get soloed tracks
+   */
+  getSoloed(): Track[];
+
+  /**
+   * Get tracks with effects
+   */
+  getWithEffects(): Track[];
+}
+
+/**
+ * Track repository implementation
+ */
+export class TrackRepositoryImpl extends BaseRepositoryImpl<Track> implements TrackRepository {
+  protected createItem(data: Partial<Track>): Track {
+    return new TrackImpl(data);
+  }
+
+  protected updateItem(existing: Track, data: Partial<Track>): Track {
+    return new TrackImpl({
+      ...existing,
+      ...data,
+      id: existing.id,
+      createdAt: existing.createdAt,
+      updatedAt: new Date(),
+      version: existing.version + 1
+    });
+  }
+
+  getByName(name: string): Track[] {
+    return this.getAll().filter(track => track.name === name);
+  }
+
+  getByType(type: 'audio' | 'midi' | 'aux'): Track[] {
+    return this.getAll().filter(track => track.type === type);
+  }
+
+  getVisible(): Track[] {
+    return this.getAll().filter(track => track.visible);
+  }
+
+  getMuted(): Track[] {
+    return this.getAll().filter(track => track.muted);
+  }
+
+  getSoloed(): Track[] {
+    return this.getAll().filter(track => track.soloed);
+  }
+
+  getWithEffects(): Track[] {
+    return this.getAll().filter(track => track.effects.length > 0);
+  }
 } 

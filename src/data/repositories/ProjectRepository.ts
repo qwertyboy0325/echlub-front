@@ -1,117 +1,170 @@
-import { Project } from '../models/Project';
-import { ProjectFactory } from '../models/Project';
+import { BaseRepository, BaseRepositoryImpl } from './BaseRepository';
+import { Project, ProjectImpl } from '../models/Project';
 import { Track } from '../models/Track';
 
 /**
- * Project Repository
- * Manages project data persistence and retrieval
+ * Project repository interface
  */
-export class ProjectRepository {
-    private projects: Map<string, Project> = new Map();
-    
-    // Create new project
-    createProject(params: Partial<Project>): Project {
-        const project = ProjectFactory.createProject(params);
-        this.projects.set(project.id, project);
-        return project;
+export interface ProjectRepository extends BaseRepository<Project> {
+  /**
+   * Get projects by name
+   */
+  getByName(name: string): Project[];
+
+  /**
+   * Get active project
+   */
+  getActive(): Project | undefined;
+
+  /**
+   * Set active project
+   */
+  setActive(id: string): void;
+
+  /**
+   * Get projects with specific tempo
+   */
+  getByTempo(tempo: number): Project[];
+
+  /**
+   * Get projects with specific time signature
+   */
+  getByTimeSignature(numerator: number, denominator: number): Project[];
+}
+
+/**
+ * Project repository implementation
+ */
+export class ProjectRepositoryImpl extends BaseRepositoryImpl<Project> implements ProjectRepository {
+  private activeProjectId: string | undefined;
+
+  protected createItem(data: Partial<Project>): Project {
+    return new ProjectImpl(data);
+  }
+
+  protected updateItem(existing: Project, data: Partial<Project>): Project {
+    return new ProjectImpl({
+      ...existing,
+      ...data,
+      id: existing.id,
+      createdAt: existing.createdAt,
+      updatedAt: new Date(),
+      version: existing.version + 1
+    });
+  }
+
+  getByName(name: string): Project[] {
+    return this.getAll().filter(project => project.name === name);
+  }
+
+  getActive(): Project | undefined {
+    if (!this.activeProjectId) {
+      return undefined;
     }
-    
-    // Get project by ID
-    getProject(id: string): Project | undefined {
-        return this.projects.get(id);
+    return this.getById(this.activeProjectId);
+  }
+
+  setActive(id: string): void {
+    if (this.exists(id)) {
+      this.activeProjectId = id;
     }
-    
-    // Get all projects
-    getAllProjects(): Project[] {
-        return Array.from(this.projects.values());
+  }
+
+  getByTempo(tempo: number): Project[] {
+    return this.getAll().filter(project => project.tempo === tempo);
+  }
+
+  getByTimeSignature(numerator: number, denominator: number): Project[] {
+    return this.getAll().filter(project => 
+      project.timeSignature[0] === numerator && 
+      project.timeSignature[1] === denominator
+    );
+  }
+
+  /**
+   * Override delete to handle active project
+   */
+  delete(id: string): boolean {
+    if (this.activeProjectId === id) {
+      this.activeProjectId = undefined;
     }
+    return super.delete(id);
+  }
+
+  /**
+   * Override clear to handle active project
+   */
+  clear(): void {
+    this.activeProjectId = undefined;
+    super.clear();
+  }
+
+  // Add track to project
+  addTrack(projectId: string, track: Track): Project | undefined {
+    const project = this.getById(projectId);
+    if (!project) return undefined;
     
-    // Update project
-    updateProject(id: string, updates: Partial<Project>): Project | undefined {
-        const project = this.projects.get(id);
-        if (!project) return undefined;
-        
-        const updatedProject = ProjectFactory.updateProject(project, updates);
-        this.projects.set(id, updatedProject);
-        return updatedProject;
-    }
+    const updatedProject = ProjectFactory.addTrack(project, track);
+    this.update(updatedProject);
+    return updatedProject;
+  }
+  
+  // Remove track from project
+  removeTrack(projectId: string, trackId: string): Project | undefined {
+    const project = this.getById(projectId);
+    if (!project) return undefined;
     
-    // Delete project
-    deleteProject(id: string): boolean {
-        return this.projects.delete(id);
-    }
+    const updatedProject = ProjectFactory.removeTrack(project, trackId);
+    this.update(updatedProject);
+    return updatedProject;
+  }
+  
+  // Update track in project
+  updateTrack(projectId: string, trackId: string, updates: Partial<Track>): Project | undefined {
+    const project = this.getById(projectId);
+    if (!project) return undefined;
     
-    // Add track to project
-    addTrack(projectId: string, track: Track): Project | undefined {
-        const project = this.projects.get(projectId);
-        if (!project) return undefined;
-        
-        const updatedProject = ProjectFactory.addTrack(project, track);
-        this.projects.set(projectId, updatedProject);
-        return updatedProject;
-    }
+    const updatedProject = ProjectFactory.updateTrack(project, trackId, updates);
+    this.update(updatedProject);
+    return updatedProject;
+  }
+  
+  // Get track by ID
+  getTrack(projectId: string, trackId: string): Track | undefined {
+    const project = this.getById(projectId);
+    if (!project) return undefined;
     
-    // Remove track from project
-    removeTrack(projectId: string, trackId: string): Project | undefined {
-        const project = this.projects.get(projectId);
-        if (!project) return undefined;
-        
-        const updatedProject = ProjectFactory.removeTrack(project, trackId);
-        this.projects.set(projectId, updatedProject);
-        return updatedProject;
-    }
+    return ProjectFactory.getTrack(project, trackId);
+  }
+  
+  // Move track in project
+  moveTrack(projectId: string, trackId: string, newIndex: number): Project | undefined {
+    const project = this.getById(projectId);
+    if (!project) return undefined;
     
-    // Update track in project
-    updateTrack(projectId: string, trackId: string, updates: Partial<Track>): Project | undefined {
-        const project = this.projects.get(projectId);
-        if (!project) return undefined;
-        
-        const updatedProject = ProjectFactory.updateTrack(project, trackId, updates);
-        this.projects.set(projectId, updatedProject);
-        return updatedProject;
-    }
-    
-    // Get track by ID
-    getTrack(projectId: string, trackId: string): Track | undefined {
-        const project = this.projects.get(projectId);
-        if (!project) return undefined;
-        
-        return ProjectFactory.getTrack(project, trackId);
-    }
-    
-    // Move track in project
-    moveTrack(projectId: string, trackId: string, newIndex: number): Project | undefined {
-        const project = this.projects.get(projectId);
-        if (!project) return undefined;
-        
-        const updatedProject = ProjectFactory.moveTrack(project, trackId, newIndex);
-        this.projects.set(projectId, updatedProject);
-        return updatedProject;
-    }
-    
-    // Update project BPM
-    updateBPM(projectId: string, bpm: number): Project | undefined {
-        return this.updateProject(projectId, { bpm });
-    }
-    
-    // Update project time signature
-    updateTimeSignature(
-        projectId: string,
-        numerator: number,
-        denominator: number
-    ): Project | undefined {
-        return this.updateProject(projectId, {
-            timeSignature: { numerator, denominator }
-        });
-    }
-    
-    // Update project sample rate
-    updateSampleRate(projectId: string, sampleRate: number): Project | undefined {
-        return this.updateProject(projectId, { sampleRate });
-    }
-    
-    // Clear all projects
-    clear(): void {
-        this.projects.clear();
-    }
+    const updatedProject = ProjectFactory.moveTrack(project, trackId, newIndex);
+    this.update(updatedProject);
+    return updatedProject;
+  }
+  
+  // Update project BPM
+  updateBPM(projectId: string, bpm: number): Project | undefined {
+    return this.update(projectId, { bpm });
+  }
+  
+  // Update project time signature
+  updateTimeSignature(
+    projectId: string,
+    numerator: number,
+    denominator: number
+  ): Project | undefined {
+    return this.update(projectId, {
+      timeSignature: { numerator, denominator }
+    });
+  }
+  
+  // Update project sample rate
+  updateSampleRate(projectId: string, sampleRate: number): Project | undefined {
+    return this.update(projectId, { sampleRate });
+  }
 } 

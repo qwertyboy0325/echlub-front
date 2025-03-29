@@ -3,22 +3,22 @@
 ## 1. 基礎設施層（Infrastructure Layer）
 
 ### 1.1 核心系統
-- [ ] 實現依賴注入容器（Container）
-- [ ] 建立基礎服務接口（BaseService）
-- [ ] 實現基礎組件接口（BaseComponent）
-- [ ] 建立錯誤處理系統
+- [x] 實現依賴注入容器（Container）
+- [x] 建立基礎服務接口（BaseService）
+- [x] 實現基礎組件接口（BaseComponent）
+- [x] 建立錯誤處理系統
 
 ### 1.2 事件系統
-- [ ] 實現事件總線（EventBus）
-- [ ] 建立事件轉換器（EventTranslator）
-- [ ] 實現事件日誌服務（EventLogService）
-- [ ] 建立事件過濾器（EventFilter）
+- [x] 實現事件總線（EventBus）
+- [x] 建立事件轉換器（EventTranslator）
+- [x] 實現事件日誌服務（EventLogService）
+- [x] 建立事件過濾器（EventFilter）
 
 ### 1.3 狀態管理
-- [ ] 實現狀態存儲（StateStore）
-- [ ] 建立狀態切片（StateSlice）
-- [ ] 實現狀態管理器（StateManager）
-- [ ] 建立狀態持久化服務
+- [x] 實現狀態存儲（StateStore）
+- [x] 建立狀態切片（StateSlice）
+- [x] 實現狀態管理器（StateManager）
+- [x] 建立狀態持久化服務
 
 ## 2. 數據層（Data Layer）
 
