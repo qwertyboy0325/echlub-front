@@ -13,208 +13,215 @@ interface DraggableContainer extends PIXI.Container {
   dragging?: boolean;
 }
 
+const TIMELINE_HEIGHT = 30;
+const TRACK_HEIGHT = 80;
+const TRACK_COUNT = 8;
+const PIXELS_PER_SECOND = 100;
+const CLIP_HEIGHT = TRACK_HEIGHT - 10;
+
 /**
  * DAW 視圖組件
  * 使用 PixiJS 渲染 DAW 界面
  */
-const DAWView: React.FC<DAWViewProps> = ({ width, height, presenter }) => {
+export const DAWView: React.FC<DAWViewProps> = ({ width, height, presenter }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const clipsContainerRef = useRef<PIXI.Container | null>(null);
   const isInitializedRef = useRef(false);
 
-  // 初始化 PixiJS 應用
+  const drawTimeline = () => {
+    if (!appRef.current) return;
+
+    const timeline = new PIXI.Container();
+    timeline.y = 0;
+
+    // Draw background
+    const background = new PIXI.Graphics();
+    background.beginFill(0x1a1a1a);
+    background.drawRect(0, 0, width, TIMELINE_HEIGHT);
+    background.endFill();
+    timeline.addChild(background);
+
+    // Draw time markers
+    const graphics = new PIXI.Graphics();
+    graphics.lineStyle(1, 0x333333);
+
+    for (let i = 0; i <= width; i += PIXELS_PER_SECOND) {
+      const seconds = i / PIXELS_PER_SECOND;
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = Math.floor(seconds % 60);
+      const timeText = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+
+      graphics.moveTo(i, 0);
+      graphics.lineTo(i, TIMELINE_HEIGHT);
+
+      const text = new PIXI.Text(timeText, {
+        fontFamily: 'Arial',
+        fontSize: 10,
+        fill: 0x888888
+      });
+      text.x = i + 2;
+      text.y = 2;
+      timeline.addChild(text);
+    }
+
+    timeline.addChild(graphics);
+    appRef.current.stage.addChild(timeline);
+  };
+
+  const drawTracks = () => {
+    if (!appRef.current) return;
+
+    const tracks = new PIXI.Container();
+    tracks.y = TIMELINE_HEIGHT;
+
+    for (let i = 0; i < TRACK_COUNT; i++) {
+      const track = new PIXI.Container();
+      track.y = i * TRACK_HEIGHT;
+
+      // Draw track background
+      const background = new PIXI.Graphics();
+      background.beginFill(i % 2 === 0 ? 0x2a2a2a : 0x252525);
+      background.drawRect(0, 0, width, TRACK_HEIGHT);
+      background.endFill();
+      track.addChild(background);
+
+      // Add track label
+      const label = new PIXI.Text(`Track ${i + 1}`, {
+        fontFamily: 'Arial',
+        fontSize: 12,
+        fill: 0x888888
+      });
+      label.x = 5;
+      label.y = 5;
+      track.addChild(label);
+
+      tracks.addChild(track);
+    }
+
+    appRef.current.stage.addChild(tracks);
+  };
+
+  // Initialize PixiJS application
   useEffect(() => {
-    if (!canvasRef.current || isInitializedRef.current) return;
+    if (!canvasRef.current || !width || !height || isInitializedRef.current) return;
+
+    console.log('Initializing PixiJS with dimensions:', width, height);
 
     try {
       const app = new PIXI.Application({
         view: canvasRef.current,
         width,
         height,
-        backgroundColor: 0x1a1a1a,
+        backgroundColor: 0x2c2c2c,
         antialias: true,
         resolution: window.devicePixelRatio || 1,
+        eventMode: 'static'
       });
-      appRef.current = app;
 
-      // 創建音頻片段容器
+      if (canvasRef.current) {
+        canvasRef.current.style.width = '100%';
+        canvasRef.current.style.height = '100%';
+        canvasRef.current.style.display = 'block';
+      }
+
+      appRef.current = app;
+      isInitializedRef.current = true;
+
+      // Create main container for clips
       const clipsContainer = new PIXI.Container();
+      clipsContainer.y = TIMELINE_HEIGHT;
       clipsContainerRef.current = clipsContainer;
       app.stage.addChild(clipsContainer);
 
-      isInitializedRef.current = true;
+      // Draw timeline and tracks
+      drawTimeline();
+      drawTracks();
+
+      console.log('PixiJS application initialized successfully');
 
       return () => {
-        try {
-          // 清理所有子元素
-          if (clipsContainerRef.current) {
-            try {
-              clipsContainerRef.current.removeChildren();
-            } catch (error) {
-              console.error('Failed to remove children:', error);
-            }
-            clipsContainerRef.current = null;
-          }
-
-          // 簡單的清理方式
-          if (appRef.current) {
-            try {
-              const app = appRef.current;
-              
-              // 停止渲染循環
-              if (app.ticker) {
-                app.ticker.stop();
-              }
-              
-              // 清空舞台上的內容
-              if (app.stage) {
-                app.stage.removeChildren();
-              }
-              
-              // 取消引用
-              appRef.current = null;
-            } catch (error) {
-              console.error('Error cleaning up app:', error);
-            }
-          }
-        } catch (error) {
-          console.error('Error during cleanup:', error);
-        } finally {
-          isInitializedRef.current = false;
+        if (app) {
+          app.destroy(true);
         }
       };
     } catch (error) {
       console.error('Failed to initialize PixiJS application:', error);
-      return undefined;
     }
   }, [width, height]);
 
-  // 初始化事件處理
-  useEffect(() => {
-    if (!appRef.current || !isInitializedRef.current || !presenter) return;
-
-    try {
-      // 設置事件監聽器
-      const onClipAdded = (clip: ClipViewModel) => {
-        if (!clipsContainerRef.current) return;
-        const clipContainer = createClipContainer(clip);
-        clipsContainerRef.current.addChild(clipContainer);
-      };
-
-      const onClipRemoved = (clipId: string) => {
-        if (!clipsContainerRef.current) return;
-        const clipContainer = clipsContainerRef.current.children.find(
-          (child: PIXI.DisplayObject) => child.name === clipId
-        ) as DraggableContainer;
-        if (clipContainer) {
-          clipsContainerRef.current.removeChild(clipContainer);
-        }
-      };
-
-      const onClipUpdated = (clip: ClipViewModel) => {
-        if (!clipsContainerRef.current) return;
-        const clipContainer = clipsContainerRef.current.children.find(
-          (child: PIXI.DisplayObject) => child.name === clip.id
-        ) as DraggableContainer;
-        if (clipContainer) {
-          updateClipContainer(clipContainer, clip);
-        }
-      };
-
-      // 註冊事件監聽器
-      presenter.on('onClipAdded', onClipAdded);
-      presenter.on('onClipRemoved', onClipRemoved);
-      presenter.on('onClipUpdated', onClipUpdated);
-
-      return () => {
-        // 清理事件監聽器
-        presenter.off('onClipAdded', onClipAdded);
-        presenter.off('onClipRemoved', onClipRemoved);
-        presenter.off('onClipUpdated', onClipUpdated);
-      };
-    } catch (error) {
-      console.error('Failed to initialize event handlers:', error);
-      return undefined;
-    }
-  }, [presenter]);
-
-  /**
-   * 創建音頻片段容器
-   */
   const createClipContainer = (clip: ClipViewModel): DraggableContainer => {
+    console.log('Creating clip container:', clip);
     const container = new PIXI.Container() as DraggableContainer;
     container.name = clip.id;
-    container.x = clip.position * 100; // 假設 1 秒 = 100 像素
-    container.y = 100; // TODO: 根據軌道位置計算
+    container.x = clip.position * PIXELS_PER_SECOND;
+    container.y = clip.trackId ? parseInt(clip.trackId) * TRACK_HEIGHT : 0;
+    container.eventMode = 'static';
 
-    // 創建音頻片段背景
+    // Create clip background
     const background = new PIXI.Graphics();
-    background.beginFill(0x4a4a4a);
-    background.drawRect(0, 0, clip.duration * 100, 80);
+    background.beginFill(0x4a90e2);
+    background.drawRoundedRect(0, 0, clip.duration * PIXELS_PER_SECOND, CLIP_HEIGHT, 4);
     background.endFill();
     container.addChild(background);
 
-    // 創建音頻片段名稱文本
-    const text = new PIXI.Text(clip.name, {
+    // Add clip label
+    const label = new PIXI.Text(clip.name, {
       fontFamily: 'Arial',
       fontSize: 12,
       fill: 0xffffff
     });
-    text.x = 5;
-    text.y = 5;
-    container.addChild(text);
+    label.x = 5;
+    label.y = 5;
+    container.addChild(label);
 
-    // 添加拖拽功能
-    container.interactive = true;
-    container.buttonMode = true;
-    container.on('pointerdown', onDragStart);
-    container.on('pointerup', onDragEnd);
-    container.on('pointerupoutside', onDragEnd);
-    container.on('pointermove', onDragMove);
+    // Add drag functionality
+    container
+      .on('pointerdown', onDragStart)
+      .on('pointerup', onDragEnd)
+      .on('pointerupoutside', onDragEnd)
+      .on('pointermove', onDragMove);
 
     return container;
   };
 
-  /**
-   * 更新音頻片段容器
-   */
-  const updateClipContainer = (container: DraggableContainer, clip: ClipViewModel): void => {
-    container.x = clip.position * 100;
-    // TODO: 更新其他視覺屬性
-  };
-
-  /**
-   * 拖拽相關事件處理
-   */
-  const onDragStart = (event: any): void => {
+  const onDragStart = (event: PIXI.FederatedPointerEvent): void => {
     const container = event.currentTarget as DraggableContainer;
     container.alpha = 0.5;
     container.dragging = true;
   };
 
-  const onDragEnd = (event: any): void => {
+  const onDragEnd = (event: PIXI.FederatedPointerEvent): void => {
     const container = event.currentTarget as DraggableContainer;
     container.alpha = 1;
     container.dragging = false;
     
-    // 發送更新事件到 Presenter
-    if (presenter) {
+    const trackIndex = Math.floor(container.y / TRACK_HEIGHT);
+    const trackId = trackIndex.toString();
+    
+    if (presenter && container.name) {
       presenter.updateClip(new ClipViewModel(
-        'test-audio-url', // TODO: 從某處獲取正確的 URL
-        0, // TODO: 從某處獲取正確的開始時間
-        4, // TODO: 從某處獲取正確的持續時間
-        container.x / 100, // 轉換回時間單位
-        container.name // 使用容器名稱作為片段 ID
+        'test-audio.mp3',
+        0,
+        4,
+        container.x / PIXELS_PER_SECOND,
+        'Test Clip',
+        container.name,
+        trackId
       ));
     }
   };
 
-  const onDragMove = (event: any): void => {
+  const onDragMove = (event: PIXI.FederatedPointerEvent): void => {
     const container = event.currentTarget as DraggableContainer;
     if (container.dragging) {
-      const newPosition = container.x + event.movementX;
-      container.x = newPosition;
+      const newPosition = event.getLocalPosition(container.parent);
+      
+      const maxX = width - container.width;
+      const maxY = (TRACK_COUNT - 1) * TRACK_HEIGHT;
+      
+      container.x = Math.max(0, Math.min(maxX, newPosition.x));
+      container.y = Math.max(0, Math.min(maxY, Math.floor(newPosition.y / TRACK_HEIGHT) * TRACK_HEIGHT));
     }
   };
 
@@ -224,10 +231,9 @@ const DAWView: React.FC<DAWViewProps> = ({ width, height, presenter }) => {
       style={{
         width: '100%',
         height: '100%',
-        display: 'block'
+        display: 'block',
+        touchAction: 'none'
       }}
     />
   );
-};
-
-export default DAWView; 
+}; 

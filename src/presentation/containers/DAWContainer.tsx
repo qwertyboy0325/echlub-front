@@ -3,7 +3,7 @@ import { container } from '../../core/di/container';
 import { TYPES } from '../../core/di/types';
 import { DAWPresenter } from '../presenters/DAWPresenter';
 import { ClipViewModel } from '../models/ClipViewModel';
-import DAWView from '../components/DAWView';
+import { DAWView } from '../components/DAWView';
 
 /**
  * DAW 容器組件

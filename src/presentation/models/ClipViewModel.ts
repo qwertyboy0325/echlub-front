@@ -19,6 +19,7 @@ export class ClipViewModel {
   public createdAt: Date;
   public updatedAt: Date;
   public version: number;
+  public trackId: string;
 
   constructor(
     audioUrl: string,
@@ -26,7 +27,8 @@ export class ClipViewModel {
     duration: number = 0,
     position: number = 0,
     name: string = 'New Clip',
-    id: string = uuidv4()
+    id: string = uuidv4(),
+    trackId: string = '0'
   ) {
     this.id = id;
     this.name = name;
@@ -43,6 +45,7 @@ export class ClipViewModel {
     this.createdAt = new Date();
     this.updatedAt = new Date();
     this.version = 1;
+    this.trackId = trackId;
   }
 
   static fromDomain(domainClip: any): ClipViewModel {
@@ -52,7 +55,8 @@ export class ClipViewModel {
       domainClip.duration,
       domainClip.position,
       domainClip.name,
-      domainClip.id
+      domainClip.id,
+      domainClip.trackId
     );
     viewModel.volume = domainClip.volume;
     viewModel.pan = domainClip.pan;
@@ -82,7 +86,8 @@ export class ClipViewModel {
       automation: [...this.automation],
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      version: this.version
+      version: this.version,
+      trackId: this.trackId
     };
   }
 } 

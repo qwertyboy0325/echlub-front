@@ -71,4 +71,17 @@ export class DAWPresenter extends EventEmitter {
     this.removeAllListeners();
     // 清理其他資源...
   }
+
+  // 添加 EventEmitter 方法的類型定義
+  public on(event: keyof DAWPresenterEvents, listener: (...args: any[]) => void): this {
+    return super.on(event, listener);
+  }
+
+  public off(event: keyof DAWPresenterEvents, listener: (...args: any[]) => void): this {
+    return super.off(event, listener);
+  }
+
+  public emit(event: keyof DAWPresenterEvents, ...args: any[]): boolean {
+    return super.emit(event, ...args);
+  }
 } 
