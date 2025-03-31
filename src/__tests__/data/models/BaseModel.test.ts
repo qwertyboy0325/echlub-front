@@ -1,42 +1,32 @@
 import { BaseModelImpl } from '../../../data/models/BaseModel';
 
 describe('BaseModelImpl', () => {
-  let model: BaseModelImpl;
+  class TestModel extends BaseModelImpl {
+    testIncrementVersion() {
+      this.incrementVersion();
+    }
+  }
 
-  beforeEach(() => {
-    model = new BaseModelImpl({});
-  });
-
-  test('should create with default values', () => {
+  test('should initialize with default values', () => {
+    const model = new TestModel();
     expect(model.id).toBeDefined();
-    expect(model.createdAt).toBeInstanceOf(Date);
-    expect(model.updatedAt).toBeInstanceOf(Date);
     expect(model.version).toBe(1);
+    expect(model.createdAt).toBeDefined();
+    expect(model.updatedAt).toBeDefined();
   });
 
-  test('should create with provided values', () => {
-    const now = new Date();
-    const model = new BaseModelImpl({
-      id: 'test-id',
-      createdAt: now,
-      updatedAt: now,
-      version: 2
-    });
-
-    expect(model.id).toBe('test-id');
-    expect(model.createdAt).toBe(now);
-    expect(model.updatedAt).toBe(now);
-    expect(model.version).toBe(2);
-  });
-
-  test('should update timestamp and version', () => {
-    const originalUpdatedAt = model.updatedAt;
+  test('should increment version', () => {
+    const model = new TestModel();
     const originalVersion = model.version;
-
-    // @ts-ignore - accessing protected method for testing
-    model.update();
-
-    expect(model.updatedAt).not.toBe(originalUpdatedAt);
+    model.testIncrementVersion();
     expect(model.version).toBe(originalVersion + 1);
+  });
+
+  test('should update timestamps', async () => {
+    const model = new TestModel();
+    const originalUpdatedAt = model.updatedAt;
+    await new Promise(resolve => setTimeout(resolve, 10)); // Add small delay
+    model.testIncrementVersion();
+    expect(model.updatedAt.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());
   });
 }); 

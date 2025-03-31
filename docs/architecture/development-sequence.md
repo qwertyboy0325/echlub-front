@@ -27,24 +27,24 @@
 
 ### 2.1 數據模型
 
-- [ ] 實現軌道模型（Track）
-- [ ] 建立片段模型（Clip）
-- [ ] 實現音頻模型（Audio）
-- [ ] 建立項目模型（Project）
+- [x] 實現軌道模型（Track）
+- [x] 建立片段模型（Clip）
+- [x] 實現音頻模型（Audio）
+- [x] 建立項目模型（Project）
 
 ### 2.2 數據倉庫
 
-- [ ] 實現軌道倉庫（TrackRepository）
-- [ ] 建立片段倉庫（ClipRepository）
-- [ ] 實現音頻倉庫（AudioRepository）
-- [ ] 建立項目倉庫（ProjectRepository）
+- [x] 實現軌道倉庫（TrackRepository）
+- [x] 建立片段倉庫（ClipRepository）
+- [x] 實現音頻倉庫（AudioRepository）
+- [x] 建立項目倉庫（ProjectRepository）
 
 ### 2.3 數據持久化
 
-- [ ] 實現本地存儲服務
-- [ ] 建立數據遷移系統
-- [ ] 實現數據備份服務
-- [ ] 建立數據恢復機制
+- [x] 實現本地存儲服務
+- [x] 建立數據遷移系統
+- [x] 實現數據備份服務
+- [x] 建立數據恢復機制
 
 ## 3. 領域層（Domain Layer）
 

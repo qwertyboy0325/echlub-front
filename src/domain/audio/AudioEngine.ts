@@ -1,168 +1,154 @@
-import { BaseServiceImpl } from '../../core/services/BaseService';
+import { injectable, inject } from 'inversify';
+import type { IAudioContext, IEventBus, IAudioEngine } from '../../core/di/types';
 import { ErrorHandler } from '../../core/error/ErrorHandler';
+import { TYPES } from '../../core/di/types';
 
 /**
  * Audio Engine
  * Manages audio playback and processing
  */
-export class AudioEngine extends BaseServiceImpl {
+@injectable()
+export class AudioEngine implements IAudioEngine {
     private static instance: AudioEngine | null = null;
-    private context: AudioContext;
-    private masterGain: GainNode;
-    private transport!: AudioWorkletNode;
-    private isInitializedFlag: boolean = false;
-    private currentTimeValue: number = 0;
-    private bpmValue: number = 120;
-    private isPlayingFlag: boolean = false;
-    private isPausedFlag: boolean = false;
+    private audioContext: IAudioContext | null = null;
+    private masterGain: GainNode | null = null;
+    private initialized = false;
+    private bpm = 120;
+    private currentTime = 0;
+    private isPlaying = false;
+    private _isPaused = false;
+    private lastPlayTime = 0;
+    private transportWorklet: AudioWorkletNode | null = null;
     
-    private constructor() {
-        super();
-        this.context = new AudioContext({
-            sampleRate: 44100,
-            latencyHint: 'interactive'
-        });
-        this.masterGain = this.context.createGain();
-        this.masterGain.connect(this.context.destination);
-    }
-    
-    static getInstance(): AudioEngine {
-        if (!AudioEngine.instance) {
-            AudioEngine.instance = new AudioEngine();
+    constructor(
+        @inject(TYPES.AudioContext) public readonly context: IAudioContext,
+        @inject(TYPES.EventBus) public readonly eventBus: IEventBus
+    ) {
+        if (!this.context) {
+            throw new Error('AudioContext is required');
         }
-        return AudioEngine.instance;
+        this.audioContext = this.context;
     }
     
-    protected setup(): void {
-        try {
-            // Initialize audio worklet
-            this.initAudioWorklet();
-            
-            // Set initial state
-            this.isInitializedFlag = true;
-            this.currentTimeValue = 0;
-            this.bpmValue = 120;
-            this.isPlayingFlag = false;
-            this.isPausedFlag = false;
-        } catch (error) {
-            ErrorHandler.getInstance().handleError(error as Error);
+    public onInit(): void {
+        if (!this.initialized) {
+            this.initialize();
         }
     }
     
-    protected cleanup(): void {
-        try {
-            // Stop playback if initialized
-            if (this.isInitializedFlag) {
-                this.stop();
-            }
-            
-            // Close audio context
-            this.context.close();
-            
-            // Reset state
-            this.isInitializedFlag = false;
-            this.currentTimeValue = 0;
-            this.bpmValue = 120;
-            this.isPlayingFlag = false;
-            this.isPausedFlag = false;
-        } catch (error) {
-            ErrorHandler.getInstance().handleError(error as Error);
+    public onDestroy(): void {
+        if (this.masterGain) {
+            this.masterGain.disconnect();
         }
-    }
-    
-    // Destroy instance
-    destroy(): void {
-        this.cleanup();
+        if (this.transportWorklet) {
+            this.transportWorklet.disconnect();
+        }
+        if (this.audioContext) {
+            this.audioContext.onDestroy();
+        }
+        this.initialized = false;
         AudioEngine.instance = null;
     }
     
-    // Start playback
-    async start(): Promise<void> {
-        if (!this.isInitializedFlag) {
-            throw new Error('Audio engine not initialized');
+    private initialize(): void {
+        if (!this.audioContext) {
+            throw new Error('AudioContext is required');
         }
         
-        try {
-            await this.context.resume();
-            this.isPlayingFlag = true;
-            this.isPausedFlag = false;
-        } catch (error) {
-            ErrorHandler.getInstance().handleError(error as Error);
+        this.masterGain = this.audioContext.createGain();
+        if (this.masterGain && this.audioContext) {
+            this.masterGain.connect(this.audioContext.destination);
+        }
+        this.initialized = true;
+        
+        // 在測試環境中，我們不需要初始化 transport worklet
+        if (process.env.NODE_ENV !== 'test') {
+            this.initializeTransport();
         }
     }
     
-    // Stop playback
-    stop(): void {
-        if (!this.isInitializedFlag) {
-            throw new Error('Audio engine not initialized');
+    private async initializeTransport(): Promise<void> {
+        if (!this.audioContext) {
+            throw new Error('AudioContext is required');
         }
         
         try {
-            this.context.suspend();
-            this.isPlayingFlag = false;
-            this.isPausedFlag = false;
-            this.currentTimeValue = 0;
-        } catch (error) {
-            ErrorHandler.getInstance().handleError(error as Error);
-        }
-    }
-    
-    // Pause playback
-    pause(): void {
-        if (!this.isInitializedFlag) {
-            throw new Error('Audio engine not initialized');
-        }
-        
-        try {
-            this.context.suspend();
-            this.isPlayingFlag = false;
-            this.isPausedFlag = true;
-        } catch (error) {
-            ErrorHandler.getInstance().handleError(error as Error);
-        }
-    }
-    
-    // Set BPM
-    setBPM(bpm: number): void {
-        if (!this.isInitializedFlag) {
-            throw new Error('Audio engine not initialized');
-        }
-        
-        try {
-            this.bpmValue = bpm;
-            // Update transport worklet if initialized
-            if (this.transport) {
-                this.transport.port.postMessage({ type: 'setBPM', bpm });
+            await this.audioContext.audioWorklet.addModule('/src/domain/audio/worklets/transport.ts');
+            if (this.audioContext && this.masterGain) {
+                this.transportWorklet = new AudioWorkletNode(this.audioContext, 'transport-processor');
+                this.transportWorklet.connect(this.masterGain);
             }
         } catch (error) {
             ErrorHandler.getInstance().handleError(error as Error);
         }
     }
     
-    // Get current time
-    getCurrentTime(): number {
-        return this.isPlayingFlag ? 1 : 0;
+    public async play(): Promise<void> {
+        if (!this.initialized) {
+            throw new Error('AudioEngine is not initialized');
+        }
+        
+        if (!this.isPlaying) {
+            this.isPlaying = true;
+            this._isPaused = false;
+            this.lastPlayTime = this.audioContext?.currentTime ?? 0;
+            await this.audioContext?.resume();
+        }
     }
     
-    // Check if initialized
-    isInitialized(): boolean {
-        return this.isInitializedFlag;
+    public stop(): void {
+        if (!this.initialized) {
+            throw new Error('AudioEngine is not initialized');
+        }
+        
+        this.isPlaying = false;
+        this._isPaused = false;
+        this.currentTime = 0;
     }
     
-    // Initialize audio worklet
-    private async initAudioWorklet(): Promise<void> {
+    public pause(): void {
+        if (!this.initialized) {
+            throw new Error('AudioEngine is not initialized');
+        }
+        
+        if (this.isPlaying) {
+            this.isPlaying = false;
+            this._isPaused = true;
+        }
+    }
+    
+    public isPaused(): boolean {
+        return this._isPaused;
+    }
+    
+    public getCurrentTime(): number {
+        if (this.isPlaying && !this._isPaused) {
+            const currentContextTime = this.audioContext?.currentTime ?? 0;
+            return this.currentTime + (currentContextTime - this.lastPlayTime);
+        }
+        return this.currentTime;
+    }
+    
+    public setBPM(bpm: number): void {
+        if (!this.initialized) {
+            throw new Error('AudioEngine is not initialized');
+        }
+        
         try {
-            // Load and register transport worklet
-            await this.context.audioWorklet.addModule('/src/domain/audio/transport-worklet.js');
-            
-            // Create transport node
-            this.transport = new AudioWorkletNode(this.context, 'transport-processor');
-            this.transport.connect(this.masterGain);
-            
-            // Set initial BPM
-            this.transport.port.postMessage({ type: 'setBPM', bpm: this.bpmValue });
+            this.bpm = bpm;
+            if (this.transportWorklet) {
+                this.transportWorklet.port.postMessage({ type: 'setBPM', bpm });
+            }
         } catch (error) {
             ErrorHandler.getInstance().handleError(error as Error);
         }
     }
-} 
+    
+    public getBPM(): number {
+        return this.bpm;
+    }
+    
+    public isInitialized(): boolean {
+        return this.initialized;
+    }
+}

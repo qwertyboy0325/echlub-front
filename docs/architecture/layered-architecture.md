@@ -807,3 +807,162 @@
 - 優化事件處理
 - 控制重繪頻率
 - 監控性能指標
+
+## 9. 數據流轉
+
+### 9.1 DTO (Data Transfer Object) 模式
+```typescript
+// 數據層 DTO
+interface ClipDTO {
+  id: string;
+  audioUrl: string;
+  startTime: number;
+  duration: number;
+  position: number;
+}
+
+// 領域層模型
+interface Clip {
+  id: string;
+  audioUrl: string;
+  startTime: number;
+  duration: number;
+  position: number;
+  
+  // 領域邏輯
+  updatePosition(position: number): void;
+  updateStartTime(startTime: number): void;
+}
+```
+
+### 9.2 Mapper 模式
+```typescript
+// 基礎設施層 Mapper
+class ClipMapper {
+  static toDTO(clip: Clip): ClipDTO {
+    return {
+      id: clip.id,
+      audioUrl: clip.audioUrl,
+      startTime: clip.startTime,
+      duration: clip.duration,
+      position: clip.position
+    };
+  }
+  
+  static toDomain(dto: ClipDTO): Clip {
+    return new ClipImpl(
+      dto.audioUrl,
+      dto.startTime,
+      dto.duration,
+      dto.position
+    );
+  }
+}
+```
+
+### 9.3 目錄結構
+```
+src/
+├── data/                 // 數據層
+│   ├── models/          // DTO 模型
+│   └── repositories/    // 數據訪問實現
+├── domain/              // 領域層
+│   ├── models/         // 領域模型
+│   └── repositories/   // 倉儲接口
+└── infrastructure/      // 基礎設施層
+    └── mappers/        // DTO 映射器
+```
+
+### 9.4 命名規範
+1. **數據層**：
+   - `ClipDTO`
+   - `TrackDTO`
+   - `ProjectDTO`
+
+2. **領域層**：
+   - `Clip`
+   - `Track`
+   - `Project`
+
+3. **基礎設施層**：
+   - `ClipMapper`
+   - `TrackMapper`
+   - `ProjectMapper`
+
+## 10. 層間通信
+
+### 10.1 數據層 → 領域層
+- 使用 Mapper 將 DTO 轉換為領域模型
+- 保持領域模型的純粹性
+- 避免數據持久化邏輯污染領域邏輯
+
+### 10.2 領域層 → 應用層
+- 通過倉儲接口訪問數據
+- 使用領域服務處理複雜業務邏輯
+- 發布領域事件
+
+### 10.3 應用層 → 展示層
+- 使用 Presenter 轉換數據
+- 處理 UI 事件
+- 更新 UI 狀態
+
+## 11. 依賴規則
+
+1. **展示層**：
+   - 依賴於應用層
+   - 不直接依賴領域層
+   - 不直接依賴基礎設施層
+
+2. **應用層**：
+   - 依賴於領域層
+   - 不直接依賴基礎設施層
+   - 不直接依賴展示層
+
+3. **領域層**：
+   - 不依賴於其他層
+   - 定義核心業務規則
+   - 定義倉儲接口
+
+4. **基礎設施層**：
+   - 依賴於領域層
+   - 實現倉儲接口
+   - 提供技術支持
+
+## 12. 最佳實踐
+
+1. **DTO 使用**：
+   - 僅包含數據屬性
+   - 不包含業務邏輯
+   - 用於層間數據傳輸
+
+2. **Mapper 實現**：
+   - 保持映射邏輯簡單
+   - 處理數據轉換
+   - 處理默認值
+
+3. **領域模型**：
+   - 包含業務邏輯
+   - 保持不可變性
+   - 使用值對象
+
+4. **倉儲模式**：
+   - 定義於領域層
+   - 實現於基礎設施層
+   - 使用依賴注入
+
+## 13. 注意事項
+
+1. **性能考慮**：
+   - 避免不必要的映射
+   - 使用緩存優化
+   - 批量處理數據
+
+2. **維護性**：
+   - 保持代碼簡潔
+   - 遵循單一職責
+   - 適當的註釋
+
+3. **可測試性**：
+   - 易於模擬依賴
+   - 清晰的接口
+   - 可預測的行為

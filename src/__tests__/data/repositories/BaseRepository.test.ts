@@ -1,111 +1,100 @@
-import { BaseRepositoryImpl } from '../../../data/repositories/BaseRepository';
+import { BaseRepositoryImpl } from '../../../data/repositories/BaseRepositoryImpl';
 import { BaseModelImpl } from '../../../data/models/BaseModel';
-
-// Create a concrete implementation for testing
-class TestModel extends BaseModelImpl {
-  constructor(data: Partial<TestModel>) {
-    super(data);
-  }
-}
-
-class TestRepository extends BaseRepositoryImpl<TestModel> {
-  protected createItem(data: Partial<TestModel>): TestModel {
-    return new TestModel(data);
-  }
-
-  protected updateItem(existing: TestModel, data: Partial<TestModel>): TestModel {
-    return new TestModel({
-      ...existing,
-      ...data,
-      id: existing.id,
-      createdAt: existing.createdAt,
-      updatedAt: new Date(),
-      version: existing.version + 1
-    });
-  }
-}
+import { Storage } from '../../../infrastructure/storage/Storage';
 
 describe('BaseRepositoryImpl', () => {
+  class TestModel extends BaseModelImpl {
+    constructor(public name: string) {
+      super();
+    }
+  }
+
+  class TestRepository extends BaseRepositoryImpl<TestModel> {
+    constructor(storage: Storage) {
+      super(storage, 'test_storage');
+    }
+
+    public toDTO(entity: TestModel): any {
+      return {
+        id: entity.id,
+        name: entity.name,
+        version: entity.version,
+        createdAt: entity.createdAt.toISOString(),
+        updatedAt: entity.updatedAt.toISOString()
+      };
+    }
+
+    protected toDomain(dto: any): TestModel {
+      const entity = new TestModel(dto.name);
+      entity.id = dto.id;
+      entity.version = dto.version;
+      entity.createdAt = new Date(dto.createdAt);
+      entity.updatedAt = new Date(dto.updatedAt);
+      return entity;
+    }
+  }
+
   let repository: TestRepository;
+  let mockStorage: Storage;
 
   beforeEach(() => {
-    repository = new TestRepository();
+    mockStorage = {
+      get: jest.fn().mockResolvedValue({}),
+      set: jest.fn().mockResolvedValue(undefined),
+      remove: jest.fn().mockResolvedValue(undefined),
+      clear: jest.fn().mockResolvedValue(undefined)
+    };
+    repository = new TestRepository(mockStorage);
   });
 
-  test('should create new item', () => {
-    const item = repository.create({});
-    expect(item).toBeDefined();
-    expect(item.id).toBeDefined();
-    expect(item.createdAt).toBeInstanceOf(Date);
-    expect(item.updatedAt).toBeInstanceOf(Date);
-    expect(item.version).toBe(1);
+  test('should save entity and return saved entity', async () => {
+    const entity = new TestModel('test');
+    const savedEntity = await repository.save(entity);
+    expect(savedEntity).toBeDefined();
+    expect(savedEntity.id).toBe(entity.id);
+    expect(savedEntity.name).toBe('test');
+    expect(mockStorage.set).toHaveBeenCalledWith('test_storage', expect.any(Object));
   });
 
-  test('should get item by ID', () => {
-    const item = repository.create({});
-    const retrieved = repository.getById(item.id);
-    expect(retrieved).toBeDefined();
-    expect(retrieved?.id).toBe(item.id);
+  test('should update existing entity', async () => {
+    const existingEntity = new TestModel('original');
+    (mockStorage.get as jest.Mock).mockResolvedValue({ [existingEntity.id]: repository.toDTO(existingEntity) });
+
+    const updatedEntity = new TestModel('updated');
+    updatedEntity.id = existingEntity.id;
+    const savedEntity = await repository.save(updatedEntity);
+    expect(savedEntity.id).toBe(existingEntity.id);
+    expect(savedEntity.name).toBe('updated');
   });
 
-  test('should return undefined for non-existent ID', () => {
-    const retrieved = repository.getById('non-existent');
-    expect(retrieved).toBeUndefined();
+  test('should find entity by id', async () => {
+    const entity = new TestModel('test');
+    (mockStorage.get as jest.Mock).mockResolvedValue({ [entity.id]: repository.toDTO(entity) });
+
+    const foundEntity = await repository.findById(entity.id);
+    expect(foundEntity).toBeDefined();
+    expect(foundEntity?.id).toBe(entity.id);
   });
 
-  test('should update existing item', () => {
-    const item = repository.create({});
-    const updated = repository.update(item.id, {});
-    expect(updated).toBeDefined();
-    expect(updated?.id).toBe(item.id);
-    expect(updated?.version).toBe(item.version + 1);
+  test('should find all entities', async () => {
+    const entity1 = new TestModel('test1');
+    const entity2 = new TestModel('test2');
+    (mockStorage.get as jest.Mock).mockResolvedValue({
+      [entity1.id]: repository.toDTO(entity1),
+      [entity2.id]: repository.toDTO(entity2)
+    });
+
+    const foundEntities = await repository.findAll();
+    expect(foundEntities).toHaveLength(2);
+    expect(foundEntities[0].id).toBe(entity1.id);
+    expect(foundEntities[1].id).toBe(entity2.id);
   });
 
-  test('should return undefined when updating non-existent item', () => {
-    const updated = repository.update('non-existent', {});
-    expect(updated).toBeUndefined();
-  });
+  test('should delete entity', async () => {
+    const entity = new TestModel('test');
+    (mockStorage.get as jest.Mock).mockResolvedValue({ [entity.id]: repository.toDTO(entity) });
 
-  test('should delete item', () => {
-    const item = repository.create({});
-    const deleted = repository.delete(item.id);
-    expect(deleted).toBe(true);
-    expect(repository.getById(item.id)).toBeUndefined();
-  });
-
-  test('should return false when deleting non-existent item', () => {
-    const deleted = repository.delete('non-existent');
-    expect(deleted).toBe(false);
-  });
-
-  test('should check if item exists', () => {
-    const item = repository.create({});
-    expect(repository.exists(item.id)).toBe(true);
-    expect(repository.exists('non-existent')).toBe(false);
-  });
-
-  test('should get count of items', () => {
-    expect(repository.count()).toBe(0);
-    repository.create({});
-    expect(repository.count()).toBe(1);
-    repository.create({});
-    expect(repository.count()).toBe(2);
-  });
-
-  test('should get all items', () => {
-    const item1 = repository.create({});
-    const item2 = repository.create({});
-    const items = repository.getAll();
-    expect(items).toHaveLength(2);
-    expect(items).toContainEqual(item1);
-    expect(items).toContainEqual(item2);
-  });
-
-  test('should clear all items', () => {
-    repository.create({});
-    repository.create({});
-    expect(repository.count()).toBe(2);
-    repository.clear();
-    expect(repository.count()).toBe(0);
+    await repository.delete(entity.id);
+    expect(mockStorage.set).toHaveBeenCalledWith('test_storage', {});
   });
 }); 

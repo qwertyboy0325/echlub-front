@@ -1,0 +1,34 @@
+/* 重置默認樣式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 設置根元素樣式 */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #1a1a1a;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 設置應用容器樣式 */
+.app {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 設置畫布樣式 */
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+} 

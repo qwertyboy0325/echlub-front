@@ -1,5 +1,6 @@
 import { Event } from './Event';
 import { ErrorHandler } from '../error/ErrorHandler';
+import { IEventBus } from '../di/types';
 
 /**
  * Event Priority Levels
@@ -20,13 +21,13 @@ export type EventHandler<T = any> = (event: Event<T>) => void | Promise<void>;
  * Event Bus
  * Manages event emission and subscription
  */
-export class EventBus<T extends Record<string, any>> {
+export class EventBus<T extends Record<string, any>> implements IEventBus {
     private static instance: EventBus<any> | null = null;
     private handlers: Map<string, Set<EventHandler<any>>> = new Map();
     private isDebugMode: boolean = false;
     private errorHandler: ErrorHandler;
     
-    private constructor() {
+    constructor() {
         this.errorHandler = ErrorHandler.getInstance();
     }
     
@@ -36,10 +37,18 @@ export class EventBus<T extends Record<string, any>> {
         }
         return EventBus.instance as EventBus<T>;
     }
+
+    onInit(): void {
+        // No initialization needed
+    }
+
+    onDestroy(): void {
+        this.destroy();
+    }
     
     // Emit event synchronously
-    emit<K extends keyof T>(type: K, payload: T[K], priority: EventPriority = EventPriority.NORMAL): void {
-        const event = new Event(type as string, payload);
+    emit(type: string, payload: any, priority: EventPriority = EventPriority.NORMAL): void {
+        const event = new Event(type, payload);
         this.handleEvent(event, priority);
     }
     
@@ -50,16 +59,16 @@ export class EventBus<T extends Record<string, any>> {
     }
     
     // Subscribe to event
-    subscribe<K extends keyof T>(type: K, handler: EventHandler<T[K]>, priority: EventPriority = EventPriority.NORMAL): void {
-        if (!this.handlers.has(type as string)) {
-            this.handlers.set(type as string, new Set());
+    subscribe(type: string, handler: (event: any) => void, priority: EventPriority = EventPriority.NORMAL): void {
+        if (!this.handlers.has(type)) {
+            this.handlers.set(type, new Set());
         }
-        this.handlers.get(type as string)?.add(handler);
+        this.handlers.get(type)?.add(handler);
     }
     
     // Unsubscribe from event
-    unsubscribe<K extends keyof T>(type: K, handler: EventHandler<T[K]>): void {
-        this.handlers.get(type as string)?.delete(handler);
+    unsubscribe(type: string, handler: (event: any) => void): void {
+        this.handlers.get(type)?.delete(handler);
     }
     
     // Set debug mode

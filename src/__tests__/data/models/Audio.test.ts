@@ -1,66 +1,60 @@
 import { AudioImpl } from '../../../data/models/Audio';
 
 describe('AudioImpl', () => {
-  test('should create with default values', () => {
-    const audio = new AudioImpl({});
-    expect(audio.name).toBe('Untitled Audio');
-    expect(audio.duration).toBe(0);
+  test('should initialize with default values', () => {
+    const audio = new AudioImpl('Test Audio', 'test-url', 10, 44100, 2, 'wav');
+    expect(audio.name).toBe('Test Audio');
+    expect(audio.url).toBe('test-url');
+    expect(audio.duration).toBe(10);
     expect(audio.sampleRate).toBe(44100);
     expect(audio.channels).toBe(2);
-    expect(audio.bitDepth).toBe(16);
-    expect(audio.filePath).toBe('');
-    expect(audio.waveform).toEqual([]);
+    expect(audio.format).toBe('wav');
     expect(audio.metadata).toEqual({});
   });
 
-  test('should create with provided values', () => {
-    const audio = new AudioImpl({
-      name: 'Test Audio',
-      duration: 180,
-      sampleRate: 48000,
-      channels: 1,
-      bitDepth: 24,
-      filePath: '/path/to/audio.wav',
-      waveform: [0, 1, 0, -1, 0],
-      metadata: { artist: 'Test Artist', genre: 'Test Genre' }
-    });
+  test('should not allow zero or negative sample rate', () => {
+    expect(() => new AudioImpl('Test Audio', 'test-url', 10, 0, 2, 'wav')).toThrow('Sample rate must be positive');
+    expect(() => new AudioImpl('Test Audio', 'test-url', 10, -1, 2, 'wav')).toThrow('Sample rate must be positive');
+  });
 
-    expect(audio.name).toBe('Test Audio');
-    expect(audio.duration).toBe(180);
-    expect(audio.sampleRate).toBe(48000);
-    expect(audio.channels).toBe(1);
-    expect(audio.bitDepth).toBe(24);
-    expect(audio.filePath).toBe('/path/to/audio.wav');
-    expect(audio.waveform).toEqual([0, 1, 0, -1, 0]);
-    expect(audio.metadata).toEqual({ artist: 'Test Artist', genre: 'Test Genre' });
+  test('should not allow zero or negative channels', () => {
+    expect(() => new AudioImpl('Test Audio', 'test-url', 10, 44100, 0, 'wav')).toThrow('Channels must be positive');
+    expect(() => new AudioImpl('Test Audio', 'test-url', 10, 44100, -1, 'wav')).toThrow('Channels must be positive');
   });
 
   test('should update metadata', () => {
-    const audio = new AudioImpl({});
+    const audio = new AudioImpl('Test Audio', 'test-url', 10, 44100, 2, 'wav');
     const originalVersion = audio.version;
+    
     audio.updateMetadata({ artist: 'Test Artist' });
-
     expect(audio.metadata).toEqual({ artist: 'Test Artist' });
     expect(audio.version).toBe(originalVersion + 1);
   });
 
   test('should merge metadata', () => {
-    const audio = new AudioImpl({});
+    const audio = new AudioImpl('Test Audio', 'test-url', 10, 44100, 2, 'wav');
+    const originalVersion = audio.version;
+    
     audio.updateMetadata({ artist: 'Test Artist' });
-    audio.updateMetadata({ genre: 'Test Genre' });
-
+    audio.updateMetadata({ album: 'Test Album' });
     expect(audio.metadata).toEqual({
       artist: 'Test Artist',
-      genre: 'Test Genre'
+      album: 'Test Album'
     });
+    expect(audio.version).toBe(originalVersion + 2);
   });
 
-  test('should update waveform', () => {
-    const audio = new AudioImpl({});
+  test('should update duration', () => {
+    const audio = new AudioImpl('Test Audio', 'test-url', 10, 44100, 2, 'wav');
     const originalVersion = audio.version;
-    audio.updateWaveform([0, 1, 0, -1, 0]);
-
-    expect(audio.waveform).toEqual([0, 1, 0, -1, 0]);
+    
+    audio.updateDuration(20);
+    expect(audio.duration).toBe(20);
     expect(audio.version).toBe(originalVersion + 1);
+  });
+
+  test('should not allow negative duration', () => {
+    const audio = new AudioImpl('Test Audio', 'test-url', 10, 44100, 2, 'wav');
+    expect(() => audio.updateDuration(-1)).toThrow('Duration must be non-negative');
   });
 }); 

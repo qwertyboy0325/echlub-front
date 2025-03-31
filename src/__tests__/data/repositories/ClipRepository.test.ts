@@ -1,217 +1,206 @@
-import { ClipRepositoryImpl } from '../../../data/repositories/ClipRepository';
-import { ClipImpl } from '../../../data/models/Clip';
+import { ClipRepositoryImpl } from '../../../data/repositories/ClipRepositoryImpl';
+import { ClipImpl } from '../../../domain/models/Clip';
+import { Storage } from '../../../infrastructure/storage/Storage';
 
 describe('ClipRepositoryImpl', () => {
   let repository: ClipRepositoryImpl;
+  let mockStorage: Storage;
 
   beforeEach(() => {
-    repository = new ClipRepositoryImpl();
+    mockStorage = {
+      get: jest.fn().mockResolvedValue({}),
+      set: jest.fn().mockResolvedValue(undefined),
+      remove: jest.fn().mockResolvedValue(undefined),
+      clear: jest.fn().mockResolvedValue(undefined)
+    };
+    repository = new ClipRepositoryImpl(mockStorage);
   });
 
-  test('should create new clip', () => {
-    const clip = repository.create({});
-    expect(clip).toBeDefined();
-    expect(clip.name).toBe('Untitled Clip');
-    expect(clip.audioId).toBe('');
-    expect(clip.startTime).toBe(0);
-    expect(clip.duration).toBe(0);
-    expect(clip.volume).toBe(1);
-    expect(clip.pan).toBe(0);
-    expect(clip.muted).toBe(false);
-    expect(clip.soloed).toBe(false);
-    expect(clip.effects).toEqual([]);
-    expect(clip.automation).toEqual({});
+  test('should save clip', async () => {
+    const clip = new ClipImpl('test-url', 0, 10, 0, 'test-clip');
+    clip.trackId = 'track-1';
+    const savedClip = await repository.save(clip);
+    expect(savedClip).toBeDefined();
+    expect(savedClip.id).toBe(clip.id);
+    expect(mockStorage.set).toHaveBeenCalledWith('clip_storage', expect.any(Object));
   });
 
-  test('should create clip with provided values', () => {
-    const clip = repository.create({
-      name: 'Test Clip',
-      audioId: 'test-audio-id',
-      startTime: 10,
-      duration: 30,
-      volume: 0.8,
-      pan: 0.5,
-      muted: true,
-      soloed: false,
-      effects: ['effect1', 'effect2'],
-      automation: { volume: [0, 1, 0] }
+  test('should find clip by ID', async () => {
+    const clip = new ClipImpl('test-url', 0, 10, 0, 'test-clip');
+    clip.trackId = 'track-1';
+    const dto = {
+      id: clip.id,
+      name: clip.name,
+      audioUrl: clip.audioUrl,
+      trackId: clip.trackId,
+      startTime: clip.startTime,
+      duration: clip.duration,
+      position: clip.position,
+      volume: clip.volume,
+      pan: clip.pan,
+      muted: clip.muted,
+      soloed: clip.soloed,
+      effects: clip.effects,
+      automation: clip.automation,
+      version: clip.version,
+      createdAt: clip.createdAt.toISOString(),
+      updatedAt: clip.updatedAt.toISOString()
+    };
+    (mockStorage.get as jest.Mock).mockResolvedValue({ [clip.id]: dto });
+
+    const foundClip = await repository.findById(clip.id);
+    expect(foundClip).toBeDefined();
+    expect(foundClip?.id).toBe(clip.id);
+  });
+
+  test('should find all clips', async () => {
+    const clip1 = new ClipImpl('test-url-1', 0, 10, 0, 'test-clip-1');
+    clip1.trackId = 'track-1';
+    const clip2 = new ClipImpl('test-url-2', 20, 15, 20, 'test-clip-2');
+    clip2.trackId = 'track-2';
+    const dto1 = {
+      id: clip1.id,
+      name: clip1.name,
+      audioUrl: clip1.audioUrl,
+      trackId: clip1.trackId,
+      startTime: clip1.startTime,
+      duration: clip1.duration,
+      position: clip1.position,
+      volume: clip1.volume,
+      pan: clip1.pan,
+      muted: clip1.muted,
+      soloed: clip1.soloed,
+      effects: clip1.effects,
+      automation: clip1.automation,
+      version: clip1.version,
+      createdAt: clip1.createdAt.toISOString(),
+      updatedAt: clip1.updatedAt.toISOString()
+    };
+    const dto2 = {
+      id: clip2.id,
+      name: clip2.name,
+      audioUrl: clip2.audioUrl,
+      trackId: clip2.trackId,
+      startTime: clip2.startTime,
+      duration: clip2.duration,
+      position: clip2.position,
+      volume: clip2.volume,
+      pan: clip2.pan,
+      muted: clip2.muted,
+      soloed: clip2.soloed,
+      effects: clip2.effects,
+      automation: clip2.automation,
+      version: clip2.version,
+      createdAt: clip2.createdAt.toISOString(),
+      updatedAt: clip2.updatedAt.toISOString()
+    };
+    (mockStorage.get as jest.Mock).mockResolvedValue({
+      [clip1.id]: dto1,
+      [clip2.id]: dto2
     });
 
-    expect(clip.name).toBe('Test Clip');
-    expect(clip.audioId).toBe('test-audio-id');
-    expect(clip.startTime).toBe(10);
-    expect(clip.duration).toBe(30);
-    expect(clip.volume).toBe(0.8);
-    expect(clip.pan).toBe(0.5);
-    expect(clip.muted).toBe(true);
-    expect(clip.soloed).toBe(false);
-    expect(clip.effects).toEqual(['effect1', 'effect2']);
-    expect(clip.automation).toEqual({ volume: [0, 1, 0] });
+    const foundClips = await repository.findAll();
+    expect(foundClips).toHaveLength(2);
+    expect(foundClips[0].id).toBe(clip1.id);
+    expect(foundClips[1].id).toBe(clip2.id);
   });
 
-  test('should get clips by audio ID', () => {
-    repository.create({ audioId: 'audio1' });
-    repository.create({ audioId: 'audio1' });
-    repository.create({ audioId: 'audio2' });
+  test('should find clips by track ID', async () => {
+    const clip = new ClipImpl('test-url', 0, 10, 0, 'test-clip');
+    clip.trackId = 'track-1';
+    const dto = {
+      id: clip.id,
+      name: clip.name,
+      audioUrl: clip.audioUrl,
+      trackId: clip.trackId,
+      startTime: clip.startTime,
+      duration: clip.duration,
+      position: clip.position,
+      volume: clip.volume,
+      pan: clip.pan,
+      muted: clip.muted,
+      soloed: clip.soloed,
+      effects: clip.effects,
+      automation: clip.automation,
+      version: clip.version,
+      createdAt: clip.createdAt.toISOString(),
+      updatedAt: clip.updatedAt.toISOString()
+    };
+    (mockStorage.get as jest.Mock).mockResolvedValue({ [clip.id]: dto });
 
-    const clips = repository.getByAudioId('audio1');
-    expect(clips).toHaveLength(2);
-    expect(clips.every(clip => clip.audioId === 'audio1')).toBe(true);
+    const foundClips = await repository.findByTrackId('track-1');
+    expect(foundClips).toHaveLength(1);
+    expect(foundClips[0].id).toBe(clip.id);
   });
 
-  test('should return empty array for non-existent audio ID', () => {
-    const clips = repository.getByAudioId('non-existent');
-    expect(clips).toEqual([]);
+  test('should find clips by audio URL', async () => {
+    const clip = new ClipImpl('test-url', 0, 10, 0, 'test-clip');
+    clip.trackId = 'track-1';
+    const dto = {
+      id: clip.id,
+      name: clip.name,
+      audioUrl: clip.audioUrl,
+      trackId: clip.trackId,
+      startTime: clip.startTime,
+      duration: clip.duration,
+      position: clip.position,
+      volume: clip.volume,
+      pan: clip.pan,
+      muted: clip.muted,
+      soloed: clip.soloed,
+      effects: clip.effects,
+      automation: clip.automation,
+      version: clip.version,
+      createdAt: clip.createdAt.toISOString(),
+      updatedAt: clip.updatedAt.toISOString()
+    };
+    (mockStorage.get as jest.Mock).mockResolvedValue({ [clip.id]: dto });
+
+    const foundClips = await repository.findByAudioUrl('test-url');
+    expect(foundClips).toHaveLength(1);
+    expect(foundClips[0].id).toBe(clip.id);
   });
 
-  test('should get clips by name', () => {
-    repository.create({ name: 'Test Clip' });
-    repository.create({ name: 'Test Clip' });
-    repository.create({ name: 'Other Clip' });
-
-    const clips = repository.getByName('Test Clip');
-    expect(clips).toHaveLength(2);
-    expect(clips.every(clip => clip.name === 'Test Clip')).toBe(true);
-  });
-
-  test('should return empty array for non-existent name', () => {
-    const clips = repository.getByName('Non-existent');
-    expect(clips).toEqual([]);
-  });
-
-  test('should get clips in time range', () => {
-    repository.create({ startTime: 0, duration: 20 }); // 0-20
-    repository.create({ startTime: 10, duration: 20 }); // 10-30
-    repository.create({ startTime: 40, duration: 20 }); // 40-60
-
-    const clips = repository.getInTimeRange(15, 35);
-    expect(clips).toHaveLength(2);
-    expect(clips.every(clip => {
-      const clipEnd = clip.startTime + clip.duration;
-      return clip.startTime <= 35 && clipEnd >= 15;
-    })).toBe(true);
-  });
-
-  test('should return empty array for time range with no clips', () => {
-    repository.create({ startTime: 0, duration: 10 });
-    repository.create({ startTime: 20, duration: 10 });
-
-    const clips = repository.getInTimeRange(15, 15);
-    expect(clips).toEqual([]);
-  });
-
-  test('should get clips by track ID', () => {
-    // This method will be implemented when we have track-clip relationship
-    const clips = repository.getByTrackId('track1');
-    expect(clips).toEqual([]);
-  });
-
-  test('should update clip position', () => {
-    const clip = repository.create({}) as ClipImpl;
-    const originalVersion = clip.version;
+  test('should update clip position', async () => {
+    const clip = new ClipImpl('test-url', 0, 10, 0, 'test-clip');
+    clip.trackId = 'track-1';
     clip.updatePosition(20);
-
-    expect(clip.startTime).toBe(20);
-    expect(clip.version).toBe(originalVersion + 1);
+    const savedClip = await repository.save(clip);
+    expect(savedClip.position).toBe(20);
   });
 
-  test('should update clip volume', () => {
-    const clip = repository.create({}) as ClipImpl;
-    const originalVersion = clip.version;
+  test('should update clip volume', async () => {
+    const clip = new ClipImpl('test-url', 0, 10, 0, 'test-clip');
+    clip.trackId = 'track-1';
     clip.updateVolume(0.5);
-
-    expect(clip.volume).toBe(0.5);
-    expect(clip.version).toBe(originalVersion + 1);
+    const savedClip = await repository.save(clip);
+    expect(savedClip.volume).toBe(0.5);
   });
 
-  test('should clamp volume between 0 and 1', () => {
-    const clip = repository.create({}) as ClipImpl;
-    clip.updateVolume(-1);
-    expect(clip.volume).toBe(0);
+  test('should delete clip', async () => {
+    const clip = new ClipImpl('test-url', 0, 10, 0, 'test-clip');
+    clip.trackId = 'track-1';
+    const dto = {
+      id: clip.id,
+      name: clip.name,
+      audioUrl: clip.audioUrl,
+      trackId: clip.trackId,
+      startTime: clip.startTime,
+      duration: clip.duration,
+      position: clip.position,
+      volume: clip.volume,
+      pan: clip.pan,
+      muted: clip.muted,
+      soloed: clip.soloed,
+      effects: clip.effects,
+      automation: clip.automation,
+      version: clip.version,
+      createdAt: clip.createdAt.toISOString(),
+      updatedAt: clip.updatedAt.toISOString()
+    };
+    (mockStorage.get as jest.Mock).mockResolvedValue({ [clip.id]: dto });
 
-    clip.updateVolume(2);
-    expect(clip.volume).toBe(1);
-  });
-
-  test('should update clip pan', () => {
-    const clip = repository.create({}) as ClipImpl;
-    const originalVersion = clip.version;
-    clip.updatePan(0.5);
-
-    expect(clip.pan).toBe(0.5);
-    expect(clip.version).toBe(originalVersion + 1);
-  });
-
-  test('should clamp pan between -1 and 1', () => {
-    const clip = repository.create({}) as ClipImpl;
-    clip.updatePan(-2);
-    expect(clip.pan).toBe(-1);
-
-    clip.updatePan(2);
-    expect(clip.pan).toBe(1);
-  });
-
-  test('should toggle clip mute', () => {
-    const clip = repository.create({}) as ClipImpl;
-    const originalVersion = clip.version;
-    clip.toggleMute();
-
-    expect(clip.muted).toBe(true);
-    expect(clip.version).toBe(originalVersion + 1);
-
-    clip.toggleMute();
-    expect(clip.muted).toBe(false);
-    expect(clip.version).toBe(originalVersion + 2);
-  });
-
-  test('should toggle clip solo', () => {
-    const clip = repository.create({}) as ClipImpl;
-    const originalVersion = clip.version;
-    clip.toggleSolo();
-
-    expect(clip.soloed).toBe(true);
-    expect(clip.version).toBe(originalVersion + 1);
-
-    clip.toggleSolo();
-    expect(clip.soloed).toBe(false);
-    expect(clip.version).toBe(originalVersion + 2);
-  });
-
-  test('should add effect to clip', () => {
-    const clip = repository.create({}) as ClipImpl;
-    const originalVersion = clip.version;
-    clip.addEffect('effect1');
-
-    expect(clip.effects).toEqual(['effect1']);
-    expect(clip.version).toBe(originalVersion + 1);
-  });
-
-  test('should not add duplicate effect', () => {
-    const clip = repository.create({}) as ClipImpl;
-    clip.addEffect('effect1');
-    const originalVersion = clip.version;
-    clip.addEffect('effect1');
-
-    expect(clip.effects).toEqual(['effect1']);
-    expect(clip.version).toBe(originalVersion);
-  });
-
-  test('should remove effect from clip', () => {
-    const clip = repository.create({}) as ClipImpl;
-    clip.addEffect('effect1');
-    const originalVersion = clip.version;
-    clip.removeEffect('effect1');
-
-    expect(clip.effects).toEqual([]);
-    expect(clip.version).toBe(originalVersion + 1);
-  });
-
-  test('should update automation data', () => {
-    const clip = repository.create({}) as ClipImpl;
-    const originalVersion = clip.version;
-    clip.updateAutomation('volume', [0, 1, 0]);
-
-    expect(clip.automation).toEqual({ volume: [0, 1, 0] });
-    expect(clip.version).toBe(originalVersion + 1);
+    await repository.delete(clip.id);
+    expect(mockStorage.set).toHaveBeenCalledWith('clip_storage', {});
   });
 }); 

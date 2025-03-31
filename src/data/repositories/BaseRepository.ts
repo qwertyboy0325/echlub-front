@@ -1,4 +1,5 @@
-import { BaseModel } from '../models/BaseModel';
+import type { BaseDTO } from '../models/BaseDTO';
+import type { BaseModel } from '../../domain/models/BaseModel';
 
 /**
  * Base repository interface
@@ -7,101 +8,93 @@ export interface BaseRepository<T extends BaseModel> {
   /**
    * Get all items
    */
-  getAll(): T[];
+  getAll(): Promise<T[]>;
 
   /**
    * Get item by ID
    */
-  getById(id: string): T | undefined;
+  getById(id: string): Promise<T | null>;
 
   /**
    * Create new item
    */
-  create(item: Partial<T>): T;
+  create(item: T): Promise<T>;
 
   /**
    * Update existing item
    */
-  update(id: string, item: Partial<T>): T | undefined;
+  update(id: string, item: T): Promise<T | null>;
 
   /**
    * Delete item by ID
    */
-  delete(id: string): boolean;
+  delete(id: string): Promise<void>;
 
   /**
    * Check if item exists
    */
-  exists(id: string): boolean;
+  exists(id: string): Promise<boolean>;
 
   /**
    * Get count of items
    */
-  count(): number;
-
-  /**
-   * Clear all items
-   */
-  clear(): void;
+  count(): Promise<number>;
 }
 
 /**
  * Base repository implementation
  */
-export abstract class BaseRepositoryImpl<T extends BaseModel> implements BaseRepository<T> {
-  protected items: Map<string, T>;
+export abstract class BaseRepositoryImpl<T extends BaseModel, D extends BaseDTO> implements BaseRepository<T> {
+  protected items: Map<string, D>;
 
   constructor() {
     this.items = new Map();
   }
 
-  getAll(): T[] {
-    return Array.from(this.items.values());
+  async getAll(): Promise<T[]> {
+    return Array.from(this.items.values()).map(dto => this.toDomain(dto));
   }
 
-  getById(id: string): T | undefined {
-    return this.items.get(id);
+  async getById(id: string): Promise<T | null> {
+    const dto = this.items.get(id);
+    if (!dto) return null;
+    return this.toDomain(dto);
   }
 
-  create(item: Partial<T>): T {
-    const newItem = this.createItem(item);
-    this.items.set(newItem.id, newItem);
-    return newItem;
+  async create(item: T): Promise<T> {
+    const dto = this.toDTO(item);
+    this.items.set(item.id, dto);
+    return item;
   }
 
-  update(id: string, item: Partial<T>): T | undefined {
-    const existingItem = this.items.get(id);
-    if (!existingItem) {
-      return undefined;
+  async update(id: string, item: T): Promise<T | null> {
+    if (!this.items.has(id)) {
+      return null;
     }
-    const updatedItem = this.updateItem(existingItem, item);
-    this.items.set(id, updatedItem);
-    return updatedItem;
+    const dto = this.toDTO(item);
+    this.items.set(id, dto);
+    return item;
   }
 
-  delete(id: string): boolean {
-    return this.items.delete(id);
+  async delete(id: string): Promise<void> {
+    this.items.delete(id);
   }
 
-  exists(id: string): boolean {
+  async exists(id: string): Promise<boolean> {
     return this.items.has(id);
   }
 
-  count(): number {
+  async count(): Promise<number> {
     return this.items.size;
   }
 
-  clear(): void {
-    this.items.clear();
-  }
+  /**
+   * Convert DTO to domain model
+   */
+  protected abstract toDomain(dto: D): T;
 
   /**
-   * Create new item instance
+   * Convert domain model to DTO
    */
-  protected abstract createItem(data: Partial<T>): T;
-
-  /**
-   * Update existing item
-   */
-  protected abstract updateItem(existing: T, data: Partial<T>): T;
+  protected abstract toDTO(model: T): D;
 } 

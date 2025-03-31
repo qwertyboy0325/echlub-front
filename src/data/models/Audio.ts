@@ -1,57 +1,40 @@
-import { BaseModel, BaseModelImpl } from './BaseModel';
+import { BaseModelImpl } from './BaseModel';
 
-/**
- * Audio model interface
- */
-export interface Audio extends BaseModel {
-  name: string;
-  duration: number;
-  sampleRate: number;
-  channels: number;
-  bitDepth: number;
-  filePath: string;
-  waveform: number[];
-  metadata: Record<string, unknown>;
-}
+export class AudioImpl extends BaseModelImpl {
+  constructor(
+    public name: string,
+    public url: string,
+    public duration: number,
+    public sampleRate: number,
+    public channels: number,
+    public format: string,
+    public metadata: Record<string, any> = {}
+  ) {
+    super();
 
-/**
- * Audio model implementation
- */
-export class AudioImpl extends BaseModelImpl implements Audio {
-  name: string;
-  duration: number;
-  sampleRate: number;
-  channels: number;
-  bitDepth: number;
-  filePath: string;
-  waveform: number[];
-  metadata: Record<string, unknown>;
+    if (sampleRate <= 0) {
+      throw new Error('Sample rate must be positive');
+    }
 
-  constructor(data: Partial<Audio>) {
-    super(data);
-    this.name = data.name || 'Untitled Audio';
-    this.duration = data.duration || 0;
-    this.sampleRate = data.sampleRate || 44100;
-    this.channels = data.channels || 2;
-    this.bitDepth = data.bitDepth || 16;
-    this.filePath = data.filePath || '';
-    this.waveform = data.waveform || [];
-    this.metadata = data.metadata || {};
+    if (channels <= 0) {
+      throw new Error('Channels must be positive');
+    }
+
+    if (duration < 0) {
+      throw new Error('Duration must be non-negative');
+    }
   }
 
-  /**
-   * Update audio metadata
-   */
-  updateMetadata(metadata: Record<string, unknown>): void {
-    this.metadata = { ...this.metadata, ...metadata };
-    this.update();
+  updateMetadata(newMetadata: Record<string, any>): void {
+    this.metadata = { ...this.metadata, ...newMetadata };
+    this.incrementVersion();
   }
 
-  /**
-   * Update waveform data
-   */
-  updateWaveform(waveform: number[]): void {
-    this.waveform = waveform;
-    this.update();
+  updateDuration(newDuration: number): void {
+    if (newDuration < 0) {
+      throw new Error('Duration must be non-negative');
+    }
+    this.duration = newDuration;
+    this.incrementVersion();
   }
 } 

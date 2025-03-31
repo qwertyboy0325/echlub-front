@@ -1,36 +1,26 @@
-import { UUIDGenerator } from '../../utils/uuid';
-
-/**
- * Base model interface for all data models
- */
-export interface BaseModel {
+export abstract class BaseModelImpl {
   id: string;
+  version: number;
   createdAt: Date;
   updatedAt: Date;
-  version: number;
-}
 
-/**
- * Base model class implementation
- */
-export abstract class BaseModelImpl implements BaseModel {
-  id: string;
-  createdAt: Date;
-  updatedAt: Date;
-  version: number;
-
-  constructor(data: Partial<BaseModel>) {
-    this.id = data.id || UUIDGenerator.generate();
-    this.createdAt = data.createdAt || new Date();
-    this.updatedAt = data.updatedAt || new Date();
-    this.version = data.version || 1;
+  constructor() {
+    this.id = this.generateUUID();
+    this.version = 1;
+    this.createdAt = new Date();
+    this.updatedAt = new Date();
   }
 
-  /**
-   * Update the model's timestamp and version
-   */
-  protected update(): void {
+  protected incrementVersion(): void {
+    this.version++;
     this.updatedAt = new Date();
-    this.version += 1;
+  }
+
+  private generateUUID(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 } 
