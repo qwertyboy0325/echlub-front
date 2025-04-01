@@ -1,59 +1,72 @@
-import { BaseModel, BaseModelImpl } from './BaseModel';
 import type { Track } from './Track';
 
 /**
  * Project model interface
  */
-export interface Project extends BaseModel {
+export interface Project {
+  id: string;
   name: string;
-  tempo: number;
+  bpm: number;
+  timeSignature: {
+    numerator: number;
+    denominator: number;
+  };
   tracks: Track[];
-  isCurrent: boolean;
-  
-  addTrack(track: Track): void;
-  removeTrack(trackId: string): void;
-  updateTempo(tempo: number): void;
-  setCurrent(isCurrent: boolean): void;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 /**
  * Project model implementation
  */
-export class ProjectImpl extends BaseModelImpl implements Project {
-  name: string;
-  tempo: number;
-  tracks: Track[];
-  isCurrent: boolean;
+export class ProjectImpl implements Project {
+  public id: string;
+  public name: string;
+  public bpm: number;
+  public timeSignature: {
+    numerator: number;
+    denominator: number;
+  };
+  public tracks: Track[];
+  public createdAt: Date;
+  public updatedAt: Date;
 
-  constructor(name: string) {
-    super();
-    
+  constructor(name: string, id?: string) {
+    this.id = id || crypto.randomUUID();
     this.name = name;
-    this.tempo = 120; // Default tempo
+    this.bpm = 120;
+    this.timeSignature = {
+      numerator: 4,
+      denominator: 4
+    };
     this.tracks = [];
-    this.isCurrent = false;
+    this.createdAt = new Date();
+    this.updatedAt = new Date();
   }
 
-  addTrack(track: Track): void {
+  public addTrack(track: Track): void {
     this.tracks.push(track);
-    this.incrementVersion();
+    this.updatedAt = new Date();
   }
 
-  removeTrack(trackId: string): void {
+  public removeTrack(trackId: string): void {
     this.tracks = this.tracks.filter(track => track.id !== trackId);
-    this.incrementVersion();
+    this.updatedAt = new Date();
   }
 
-  updateTempo(tempo: number): void {
-    if (tempo <= 0) {
-      throw new Error('Tempo must be greater than 0');
+  public updateBPM(bpm: number): void {
+    if (bpm <= 0) {
+      throw new Error('BPM must be greater than 0');
     }
-    this.tempo = tempo;
-    this.incrementVersion();
+    this.bpm = bpm;
+    this.updatedAt = new Date();
   }
 
-  setCurrent(isCurrent: boolean): void {
-    this.isCurrent = isCurrent;
-    this.incrementVersion();
+  public updateTimeSignature(numerator: number, denominator: number): void {
+    if (numerator <= 0 || denominator <= 0) {
+      throw new Error('Time signature components must be greater than 0');
+    }
+    this.timeSignature = { numerator, denominator };
+    this.updatedAt = new Date();
   }
 } 

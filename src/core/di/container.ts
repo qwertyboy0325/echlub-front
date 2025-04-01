@@ -1,50 +1,45 @@
 import { Container } from 'inversify';
+import { eventModule } from './eventModule';
+import { audioModule } from './audioModule';
+import { storageModule } from './storageModule';
+import { dawModule } from './dawModule';
 import { TYPES } from './types';
+import 'reflect-metadata';
 import type { ClipRepository } from '../../domain/repositories/ClipRepository';
-import { ClipRepositoryImpl } from '../../data/repositories/ClipRepositoryImpl';
-import { DAWManager } from '../DAWManager';
-import { CustomAudioContext } from '../../domain/audio/AudioContext';
-import { AudioEngine } from '../../domain/audio/AudioEngine';
-import { EventBus } from '../events/EventBus';
+import type { TrackRepository } from '../../domain/repositories/TrackRepository';
+import type { ProjectRepository } from '../../domain/repositories/ProjectRepository';
+import type { AudioRepository } from '../../domain/repositories/AudioRepository';
+import type { Storage } from '../../infrastructure/storage/Storage';
 import type { IAudioContext } from './types';
 import type { IAudioEngine } from './types';
 import type { IEventBus } from './types';
-import type { Storage } from '../../infrastructure/storage/Storage';
-import { LocalStorage } from '../../infrastructure/storage/LocalStorage';
-import type { TrackRepository } from '../../domain/repositories/TrackRepository';
-import { TrackRepositoryImpl } from '../../data/repositories/TrackRepositoryImpl';
-import type { ProjectRepository } from '../../domain/repositories/ProjectRepository';
-import { ProjectRepositoryImpl } from '../../data/repositories/ProjectRepositoryImpl';
-import type { AudioRepository } from '../../domain/repositories/AudioRepository';
-import { AudioRepositoryImpl } from '../../data/repositories/AudioRepositoryImpl';
+import { LocalStorageService } from '../storage/LocalStorageService';
+import { AudioContextWrapper } from '../audio/AudioContextWrapper';
+import { AudioEngine } from '../audio/AudioEngine';
+import { EventBus } from '../events/EventBus';
 import { DAWPresenter } from '../../presentation/presenters/DAWPresenter';
+import { DAWManager } from '../DAWManager';
 
-export { TYPES };
+// 創建 DI 容器
+const container = new Container({
+  defaultScope: 'Singleton',
+  autoBindInjectable: true
+});
 
-// 創建並導出容器實例
-export const container = new Container();
+// 加載所有模塊
+container.load(
+  eventModule,   // 事件系統模塊
+  dawModule,     // DAW 相關模塊
+  audioModule,   // 音頻處理模塊
+  storageModule  // 存儲模塊
+);
+
+export { container, TYPES };
 
 export function registerServices(container: Container): void {
   // Register Storage
   container.bind<Storage>(TYPES.Storage)
-    .to(LocalStorage)
-    .inSingletonScope();
-
-  // Register Repositories
-  container.bind<ClipRepository>(TYPES.ClipRepository)
-    .to(ClipRepositoryImpl)
-    .inSingletonScope();
-
-  container.bind<TrackRepository>(TYPES.TrackRepository)
-    .to(TrackRepositoryImpl)
-    .inSingletonScope();
-
-  container.bind<ProjectRepository>(TYPES.ProjectRepository)
-    .to(ProjectRepositoryImpl)
-    .inSingletonScope();
-
-  container.bind<AudioRepository>(TYPES.AudioRepository)
-    .to(AudioRepositoryImpl)
+    .to(LocalStorageService)
     .inSingletonScope();
 
   // Register Core Services
@@ -58,7 +53,7 @@ export function registerServices(container: Container): void {
 
   // Register Audio Services
   container.bind<IAudioContext>(TYPES.AudioContext)
-    .to(CustomAudioContext)
+    .to(AudioContextWrapper)
     .inSingletonScope();
 
   container.bind<IAudioEngine>(TYPES.AudioEngine)
@@ -69,6 +64,4 @@ export function registerServices(container: Container): void {
   container.bind<DAWPresenter>(TYPES.DAWPresenter)
     .to(DAWPresenter)
     .inSingletonScope();
-
-  // TODO: Register other services
 } 

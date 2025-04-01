@@ -1,486 +1,473 @@
-# DAW 狀態管理系統設計文檔
+# 狀態管理系統
 
-## 1. 系統概述
+## 概述
 
-DAW 的狀態管理系統主要負責：
+本系統採用分層的狀態管理架構，結合事件驅動和響應式編程模式，實現了高效、可靠的狀態管理機制。
 
-1. 應用程序狀態管理
-2. 音頻狀態管理
-3. UI 狀態管理
-4. 狀態持久化
+## 核心概念
 
-系統通過依賴注入（DI）進行整合，確保狀態管理的靈活性和可測試性。
+### 1. 狀態類型
 
-### 1.1 DI 整合
-
-狀態管理系統的核心組件通過 DI 容器進行管理：
-
+#### 應用狀態（Application State）
 ```typescript
-// types.ts
-export const TYPES = {
-    StateManager: Symbol.for('StateManager'),
-    StateStore: Symbol.for('StateStore'),
-    StateSlice: Symbol.for('StateSlice')
-};
-
-export interface IStateManager {
-    getStore<T>(name: string): StateStore<T>;
-    registerSlice<T>(slice: StateSlice<T>): void;
-    dispatch(action: any): void;
+interface AppState {
+    project: ProjectState;
+    tracks: TrackState[];
+    clips: ClipState[];
+    ui: UIState;
+    audio: AudioState;
 }
 
-export interface IStateStore<T> {
-    getState(): T;
-    setState(state: T): void;
-    subscribe(listener: (state: T) => void): () => void;
-}
-```
-
-### 1.2 服務註冊
-
-狀態管理系統的服務在 DI 容器中註冊：
-
-```typescript
-// container.ts
-container.bind<IStateManager>(TYPES.StateManager).to(StateManager).inSingletonScope();
-container.bind<IStateStore<any>>(TYPES.StateStore).to(StateStoreImpl).inTransientScope();
-container.bind<IStateSlice<any>>(TYPES.StateSlice).to(StateSliceImpl).inTransientScope();
-```
-
-## 2. 核心組件
-
-### 2.1 狀態存儲
-
-```typescript
-@injectable()
-export class StateStoreImpl<T> implements IStateStore<T> {
-    constructor(
-        @inject(TYPES.EventBus) private eventBus: IEventBus<StateEvents>
-    ) {
-        this.state = initialState;
-        this.listeners = new Set();
-    }
-    
-    getState(): T {
-        return this.state;
-    }
-    
-    setState(state: T): void {
-        this.state = state;
-        this.notifyListeners();
-    }
-    
-    subscribe(listener: (state: T) => void): () => void {
-        this.listeners.add(listener);
-        return () => this.listeners.delete(listener);
-    }
-    
-    private notifyListeners(): void {
-        this.listeners.forEach(listener => listener(this.state));
-    }
-}
-```
-
-### 2.2 狀態切片
-
-```typescript
-@injectable()
-export class StateSliceImpl<T> implements IStateSlice<T> {
-    constructor(
-        @inject(TYPES.EventBus) private eventBus: IEventBus<StateEvents>,
-        public name: string,
-        public initialState: T,
-        public reducers: Record<string, (state: T, action: any) => T>
-    ) {}
-    
-    // 創建 reducer
-    createReducer(): (state: T | undefined, action: any) => T {
-        return (state = this.initialState, action: any): T => {
-            const reducer = this.reducers[action.type];
-            if (reducer) {
-                return reducer(state, action);
-            }
-            return state;
-        };
-    }
-    
-    // 創建 action creators
-    createActions(): Record<string, (...args: any[]) => any> {
-        const actions: Record<string, (...args: any[]) => any> = {};
-        
-        Object.keys(this.reducers).forEach(type => {
-            actions[type] = (...args: any[]) => ({
-                type,
-                payload: args[0]
-            });
-        });
-        
-        return actions;
-    }
-}
-```
-
-### 2.3 狀態管理器
-
-```typescript
-@injectable()
-export class StateManager implements IStateManager {
-    constructor(
-        @inject(TYPES.EventBus) private eventBus: IEventBus<StateEvents>,
-        @inject(TYPES.StateStore) private storeFactory: Factory<IStateStore<any>>
-    ) {
-        this.stores = new Map();
-        this.slices = new Map();
-    }
-    
-    // 註冊狀態切片
-    registerSlice<T>(slice: StateSlice<T>): void {
-        this.slices.set(slice.name, slice);
-        this.stores.set(slice.name, this.storeFactory.createNew());
-    }
-    
-    // 獲取狀態存儲
-    getStore<T>(name: string): StateStore<T> | undefined {
-        return this.stores.get(name);
-    }
-    
-    // 獲取狀態切片
-    getSlice<T>(name: string): StateSlice<T> | undefined {
-        return this.slices.get(name);
-    }
-    
-    // 分發 action
-    dispatch(action: any): void {
-        this.slices.forEach((slice, name) => {
-            const store = this.stores.get(name);
-            if (store && slice.reducers[action.type]) {
-                const currentState = store.getState();
-                const newState = slice.reducers[action.type](currentState, action);
-                store.setState(newState);
-            }
-        });
-    }
-}
-```
-
-## 3. 狀態切片定義
-
-### 3.1 播放狀態切片
-
-```typescript
-interface PlaybackState {
-    isPlaying: boolean;
-    currentTime: number;
+interface ProjectState {
+    id: string;
+    name: string;
     bpm: number;
-    loopStart: number;
-    loopEnd: number;
-    isLooping: boolean;
+    timeSignature: TimeSignature;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
-const playbackSlice = new StateSliceImpl<PlaybackState>(
-    'playback',
-    {
-        isPlaying: false,
-        currentTime: 0,
-        bpm: 120,
-        loopStart: 0,
-        loopEnd: 0,
-        isLooping: false
-    },
-    {
-        'playback/start': (state) => ({
-            ...state,
-            isPlaying: true
-        }),
-        'playback/stop': (state) => ({
-            ...state,
-            isPlaying: false
-        }),
-        'playback/pause': (state) => ({
-            ...state,
-            isPlaying: false
-        }),
-        'playback/setTime': (state, action) => ({
-            ...state,
-            currentTime: action.payload
-        }),
-        'playback/setBPM': (state, action) => ({
-            ...state,
-            bpm: action.payload
-        }),
-        'playback/setLoop': (state, action) => ({
-            ...state,
-            loopStart: action.payload.start,
-            loopEnd: action.payload.end,
-            isLooping: true
-        }),
-        'playback/clearLoop': (state) => ({
-            ...state,
-            isLooping: false
-        })
-    }
-);
-```
-
-### 3.2 軌道狀態切片
-
-```typescript
 interface TrackState {
-    tracks: Record<string, Track>;
-    selectedTrackId: string | null;
-    trackOrder: string[];
+    id: string;
+    name: string;
+    volume: number;
+    pan: number;
+    isMuted: boolean;
+    isSoloed: boolean;
+    effects: EffectState[];
 }
 
-const trackSlice = new StateSliceImpl<TrackState>(
-    'tracks',
-    {
-        tracks: {},
-        selectedTrackId: null,
-        trackOrder: []
-    },
-    {
-        'tracks/add': (state, action) => ({
-            ...state,
-            tracks: {
-                ...state.tracks,
-                [action.payload.id]: action.payload
-            },
-            trackOrder: [...state.trackOrder, action.payload.id]
-        }),
-        'tracks/remove': (state, action) => {
-            const { [action.payload]: removed, ...remaining } = state.tracks;
-            return {
-                ...state,
-                tracks: remaining,
-                trackOrder: state.trackOrder.filter(id => id !== action.payload),
-                selectedTrackId: state.selectedTrackId === action.payload ? null : state.selectedTrackId
-            };
-        },
-        'tracks/select': (state, action) => ({
-            ...state,
-            selectedTrackId: action.payload
-        }),
-        'tracks/reorder': (state, action) => ({
-            ...state,
-            trackOrder: action.payload
-        })
-    }
-);
+interface ClipState {
+    id: string;
+    trackId: string;
+    audioUrl: string;
+    startTime: number;
+    duration: number;
+    offset: number;
+}
+
+interface UIState {
+    selectedTrackId: string | null;
+    selectedClipId: string | null;
+    timelinePosition: number;
+    zoom: number;
+    isPlaying: boolean;
+    isRecording: boolean;
+}
+
+interface AudioState {
+    masterVolume: number;
+    isAudioContextInitialized: boolean;
+    sampleRate: number;
+    bufferSize: number;
+}
 ```
 
-### 3.3 片段狀態切片
+#### 持久化狀態（Persistent State）
+```typescript
+interface PersistentState {
+    project: ProjectState;
+    tracks: TrackState[];
+    clips: ClipState[];
+    settings: UserSettings;
+}
+
+interface UserSettings {
+    theme: 'light' | 'dark';
+    shortcuts: Record<string, string>;
+    audioSettings: AudioSettings;
+}
+```
+
+### 2. 狀態管理器
+
+#### StateManager
+```typescript
+@injectable()
+class StateManager {
+    private state: AppState;
+    private subscribers: Set<StateSubscriber>;
+
+    constructor(
+        @inject(TYPES.LocalStorageService) 
+        private storage: LocalStorageService,
+        @inject(TYPES.EventBus)
+        private eventBus: EventBus
+    ) {
+        this.state = this.getInitialState();
+        this.subscribers = new Set();
+        this.initializeEventHandlers();
+    }
+
+    private initializeEventHandlers(): void {
+        this.eventBus.on('track:created', this.handleTrackCreated);
+        this.eventBus.on('clip:added', this.handleClipAdded);
+        this.eventBus.on('state:changed', this.handleStateChanged);
+    }
+
+    public getState<T>(selector: (state: AppState) => T): T {
+        return selector(this.state);
+    }
+
+    public async updateState(
+        updater: (state: AppState) => Partial<AppState>
+    ): Promise<void> {
+        const updates = updater(this.state);
+        this.state = { ...this.state, ...updates };
+        await this.notifySubscribers();
+        await this.persistState();
+    }
+}
+```
+
+#### StateSubscriber
+```typescript
+interface StateSubscriber {
+    onStateChanged(state: AppState): void;
+}
+
+class TrackListComponent implements StateSubscriber {
+    onStateChanged(state: AppState): void {
+        const tracks = state.tracks;
+        // 更新視圖
+    }
+}
+```
+
+### 3. 狀態持久化
+
+#### LocalStorageService
+```typescript
+@injectable()
+class LocalStorageService {
+    private readonly PREFIX = 'daw_';
+
+    async saveState(state: PersistentState): Promise<void> {
+        try {
+            const serialized = JSON.stringify(state);
+            localStorage.setItem(
+                this.PREFIX + 'state',
+                serialized
+            );
+        } catch (error) {
+            console.error('Failed to save state:', error);
+            throw new Error('State persistence failed');
+        }
+    }
+
+    async loadState(): Promise<PersistentState | null> {
+        try {
+            const serialized = localStorage.getItem(
+                this.PREFIX + 'state'
+            );
+            return serialized ? JSON.parse(serialized) : null;
+        } catch (error) {
+            console.error('Failed to load state:', error);
+            return null;
+        }
+    }
+}
+```
+
+## 狀態更新流程
+
+### 1. 同步更新
 
 ```typescript
-interface ClipState {
-    clips: Record<string, Clip>;
+// 在組件中更新狀態
+class TrackComponent {
+    constructor(
+        @inject(TYPES.StateManager)
+        private stateManager: StateManager
+    ) {}
+
+    async setTrackVolume(trackId: string, volume: number): Promise<void> {
+        await this.stateManager.updateState(state => ({
+            tracks: state.tracks.map(track =>
+                track.id === trackId
+                    ? { ...track, volume }
+                    : track
+            )
+        }));
+    }
+}
+```
+
+### 2. 事件驅動更新
+
+```typescript
+// 通過事件更新狀態
+class AudioEngine {
+    constructor(
+        @inject(TYPES.EventBus)
+        private eventBus: EventBus
+    ) {
+        this.eventBus.on('track:volume:changed', this.handleVolumeChange);
+    }
+
+    private handleVolumeChange = (
+        payload: { trackId: string; volume: number }
+    ): void => {
+        const { trackId, volume } = payload;
+        const track = this.tracks.get(trackId);
+        if (track) {
+            track.setVolume(volume);
+        }
+    };
+}
+```
+
+## 性能優化
+
+### 1. 狀態分片
+
+```typescript
+// 將狀態分割為更小的部分
+interface TrackSlice {
+    tracks: TrackState[];
+    selectedTrackId: string | null;
+}
+
+interface ClipSlice {
+    clips: ClipState[];
     selectedClipId: string | null;
 }
 
-const clipSlice = new StateSliceImpl<ClipState>(
-    'clips',
-    {
-        clips: {},
-        selectedClipId: null
-    },
-    {
-        'clips/add': (state, action) => ({
-            ...state,
-            clips: {
-                ...state.clips,
-                [action.payload.id]: action.payload
-            }
-        }),
-        'clips/remove': (state, action) => {
-            const { [action.payload]: removed, ...remaining } = state.clips;
-            return {
-                ...state,
-                clips: remaining,
-                selectedClipId: state.selectedClipId === action.payload ? null : state.selectedClipId
-            };
-        },
-        'clips/select': (state, action) => ({
-            ...state,
-            selectedClipId: action.payload
-        }),
-        'clips/move': (state, action) => ({
-            ...state,
-            clips: {
-                ...state.clips,
-                [action.payload.id]: {
-                    ...state.clips[action.payload.id],
-                    startTime: action.payload.startTime
-                }
-            }
-        })
-    }
+// 使用選擇器獲取特定狀態片段
+const selectTrackSlice = (state: AppState): TrackSlice => ({
+    tracks: state.tracks,
+    selectedTrackId: state.ui.selectedTrackId
+});
+```
+
+### 2. 記憶化選擇器
+
+```typescript
+// 使用記憶化避免不必要的重新計算
+const selectTrackById = memoize(
+    (state: AppState, trackId: string): TrackState | undefined =>
+        state.tracks.find(track => track.id === trackId)
+);
+
+const selectTrackClips = memoize(
+    (state: AppState, trackId: string): ClipState[] =>
+        state.clips.filter(clip => clip.trackId === trackId)
 );
 ```
 
-## 4. 狀態持久化
-
-### 4.1 持久化服務
+### 3. 批量更新
 
 ```typescript
-export interface PersistenceService {
-    save(key: string, data: any): Promise<void>;
-    load(key: string): Promise<any>;
-    remove(key: string): Promise<void>;
-}
+// 合併多個更新操作
+class BatchUpdateManager {
+    private updates: Array<(state: AppState) => Partial<AppState>> = [];
+    private isScheduled = false;
 
-export class LocalStoragePersistenceService implements PersistenceService {
-    async save(key: string, data: any): Promise<void> {
-        localStorage.setItem(key, JSON.stringify(data));
+    constructor(
+        @inject(TYPES.StateManager)
+        private stateManager: StateManager
+    ) {}
+
+    addUpdate(
+        update: (state: AppState) => Partial<AppState>
+    ): void {
+        this.updates.push(update);
+        this.scheduleUpdate();
     }
-    
-    async load(key: string): Promise<any> {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : null;
+
+    private scheduleUpdate(): void {
+        if (!this.isScheduled) {
+            this.isScheduled = true;
+            requestAnimationFrame(this.processUpdates);
+        }
     }
-    
-    async remove(key: string): Promise<void> {
-        localStorage.removeItem(key);
+
+    private processUpdates = async (): Promise<void> => {
+        const updates = this.updates;
+        this.updates = [];
+        this.isScheduled = false;
+
+        await this.stateManager.updateState(state => {
+            return updates.reduce(
+                (acc, update) => ({ ...acc, ...update(state) }),
+                {}
+            );
+        });
+    };
+}
+```
+
+## 狀態監控
+
+### 1. 狀態日誌
+
+```typescript
+// 記錄狀態變更
+class StateLogger {
+    constructor(
+        @inject(TYPES.StateManager)
+        private stateManager: StateManager
+    ) {
+        this.stateManager.subscribe(this.logStateChange);
+    }
+
+    private logStateChange = (state: AppState): void => {
+        console.log('[State Update]', {
+            timestamp: new Date(),
+            state: this.sanitizeState(state)
+        });
+    };
+
+    private sanitizeState(state: AppState): any {
+        // 移除敏感信息
+        return {
+            ...state,
+            project: {
+                ...state.project,
+                id: '***'
+            }
+        };
     }
 }
 ```
 
-### 4.2 狀態持久化管理器
+### 2. 性能監控
 
 ```typescript
-export class StatePersistenceManager {
-    private static instance: StatePersistenceManager;
-    private persistenceService: PersistenceService;
-    private stateManager: StateManager;
-    
-    private constructor() {
-        this.persistenceService = new LocalStoragePersistenceService();
-        this.stateManager = StateManager.getInstance();
+// 監控狀態更新性能
+class StatePerformanceMonitor {
+    private updateTimes: number[] = [];
+
+    constructor(
+        @inject(TYPES.StateManager)
+        private stateManager: StateManager
+    ) {
+        this.stateManager.subscribe(this.measureUpdateTime);
     }
-    
-    static getInstance(): StatePersistenceManager {
-        if (!StatePersistenceManager.instance) {
-            StatePersistenceManager.instance = new StatePersistenceManager();
-        }
-        return StatePersistenceManager.instance;
-    }
-    
-    // 保存狀態
-    async saveState(): Promise<void> {
-        const state: Record<string, any> = {};
+
+    private measureUpdateTime = (): void => {
+        const startTime = performance.now();
         
-        this.stateManager.slices.forEach((slice, name) => {
-            const store = this.stateManager.getStore(name);
-            if (store) {
-                state[name] = store.getState();
+        // 在下一幀測量更新時間
+        requestAnimationFrame(() => {
+            const duration = performance.now() - startTime;
+            this.updateTimes.push(duration);
+            
+            if (this.updateTimes.length > 100) {
+                this.updateTimes.shift();
+            }
+
+            const averageTime = this.getAverageUpdateTime();
+            if (averageTime > 16) {
+                console.warn(
+                    'State updates are taking too long:',
+                    averageTime.toFixed(2),
+                    'ms'
+                );
             }
         });
-        
-        await this.persistenceService.save('daw-state', state);
-    }
-    
-    // 加載狀態
-    async loadState(): Promise<void> {
-        const state = await this.persistenceService.load('daw-state');
-        if (state) {
-            Object.entries(state).forEach(([name, sliceState]) => {
-                const store = this.stateManager.getStore(name);
-                if (store) {
-                    store.setState(sliceState);
-                }
-            });
-        }
-    }
-    
-    // 清除狀態
-    async clearState(): Promise<void> {
-        await this.persistenceService.remove('daw-state');
+    };
+
+    private getAverageUpdateTime(): number {
+        return this.updateTimes.reduce((a, b) => a + b, 0) /
+            this.updateTimes.length;
     }
 }
 ```
 
-## 5. 狀態同步
+## 錯誤處理
 
-### 5.1 狀態同步服務
+### 1. 狀態驗證
 
 ```typescript
-export class StateSyncService {
-    private static instance: StateSyncService;
-    private syncInterval: number;
-    private syncTimer: NodeJS.Timeout | null;
-    
-    private constructor() {
-        this.syncInterval = 1000; // 1秒
-        this.syncTimer = null;
+// 驗證狀態更新
+class StateValidator {
+    validate(state: AppState): void {
+        this.validateProject(state.project);
+        this.validateTracks(state.tracks);
+        this.validateClips(state.clips);
+        this.validateAudioState(state.audio);
     }
-    
-    static getInstance(): StateSyncService {
-        if (!StateSyncService.instance) {
-            StateSyncService.instance = new StateSyncService();
-        }
-        return StateSyncService.instance;
-    }
-    
-    // 開始同步
-    startSync(): void {
-        if (!this.syncTimer) {
-            this.syncTimer = setInterval(() => {
-                this.syncState();
-            }, this.syncInterval);
+
+    private validateProject(project: ProjectState): void {
+        if (project.bpm < 20 || project.bpm > 400) {
+            throw new StateValidationError(
+                'Project BPM out of valid range'
+            );
         }
     }
-    
-    // 停止同步
-    stopSync(): void {
-        if (this.syncTimer) {
-            clearInterval(this.syncTimer);
-            this.syncTimer = null;
+
+    private validateTracks(tracks: TrackState[]): void {
+        const trackIds = new Set<string>();
+        for (const track of tracks) {
+            if (trackIds.has(track.id)) {
+                throw new StateValidationError(
+                    'Duplicate track ID detected'
+                );
+            }
+            trackIds.add(track.id);
         }
-    }
-    
-    // 同步狀態
-    private async syncState(): Promise<void> {
-        const stateManager = StateManager.getInstance();
-        const persistenceManager = StatePersistenceManager.getInstance();
-        
-        // 保存當前狀態
-        await persistenceManager.saveState();
-        
-        // 觸發同步事件
-        stateManager.dispatch({
-            type: 'state/synced',
-            payload: Date.now()
-        });
     }
 }
 ```
 
-## 6. 最佳實踐
+### 2. 狀態恢復
 
-1. **狀態管理原則**
-   - 使用不可變狀態更新
-   - 集中管理狀態
-   - 避免狀態重複
-   - 保持狀態簡單
+```typescript
+// 實現狀態回滾機制
+class StateRecovery {
+    private stateHistory: AppState[] = [];
+    private maxHistoryLength = 10;
 
-2. **性能優化**
-   - 使用選擇器優化渲染
-   - 實現狀態分片
-   - 避免不必要的更新
-   - 使用狀態緩存
+    constructor(
+        @inject(TYPES.StateManager)
+        private stateManager: StateManager
+    ) {
+        this.stateManager.subscribe(this.saveStateToHistory);
+    }
 
-3. **錯誤處理**
-   - 處理狀態加載錯誤
-   - 處理狀態保存錯誤
-   - 提供錯誤恢復機制
-   - 記錄錯誤日誌
+    private saveStateToHistory = (state: AppState): void => {
+        this.stateHistory.push(JSON.parse(JSON.stringify(state)));
+        if (this.stateHistory.length > this.maxHistoryLength) {
+            this.stateHistory.shift();
+        }
+    };
 
-4. **調試支持**
-   - 提供狀態快照
-   - 支持狀態回放
-   - 提供狀態檢查工具
-   - 支持狀態導出/導入
+    public async rollbackToLastValidState(): Promise<void> {
+        const lastValidState = this.stateHistory.pop();
+        if (lastValidState) {
+            await this.stateManager.resetState(lastValidState);
+        }
+    }
+}
+```
 
-5. **測試策略**
-   - 測試狀態更新
-   - 測試狀態持久化
-   - 測試狀態同步
-   - 測試錯誤處理
+## 最佳實踐
+
+### 1. 狀態設計原則
+
+- 保持狀態扁平化
+- 避免冗餘數據
+- 使用不可變更新
+- 實現數據規範化
+
+### 2. 性能優化建議
+
+- 使用選擇器訪問狀態
+- 實現狀態分片
+- 批量處理更新
+- 避免深層嵌套
+
+### 3. 調試技巧
+
+- 使用狀態快照
+- 實現時間旅行調試
+- 記錄狀態變更
+- 監控更新性能
+
+## 參考資料
+
+- [Redux 文檔](https://redux.js.org/)
+- [Immer 文檔](https://immerjs.github.io/immer/)
+- [MobX 文檔](https://mobx.js.org/)
+- [狀態管理最佳實踐](https://redux.js.org/style-guide/style-guide)

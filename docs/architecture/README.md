@@ -1,164 +1,73 @@
-# DAW 系統架構文檔索引
+# DAW 系統架構文檔
 
-## 系統架構概述
+## 文檔概述
 
-本目錄包含 DAW（Digital Audio Workstation）系統的所有架構相關文檔。系統採用分層架構設計，確保各層之間的職責明確，依賴關係清晰。
+本目錄包含了數字音頻工作站（DAW）系統的架構文檔。這些文檔詳細描述了系統的設計、實現和最佳實踐。
 
 ## 文檔結構
 
-### 1. 基礎架構文檔
+### 1. 系統架構
+- [分層架構](./layered-architecture.md)：系統的整體架構設計
+- [依賴注入](./dependency-injection.md)：依賴注入系統的設計和使用
+- [事件系統](./event-system.md)：事件處理和通信機制
+- [狀態管理](./state-management.md)：應用狀態管理方案
 
-這些文檔描述了系統的基礎架構和核心機制。
+### 2. 核心功能
+- [音頻處理](./audio-processing.md)：音頻處理系統的設計
+- [展示層](./presentation-layer.md)：UI 和交互設計
+- [PixiJS 整合](./pixijs-integration.md)：圖形渲染系統
 
-1. [分層架構設計](layered-architecture.md)
-   - 展示層：UI 組件和用戶交互
-   - 應用層：業務邏輯和流程控制
-   - 領域層：核心業務邏輯和規則
-   - 基礎設施層：技術實現和外部服務
+### 3. 開發指南
+- [開發序列](./development-sequence.md)：開發流程和順序
+- [MVP 目標](./mvp-goals.md)：最小可行產品目標
+- [性能優化](./performance-optimization.md)：性能優化指南
+- [重構指南](./refactoring-guide.md)：代碼重構建議
 
-2. [依賴注入系統](dependency-injection.md)
-   - 容器配置
-   - 服務註冊
-   - 依賴解析
-   - 生命週期管理
+### 4. 參考資料
+- [技術術語](./technical-terms.md)：技術術語表
+- [領域術語](./domain-terms.md)：業務領域術語表
 
-3. [事件系統](event-system.md)
-   - 事件總線
-   - 事件轉換器
-   - 事件日誌
-   - 事件過濾
+## 閱讀指南
 
-4. [狀態管理](state-management.md)
-   - 狀態存儲
-   - 狀態切片
-   - 狀態管理器
-   - 狀態持久化
+### 1. 新手入門
+1. 首先閱讀 [MVP 目標](./mvp-goals.md) 了解產品目標
+2. 閱讀 [分層架構](./layered-architecture.md) 理解系統結構
+3. 查看 [開發序列](./development-sequence.md) 了解開發流程
+4. 參考 [技術術語](./technical-terms.md) 和 [領域術語](./domain-terms.md)
 
-### 2. 核心功能文檔
+### 2. 開發指南
+1. 遵循 [開發序列](./development-sequence.md) 進行開發
+2. 參考 [依賴注入](./dependency-injection.md) 了解服務註冊
+3. 使用 [事件系統](./event-system.md) 處理組件通信
+4. 按照 [展示層](./presentation-layer.md) 實現 UI 組件
 
-這些文檔描述了系統的核心功能和實現細節。
+### 3. 性能優化
+1. 參考 [性能優化](./performance-optimization.md) 進行優化
+2. 遵循 [重構指南](./refactoring-guide.md) 改進代碼質量
 
-1. [音頻處理](audio-processing.md)
-   - 音頻引擎
-   - 音頻處理器
-   - 音頻路由
-   - 音頻緩衝管理
+## 文檔維護
 
-2. [性能優化](performance-optimization.md)
-   - 音頻處理優化
-   - UI 渲染優化
-   - 事件系統優化
-   - 資源管理優化
+### 1. 更新原則
+- 及時更新文檔以反映最新的系統狀態
+- 保持文檔的一致性和準確性
+- 添加實際的代碼示例和使用場景
+- 記錄重要的設計決策和變更原因
 
-3. [UI 實現](pixijs-integration.md)
-   - 渲染引擎設置
-   - 場景管理
-   - 音頻可視化
-   - 交互控制
-   - 性能優化
-   - 動畫系統
+### 2. 文檔格式
+- 使用 Markdown 格式編寫
+- 包含清晰的標題和章節
+- 提供代碼示例和圖表說明
+- 添加相關文檔的鏈接
 
-4. [軌道系統設計](track/README.md)
-   - 軌道模型
-   - 軌道管理
-   - 軌道操作
-   - 軌道渲染
+### 3. 質量要求
+- 文檔內容準確完整
+- 示例代碼可以運行
+- 術語使用統一
+- 結構清晰易懂
 
-### 3. 開發指南文檔
+## 參考資料
 
-這些文檔提供了開發流程和規範指導。
-
-1. [開發順序](development-sequence.md)
-   - 功能開發順序
-   - 依賴關係
-   - 里程碑規劃
-   - 進度追蹤
-
-2. [開發指南](development-guide.md)
-   - 開發環境設置
-   - 代碼規範
-   - 測試要求
-   - 部署流程
-
-3. [重構指南](refactoring-guide.md)
-   - 代碼重構原則
-   - 重構流程
-   - 測試覆蓋
-   - 性能考慮
-
-4. 術語表
-   - [開發名詞表](technical-terms.md)
-     - 架構相關術語
-     - 技術實現術語
-     - 開發工具術語
-     - 性能優化術語
-     - 安全相關術語
-     - 監控和調試術語
-   - [領域名詞表](domain-terms.md)
-     - 音頻參數術語
-     - 音頻處理術語
-     - DAW 核心概念
-     - 音頻編輯術語
-
-### 4. MVP 文檔
-
-1. [MVP 目標](mvp-goals.md)
-   - 核心功能定義
-   - 技術實現方案
-   - 開發優先順序
-   - 驗收標準
-
-## 文檔關係圖
-
-```mermaid
-graph TD
-    A[基礎架構文檔] --> B[核心功能文檔]
-    B --> C[開發指南文檔]
-    D[術語文檔] --> A
-    D --> B
-    D --> C
-    E[MVP 文檔] --> A
-    E --> B
-    E --> C
-```
-
-## 文檔更新記錄
-
-| 日期 | 版本 | 更新內容 | 作者 |
-|------|------|----------|------|
-| 2024-03-28 | 1.0.0 | 初始版本 | System |
-| 2024-03-28 | 1.0.1 | 添加 PixiJS 整合文檔 | System |
-| 2024-03-28 | 1.0.2 | 添加開發順序文檔 | System |
-| 2024-03-29 | 1.0.3 | 添加開發指南文檔 | System |
-| 2024-03-29 | 1.0.4 | 添加軌道系統文檔 | System |
-| 2024-03-29 | 1.0.5 | 添加術語表文檔 | System |
-| 2024-03-29 | 1.0.6 | 添加 MVP 文檔 | System |
-
-## 注意事項
-
-1. **文檔維護**
-   - 所有架構文檔應保持同步更新
-   - 重大架構變更需要更新相關文檔
-   - 保持文檔格式統一
-
-2. **版本控制**
-   - 文檔變更需要記錄在更新記錄中
-   - 重要變更需要進行版本號更新
-   - 保持文檔版本與代碼版本同步
-
-3. **審查流程**
-   - 新增文檔需要經過團隊審查
-   - 重要更新需要團隊討論
-   - 定期檢查文檔完整性
-
-4. **文檔關係**
-   - 基礎架構文檔提供系統框架
-   - 核心功能文檔描述具體實現
-   - 開發指南文檔指導開發流程
-   - 術語表提供統一的術語定義
-
-## 相關資源
-
-- [TypeScript 文檔](https://www.typescriptlang.org/docs/)
-- [PixiJS 文檔](https://pixijs.io/guides)
-- [Web Audio API 文檔](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+- [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+- [React 文檔](https://reactjs.org/docs/getting-started.html)
+- [TypeScript 手冊](https://www.typescriptlang.org/docs/)
+- [PixiJS 文檔](https://pixijs.download/release/docs/index.html)

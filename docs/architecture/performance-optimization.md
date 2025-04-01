@@ -1,594 +1,541 @@
-# DAW 性能優化設計文檔
+# 性能優化指南
 
-## 1. 系統概述
+## 概述
 
-DAW 的性能優化系統主要負責：
+本文檔詳細說明了 DAW 系統的性能優化策略，包括音頻處理、UI 渲染、狀態管理等方面的優化方案。
 
-1. 音頻處理優化
-2. UI 渲染優化
-3. 事件系統優化
-4. 狀態管理優化
-5. 資源管理優化
-6. 性能監控
+## 音頻處理優化
 
-## 2. 音頻處理優化
-
-### 2.1 音頻緩衝區管理
+### 1. 音頻引擎優化
 
 ```typescript
-export class AudioBufferManager {
-    private static instance: AudioBufferManager;
-    private buffers: Map<string, AudioBuffer>;
-    private maxBufferSize: number;
-    private currentMemoryUsage: number;
-    
-    private constructor() {
-        this.buffers = new Map();
-        this.maxBufferSize = 1024 * 1024 * 1024; // 1GB
-        this.currentMemoryUsage = 0;
+class OptimizedAudioEngine {
+    private bufferPool: AudioBufferPool;
+    private workletManager: AudioWorkletManager;
+    private wasmProcessor: WasmAudioProcessor;
+
+    constructor() {
+        this.bufferPool = new AudioBufferPool();
+        this.workletManager = new AudioWorkletManager();
+        this.wasmProcessor = new WasmAudioProcessor();
     }
-    
-    static getInstance(): AudioBufferManager {
-        if (!AudioBufferManager.instance) {
-            AudioBufferManager.instance = new AudioBufferManager();
-        }
-        return AudioBufferManager.instance;
+
+    async processAudio(buffer: AudioBuffer): Promise<AudioBuffer> {
+        // 檢查緩存
+        const cached = this.bufferPool.get(buffer.id);
+        if (cached) return cached;
+
+        // 使用 WebAssembly 處理複雜運算
+        const processed = await this.wasmProcessor.process(buffer);
+
+        // 使用 AudioWorklet 處理實時效果
+        return await this.workletManager.applyEffects(processed);
     }
+}
+```
+
+### 2. 緩衝區管理
+
+```typescript
+class AudioBufferPool {
+    private pool: LRUCache<string, AudioBuffer>;
     
-    // 加載音頻緩衝區
-    async loadBuffer(key: string, audioData: ArrayBuffer): Promise<AudioBuffer> {
-        if (this.currentMemoryUsage + audioData.byteLength > this.maxBufferSize) {
-            await this.evictOldestBuffer();
-        }
-        
-        const buffer = await this.decodeAudioData(audioData);
-        this.buffers.set(key, buffer);
-        this.currentMemoryUsage += buffer.duration * buffer.numberOfChannels * 4; // 4 bytes per sample
-        
-        return buffer;
+    constructor(maxSize: number = 100) {
+        this.pool = new LRUCache(maxSize);
     }
-    
-    // 獲取音頻緩衝區
-    getBuffer(key: string): AudioBuffer | undefined {
-        return this.buffers.get(key);
+
+    add(id: string, buffer: AudioBuffer): void {
+        this.pool.set(id, buffer);
     }
-    
-    // 釋放音頻緩衝區
-    releaseBuffer(key: string): void {
-        const buffer = this.buffers.get(key);
-        if (buffer) {
-            this.currentMemoryUsage -= buffer.duration * buffer.numberOfChannels * 4;
-            this.buffers.delete(key);
-        }
+
+    get(id: string): AudioBuffer | undefined {
+        return this.pool.get(id);
     }
-    
-    // 驅逐最舊的緩衝區
-    private async evictOldestBuffer(): Promise<void> {
-        const oldestKey = this.buffers.keys().next().value;
-        if (oldestKey) {
-            this.releaseBuffer(oldestKey);
-        }
+
+    clear(): void {
+        this.pool.clear();
     }
-    
-    // 解碼音頻數據
-    private async decodeAudioData(audioData: ArrayBuffer): Promise<AudioBuffer> {
-        return new Promise((resolve, reject) => {
-            const audioContext = new AudioContext();
-            audioContext.decodeAudioData(audioData, resolve, reject);
+}
+```
+
+### 3. 音頻工作線程
+
+```typescript
+class AudioWorkletManager {
+    private worklets: Map<string, AudioWorkletNode>;
+
+    async loadWorklet(name: string, url: string): Promise<void> {
+        await audioContext.audioWorklet.addModule(url);
+        const worklet = new AudioWorkletNode(audioContext, name);
+        this.worklets.set(name, worklet);
+    }
+
+    async process(name: string, data: Float32Array): Promise<Float32Array> {
+        const worklet = this.worklets.get(name);
+        if (!worklet) throw new Error(`Worklet ${name} not found`);
+
+        return new Promise((resolve) => {
+            worklet.port.onmessage = (e) => resolve(e.data);
+            worklet.port.postMessage(data);
         });
     }
 }
 ```
 
-### 2.2 音頻處理優化器
+## UI 渲染優化
+
+### 1. 虛擬列表
 
 ```typescript
-export class AudioProcessingOptimizer {
-    private static instance: AudioProcessingOptimizer;
-    private workers: Worker[];
-    private maxWorkers: number;
-    private taskQueue: AudioProcessingTask[];
-    private isProcessing: boolean;
-    
-    private constructor() {
-        this.workers = [];
-        this.maxWorkers = navigator.hardwareConcurrency || 4;
-        this.taskQueue = [];
-        this.isProcessing = false;
-    }
-    
-    static getInstance(): AudioProcessingOptimizer {
-        if (!AudioProcessingOptimizer.instance) {
-            AudioProcessingOptimizer.instance = new AudioProcessingOptimizer();
-        }
-        return AudioProcessingOptimizer.instance;
-    }
-    
-    // 初始化工作線程
-    async initialize(): Promise<void> {
-        for (let i = 0; i < this.maxWorkers; i++) {
-            const worker = new Worker('audio-worker.js');
-            this.workers.push(worker);
-        }
-    }
-    
-    // 添加處理任務
-    addTask(task: AudioProcessingTask): void {
-        this.taskQueue.push(task);
-        if (!this.isProcessing) {
-            this.processQueue();
-        }
-    }
-    
-    // 處理任務隊列
-    private async processQueue(): Promise<void> {
-        if (this.taskQueue.length === 0) {
-            this.isProcessing = false;
-            return;
-        }
-        
-        this.isProcessing = true;
-        const task = this.taskQueue.shift()!;
-        const worker = this.getAvailableWorker();
-        
-        try {
-            const result = await this.processTask(worker, task);
-            task.onComplete(result);
-        } catch (error) {
-            task.onError(error);
-        }
-        
-        this.processQueue();
-    }
-    
-    // 處理單個任務
-    private async processTask(worker: Worker, task: AudioProcessingTask): Promise<any> {
-        return new Promise((resolve, reject) => {
-            worker.onmessage = (event) => {
-                resolve(event.data);
-            };
-            
-            worker.onerror = (error) => {
-                reject(error);
-            };
-            
-            worker.postMessage(task.data);
-        });
-    }
-    
-    // 獲取可用工作線程
-    private getAvailableWorker(): Worker {
-        return this.workers[Math.floor(Math.random() * this.workers.length)];
-    }
-}
-```
-
-## 3. UI 渲染優化
-
-### 3.1 虛擬化列表
-
-```typescript
-export class VirtualizedList<T> {
+class VirtualList<T> {
     private items: T[];
+    private visibleItems: T[];
     private itemHeight: number;
     private containerHeight: number;
-    private scrollTop: number;
-    private visibleItems: T[];
-    private renderItem: (item: T) => HTMLElement;
-    
+    private scrollTop: number = 0;
+
     constructor(
         items: T[],
         itemHeight: number,
-        containerHeight: number,
-        renderItem: (item: T) => HTMLElement
+        containerHeight: number
     ) {
         this.items = items;
         this.itemHeight = itemHeight;
         this.containerHeight = containerHeight;
-        this.scrollTop = 0;
-        this.visibleItems = [];
-        this.renderItem = renderItem;
+        this.updateVisibleItems();
     }
-    
-    // 更新可見項目
-    updateVisibleItems(): void {
+
+    private updateVisibleItems(): void {
         const startIndex = Math.floor(this.scrollTop / this.itemHeight);
-        const visibleCount = Math.ceil(this.containerHeight / this.itemHeight) + 2;
-        
-        this.visibleItems = this.items.slice(
-            startIndex,
-            startIndex + visibleCount
+        const endIndex = Math.min(
+            startIndex + Math.ceil(this.containerHeight / this.itemHeight),
+            this.items.length
         );
+
+        this.visibleItems = this.items.slice(startIndex, endIndex);
     }
-    
-    // 渲染可見項目
-    render(): HTMLElement[] {
-        return this.visibleItems.map(item => this.renderItem(item));
-    }
-    
-    // 設置滾動位置
-    setScrollTop(scrollTop: number): void {
+
+    onScroll(scrollTop: number): void {
         this.scrollTop = scrollTop;
         this.updateVisibleItems();
     }
-}
-```
 
-### 3.2 渲染優化器
-
-```typescript
-export class RenderOptimizer {
-    private static instance: RenderOptimizer;
-    private frameQueue: RenderTask[];
-    private isRendering: boolean;
-    private lastFrameTime: number;
-    private targetFPS: number;
-    
-    private constructor() {
-        this.frameQueue = [];
-        this.isRendering = false;
-        this.lastFrameTime = 0;
-        this.targetFPS = 60;
-    }
-    
-    static getInstance(): RenderOptimizer {
-        if (!RenderOptimizer.instance) {
-            RenderOptimizer.instance = new RenderOptimizer();
-        }
-        return RenderOptimizer.instance;
-    }
-    
-    // 添加渲染任務
-    addTask(task: RenderTask): void {
-        this.frameQueue.push(task);
-        if (!this.isRendering) {
-            this.startRendering();
-        }
-    }
-    
-    // 開始渲染
-    private startRendering(): void {
-        this.isRendering = true;
-        this.renderFrame();
-    }
-    
-    // 渲染幀
-    private renderFrame(): void {
-        const currentTime = performance.now();
-        const frameInterval = 1000 / this.targetFPS;
-        
-        if (currentTime - this.lastFrameTime >= frameInterval) {
-            this.processFrame();
-            this.lastFrameTime = currentTime;
-        }
-        
-        if (this.frameQueue.length > 0) {
-            requestAnimationFrame(() => this.renderFrame());
-        } else {
-            this.isRendering = false;
-        }
-    }
-    
-    // 處理幀
-    private processFrame(): void {
-        const task = this.frameQueue.shift();
-        if (task) {
-            task.execute();
-        }
+    getVisibleItems(): T[] {
+        return this.visibleItems;
     }
 }
 ```
 
-## 4. 事件系統優化
-
-### 4.1 事件批處理器
+### 2. 組件記憶化
 
 ```typescript
-export class EventBatcher {
-    private static instance: EventBatcher;
-    private eventQueue: Event[];
-    private batchSize: number;
-    private batchTimeout: number;
-    private timer: NodeJS.Timeout | null;
-    
-    private constructor() {
-        this.eventQueue = [];
-        this.batchSize = 100;
-        this.batchTimeout = 16; // ~60fps
-        this.timer = null;
+const MemoizedTrackComponent = memo<TrackProps>(
+    ({ track, onVolumeChange, onPanChange }) => {
+        const volume = useMemo(() => track.volume, [track.volume]);
+        const pan = useMemo(() => track.pan, [track.pan]);
+
+        const handleVolumeChange = useCallback(
+            (value: number) => onVolumeChange(track.id, value),
+            [track.id, onVolumeChange]
+        );
+
+        const handlePanChange = useCallback(
+            (value: number) => onPanChange(track.id, value),
+            [track.id, onPanChange]
+        );
+
+        return (
+            <div className="track">
+                <VolumeSlider value={volume} onChange={handleVolumeChange} />
+                <PanKnob value={pan} onChange={handlePanChange} />
+            </div>
+        );
+    },
+    (prev, next) => prev.track.id === next.track.id
+);
+```
+
+### 3. 渲染優化
+
+```typescript
+class RenderOptimizer {
+    private rafId: number | null = null;
+    private updates: Set<() => void> = new Set();
+
+    scheduleUpdate(update: () => void): void {
+        this.updates.add(update);
+        this.scheduleRender();
     }
-    
-    static getInstance(): EventBatcher {
-        if (!EventBatcher.instance) {
-            EventBatcher.instance = new EventBatcher();
+
+    private scheduleRender(): void {
+        if (this.rafId === null) {
+            this.rafId = requestAnimationFrame(() => {
+                this.processUpdates();
+            });
         }
-        return EventBatcher.instance;
     }
-    
-    // 添加事件
-    addEvent(event: Event): void {
-        this.eventQueue.push(event);
-        this.scheduleBatch();
+
+    private processUpdates(): void {
+        this.updates.forEach(update => update());
+        this.updates.clear();
+        this.rafId = null;
     }
-    
-    // 調度批處理
-    private scheduleBatch(): void {
-        if (!this.timer) {
-            this.timer = setTimeout(() => this.processBatch(), this.batchTimeout);
-        }
+
+    cancelUpdate(update: () => void): void {
+        this.updates.delete(update);
     }
-    
-    // 處理事件批次
-    private processBatch(): void {
-        this.timer = null;
-        
-        const batch = this.eventQueue.splice(0, this.batchSize);
-        if (batch.length > 0) {
-            this.processEvents(batch);
-            this.scheduleBatch();
-        }
+}
+```
+
+## 狀態管理優化
+
+### 1. 狀態分片
+
+```typescript
+class StateOptimizer {
+    private slices: Map<string, any> = new Map();
+    private dependencies: Map<string, Set<string>> = new Map();
+
+    registerSlice(name: string, initialState: any): void {
+        this.slices.set(name, initialState);
+        this.dependencies.set(name, new Set());
     }
-    
-    // 處理事件
-    private processEvents(events: Event[]): void {
-        // 按類型分組事件
-        const groupedEvents = this.groupEvents(events);
-        
-        // 處理每組事件
-        Object.entries(groupedEvents).forEach(([type, typeEvents]) => {
-            this.handleEventGroup(type, typeEvents);
+
+    addDependency(slice: string, dependency: string): void {
+        const deps = this.dependencies.get(slice);
+        if (deps) deps.add(dependency);
+    }
+
+    updateSlice(name: string, update: (state: any) => any): void {
+        const state = this.slices.get(name);
+        const newState = update(state);
+        this.slices.set(name, newState);
+
+        // 更新依賴此切片的其他切片
+        this.dependencies.forEach((deps, slice) => {
+            if (deps.has(name)) {
+                this.notifySliceUpdate(slice);
+            }
         });
     }
-    
-    // 分組事件
-    private groupEvents(events: Event[]): Record<string, Event[]> {
-        return events.reduce((groups, event) => {
-            if (!groups[event.type]) {
-                groups[event.type] = [];
-            }
-            groups[event.type].push(event);
-            return groups;
-        }, {} as Record<string, Event[]>);
-    }
-    
-    // 處理事件組
-    private handleEventGroup(type: string, events: Event[]): void {
-        // 實現事件組處理邏輯
+
+    private notifySliceUpdate(name: string): void {
+        // 通知訂閱者
     }
 }
 ```
 
-## 5. 狀態管理優化
-
-### 5.1 狀態選擇器優化器
+### 2. 選擇器優化
 
 ```typescript
-export class StateSelectorOptimizer {
-    private static instance: StateSelectorOptimizer;
-    private memoizedSelectors: Map<string, any>;
-    private lastState: any;
-    
-    private constructor() {
-        this.memoizedSelectors = new Map();
-        this.lastState = null;
-    }
-    
-    static getInstance(): StateSelectorOptimizer {
-        if (!StateSelectorOptimizer.instance) {
-            StateSelectorOptimizer.instance = new StateSelectorOptimizer();
-        }
-        return StateSelectorOptimizer.instance;
-    }
-    
-    // 創建記憶化選擇器
-    createMemoizedSelector<T>(
-        selector: (state: any) => T,
-        key: string
-    ): (state: any) => T {
-        return (state: any): T => {
-            if (this.lastState !== state) {
-                this.lastState = state;
-                this.memoizedSelectors.clear();
+class SelectorOptimizer {
+    private cache: Map<string, any> = new Map();
+    private dependencies: Map<string, Set<string>> = new Map();
+
+    createSelector<T, R>(
+        dependencies: string[],
+        selector: (...args: T[]) => R
+    ): (...args: T[]) => R {
+        const key = dependencies.join(',');
+        
+        return (...args: T[]): R => {
+            const currentDeps = dependencies.map(dep => 
+                JSON.stringify(this.cache.get(dep))
+            ).join(',');
+
+            if (this.cache.has(key)) {
+                const { deps, result } = this.cache.get(key);
+                if (deps === currentDeps) {
+                    return result;
+                }
             }
-            
-            if (!this.memoizedSelectors.has(key)) {
-                this.memoizedSelectors.set(key, selector(state));
-            }
-            
-            return this.memoizedSelectors.get(key);
+
+            const result = selector(...args);
+            this.cache.set(key, {
+                deps: currentDeps,
+                result
+            });
+
+            return result;
         };
     }
-    
-    // 清除記憶化選擇器
-    clearMemoizedSelectors(): void {
-        this.memoizedSelectors.clear();
-        this.lastState = null;
+
+    invalidateCache(): void {
+        this.cache.clear();
     }
 }
 ```
 
-## 6. 資源管理優化
+## 記憶體優化
 
-### 6.1 資源加載器
+### 1. 對象池
 
 ```typescript
-export class ResourceLoader {
-    private static instance: ResourceLoader;
-    private loadingQueue: Resource[];
-    private loadingTasks: Map<string, Promise<any>>;
-    private maxConcurrentLoads: number;
-    
-    private constructor() {
-        this.loadingQueue = [];
-        this.loadingTasks = new Map();
-        this.maxConcurrentLoads = 4;
-    }
-    
-    static getInstance(): ResourceLoader {
-        if (!ResourceLoader.instance) {
-            ResourceLoader.instance = new ResourceLoader();
-        }
-        return ResourceLoader.instance;
-    }
-    
-    // 加載資源
-    async loadResource(resource: Resource): Promise<any> {
-        if (this.loadingTasks.has(resource.id)) {
-            return this.loadingTasks.get(resource.id);
-        }
-        
-        const loadPromise = this.loadResourceInternal(resource);
-        this.loadingTasks.set(resource.id, loadPromise);
-        
-        try {
-            const result = await loadPromise;
-            return result;
-        } finally {
-            this.loadingTasks.delete(resource.id);
-            this.processQueue();
+class ObjectPool<T> {
+    private pool: T[] = [];
+    private factory: () => T;
+    private reset: (item: T) => void;
+
+    constructor(
+        factory: () => T,
+        reset: (item: T) => void,
+        initialSize: number = 0
+    ) {
+        this.factory = factory;
+        this.reset = reset;
+
+        // 預先創建對象
+        for (let i = 0; i < initialSize; i++) {
+            this.pool.push(this.factory());
         }
     }
-    
-    // 內部加載邏輯
-    private async loadResourceInternal(resource: Resource): Promise<any> {
-        // 實現資源加載邏輯
-        return null;
+
+    acquire(): T {
+        return this.pool.pop() || this.factory();
     }
-    
-    // 處理加載隊列
-    private processQueue(): void {
-        while (
-            this.loadingQueue.length > 0 &&
-            this.loadingTasks.size < this.maxConcurrentLoads
-        ) {
-            const resource = this.loadingQueue.shift()!;
-            this.loadResource(resource);
-        }
+
+    release(item: T): void {
+        this.reset(item);
+        this.pool.push(item);
+    }
+
+    clear(): void {
+        this.pool = [];
     }
 }
 ```
 
-## 7. 性能監控
-
-### 7.1 性能監視器
+### 2. 記憶體監控
 
 ```typescript
-export class PerformanceMonitor {
-    private static instance: PerformanceMonitor;
-    private metrics: Map<string, PerformanceMetric[]>;
-    private maxMetricsPerType: number;
-    
-    private constructor() {
-        this.metrics = new Map();
-        this.maxMetricsPerType = 1000;
+class MemoryMonitor {
+    private maxMemory: number;
+    private warningThreshold: number;
+    private criticalThreshold: number;
+
+    constructor(
+        maxMemory: number,
+        warningThreshold: number = 0.7,
+        criticalThreshold: number = 0.9
+    ) {
+        this.maxMemory = maxMemory;
+        this.warningThreshold = warningThreshold;
+        this.criticalThreshold = criticalThreshold;
     }
-    
-    static getInstance(): PerformanceMonitor {
-        if (!PerformanceMonitor.instance) {
-            PerformanceMonitor.instance = new PerformanceMonitor();
-        }
-        return PerformanceMonitor.instance;
-    }
-    
-    // 記錄性能指標
-    recordMetric(type: string, value: number): void {
-        if (!this.metrics.has(type)) {
-            this.metrics.set(type, []);
-        }
-        
-        const metrics = this.metrics.get(type)!;
-        metrics.push({
-            value,
-            timestamp: Date.now()
-        });
-        
-        if (metrics.length > this.maxMetricsPerType) {
-            metrics.shift();
+
+    checkMemory(): void {
+        const used = performance.memory.usedJSHeapSize;
+        const total = performance.memory.totalJSHeapSize;
+        const ratio = used / total;
+
+        if (ratio > this.criticalThreshold) {
+            this.handleCriticalMemory();
+        } else if (ratio > this.warningThreshold) {
+            this.handleWarningMemory();
         }
     }
-    
-    // 獲取性能報告
-    getReport(): PerformanceReport {
-        const report: PerformanceReport = {};
-        
-        this.metrics.forEach((metrics, type) => {
-            report[type] = {
-                average: this.calculateAverage(metrics),
-                min: this.calculateMin(metrics),
-                max: this.calculateMax(metrics),
-                p95: this.calculatePercentile(metrics, 95),
-                p99: this.calculatePercentile(metrics, 99)
-            };
-        });
-        
-        return report;
+
+    private handleWarningMemory(): void {
+        // 發出警告
+        console.warn('Memory usage is high');
     }
-    
-    // 計算平均值
-    private calculateAverage(metrics: PerformanceMetric[]): number {
-        const sum = metrics.reduce((acc, metric) => acc + metric.value, 0);
-        return sum / metrics.length;
-    }
-    
-    // 計算最小值
-    private calculateMin(metrics: PerformanceMetric[]): number {
-        return Math.min(...metrics.map(metric => metric.value));
-    }
-    
-    // 計算最大值
-    private calculateMax(metrics: PerformanceMetric[]): number {
-        return Math.max(...metrics.map(metric => metric.value));
-    }
-    
-    // 計算百分位數
-    private calculatePercentile(metrics: PerformanceMetric[], percentile: number): number {
-        const sorted = [...metrics].sort((a, b) => a.value - b.value);
-        const index = Math.ceil((percentile / 100) * sorted.length) - 1;
-        return sorted[index].value;
+
+    private handleCriticalMemory(): void {
+        // 強制垃圾回收
+        // 清理緩存
+        // 釋放非必要資源
     }
 }
 ```
 
-## 8. 最佳實踐
+## 網絡優化
 
-1. **音頻處理優化**
-   - 使用 Web Audio API 的離線處理
-   - 實現音頻緩衝區管理
-   - 使用 Web Workers 進行音頻處理
-   - 優化音頻採樣率和位深度
+### 1. 資源加載
 
-2. **UI 渲染優化**
-   - 實現虛擬化列表
-   - 使用 requestAnimationFrame
-   - 避免不必要的重渲染
-   - 優化 DOM 操作
+```typescript
+class ResourceLoader {
+    private cache: Map<string, any> = new Map();
+    private loading: Map<string, Promise<any>> = new Map();
 
-3. **事件系統優化**
-   - 實現事件批處理
-   - 使用事件委託
-   - 優化事件監聽器
-   - 實現事件節流和防抖
+    async load(url: string): Promise<any> {
+        // 檢查緩存
+        if (this.cache.has(url)) {
+            return this.cache.get(url);
+        }
 
-4. **狀態管理優化**
-   - 使用記憶化選擇器
-   - 實現狀態分片
-   - 優化狀態更新
-   - 使用不可變數據結構
+        // 檢查是否正在加載
+        if (this.loading.has(url)) {
+            return this.loading.get(url);
+        }
 
-5. **資源管理優化**
-   - 實現資源預加載
-   - 優化資源加載順序
-   - 實現資源緩存
-   - 優化資源釋放
+        // 開始加載
+        const promise = fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                this.cache.set(url, data);
+                this.loading.delete(url);
+                return data;
+            });
 
-6. **性能監控**
-   - 實現性能指標收集
-   - 監控關鍵性能指標
-   - 分析性能瓶頸
-   - 優化性能報告
+        this.loading.set(url, promise);
+        return promise;
+    }
 
-7. **調試支持**
-   - 提供性能分析工具
-   - 支持性能日誌
-   - 實現性能警告
-   - 提供性能優化建議
+    preload(urls: string[]): void {
+        urls.forEach(url => this.load(url));
+    }
+}
+```
+
+### 2. 數據壓縮
+
+```typescript
+class DataCompressor {
+    compress(data: ArrayBuffer): Promise<ArrayBuffer> {
+        return new Promise((resolve, reject) => {
+            const compressed = pako.deflate(data);
+            resolve(compressed.buffer);
+        });
+    }
+
+    decompress(data: ArrayBuffer): Promise<ArrayBuffer> {
+        return new Promise((resolve, reject) => {
+            const decompressed = pako.inflate(data);
+            resolve(decompressed.buffer);
+        });
+    }
+}
+```
+
+## 監控和分析
+
+### 1. 性能監控
+
+```typescript
+class PerformanceMonitor {
+    private metrics: Map<string, number[]> = new Map();
+    private thresholds: Map<string, number> = new Map();
+
+    measure(name: string, operation: () => void): void {
+        const start = performance.now();
+        operation();
+        const duration = performance.now() - start;
+
+        const measurements = this.metrics.get(name) || [];
+        measurements.push(duration);
+        this.metrics.set(name, measurements);
+
+        this.checkThreshold(name, duration);
+    }
+
+    async measureAsync(
+        name: string,
+        operation: () => Promise<void>
+    ): Promise<void> {
+        const start = performance.now();
+        await operation();
+        const duration = performance.now() - start;
+
+        const measurements = this.metrics.get(name) || [];
+        measurements.push(duration);
+        this.metrics.set(name, measurements);
+
+        this.checkThreshold(name, duration);
+    }
+
+    setThreshold(name: string, threshold: number): void {
+        this.thresholds.set(name, threshold);
+    }
+
+    private checkThreshold(name: string, duration: number): void {
+        const threshold = this.thresholds.get(name);
+        if (threshold && duration > threshold) {
+            console.warn(
+                `Performance warning: ${name} took ${duration}ms ` +
+                `(threshold: ${threshold}ms)`
+            );
+        }
+    }
+
+    getMetrics(name: string): {
+        avg: number;
+        min: number;
+        max: number;
+        count: number;
+    } {
+        const measurements = this.metrics.get(name) || [];
+        return {
+            avg: measurements.reduce((a, b) => a + b, 0) / measurements.length,
+            min: Math.min(...measurements),
+            max: Math.max(...measurements),
+            count: measurements.length
+        };
+    }
+}
+```
+
+### 2. 錯誤追蹤
+
+```typescript
+class ErrorTracker {
+    private errors: Error[] = [];
+    private maxErrors: number = 100;
+
+    track(error: Error): void {
+        this.errors.push({
+            ...error,
+            timestamp: new Date(),
+            stack: error.stack
+        });
+
+        if (this.errors.length > this.maxErrors) {
+            this.errors.shift();
+        }
+
+        this.reportError(error);
+    }
+
+    private reportError(error: Error): void {
+        // 發送錯誤報告
+        console.error('Error tracked:', error);
+    }
+
+    getErrors(): Error[] {
+        return this.errors;
+    }
+
+    clear(): void {
+        this.errors = [];
+    }
+}
+```
+
+## 最佳實踐
+
+### 1. 性能優化原則
+
+- 使用適當的數據結構
+- 實現緩存機制
+- 優化渲染性能
+- 管理記憶體使用
+
+### 2. 監控建議
+
+- 實時監控性能指標
+- 追蹤錯誤和異常
+- 分析性能瓶頸
+- 優化關鍵路徑
+
+### 3. 調試技巧
+
+- 使用性能分析工具
+- 監控記憶體使用
+- 追蹤性能問題
+- 優化加載時間
+
+## 參考資料
+
+- [Web Performance](https://web.dev/performance)
+- [React Performance](https://reactjs.org/docs/optimizing-performance.html)
+- [Memory Management](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management)
+- [Performance API](https://developer.mozilla.org/en-US/docs/Web/API/Performance)

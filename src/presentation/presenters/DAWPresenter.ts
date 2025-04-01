@@ -1,87 +1,93 @@
 import { injectable, inject } from 'inversify';
 import { TYPES } from '../../core/di/types';
-import { DAWManager } from '../../core/DAWManager';
+import { UIEventBus } from '../../core/events/UIEventBus';
+import { DomainEventBus } from '../../core/events/DomainEventBus';
 import { ClipViewModel } from '../models/ClipViewModel';
-import { EventEmitter } from '../../core/events/EventEmitter';
-
-export interface DAWPresenterEvents {
-  onClipAdded: (clip: ClipViewModel) => void;
-  onClipRemoved: (clipId: string) => void;
-  onClipUpdated: (clip: ClipViewModel) => void;
-  onPlayheadMoved: (position: number) => void;
-  onPlaybackStateChanged: (isPlaying: boolean) => void;
-}
+import { UIEventPayload, DomainEventPayload } from '../../core/events/types';
 
 @injectable()
-export class DAWPresenter extends EventEmitter {
+export class DAWPresenter {
+  private clips: Map<string, ClipViewModel> = new Map();
+
   constructor(
-    @inject(TYPES.DAWManager) private dawManager: DAWManager
+    @inject(TYPES.UIEventBus) private uiEventBus: UIEventBus,
+    @inject(TYPES.DomainEventBus) private domainEventBus: DomainEventBus
   ) {
-    super();
-    this.initializeEventListeners();
+    this.initializeEventHandlers();
   }
 
-  private initializeEventListeners(): void {
-    // 監聽來自 Domain Layer 的事件
-    this.dawManager.on('onAddClip', (clip: any) => {
-      const viewModel = ClipViewModel.fromDomain(clip);
-      this.emit('onClipAdded', viewModel);
-    });
+  private initializeEventHandlers(): void {
+    // 監聽領域事件
+    this.domainEventBus.on('domain:clip:added', this.handleClipAdded.bind(this));
+    this.domainEventBus.on('domain:clip:moved', this.handleClipMoved.bind(this));
+    this.domainEventBus.on('domain:clip:deleted', this.handleClipDeleted.bind(this));
+  }
 
-    this.dawManager.on('onRemoveClip', (clipId: string) => {
-      this.emit('onClipRemoved', clipId);
-    });
-
-    this.dawManager.on('onUpdateClip', (clip: any) => {
-      const viewModel = ClipViewModel.fromDomain(clip);
-      this.emit('onClipUpdated', viewModel);
-    });
-
-    this.dawManager.on('onPlayheadMove', (position: number) => {
-      this.emit('onPlayheadMoved', position);
-    });
-
-    this.dawManager.on('onPlaybackStateChange', (isPlaying: boolean) => {
-      this.emit('onPlaybackStateChanged', isPlaying);
+  // 公共方法 - UI 操作
+  public addClip(audioUrl: string, position: number, duration: number, trackId: string): void {
+    this.uiEventBus.emit('ui:clip:add', {
+      audioUrl,
+      position,
+      duration,
+      trackId
     });
   }
 
-  // Presentation Layer 的操作方法
-  public addClip(clip: ClipViewModel): void {
-    this.dawManager.addClip(clip.toDomain());
+  public moveClip(clipId: string, newPosition: number, trackId: string): void {
+    this.uiEventBus.emit('ui:clip:move', {
+      clipId,
+      newPosition,
+      trackId
+    });
   }
 
-  public removeClip(clipId: string): void {
-    this.dawManager.removeClip(clipId);
+  public deleteClip(clipId: string): void {
+    this.uiEventBus.emit('ui:clip:delete', {
+      clipId
+    });
   }
 
-  public updateClip(clip: ClipViewModel): void {
-    this.dawManager.updateClip(clip.toDomain());
+  // 領域事件處理器
+  private handleClipAdded(payload: DomainEventPayload['domain:clip:added']): void {
+    const { clip } = payload;
+    this.clips.set(clip.id, clip);
+    this.updateView();
   }
 
-  public movePlayhead(position: number): void {
-    this.dawManager.movePlayhead(position);
+  private handleClipMoved(payload: DomainEventPayload['domain:clip:moved']): void {
+    const { clipId, newStartTime, trackId } = payload;
+    const clip = this.clips.get(clipId);
+    if (clip) {
+      clip.startTime = newStartTime;
+      clip.position = newStartTime;
+      clip.trackId = trackId;
+      this.updateView();
+    }
   }
 
-  public togglePlayback(): void {
-    this.dawManager.togglePlayback();
+  private handleClipDeleted(payload: DomainEventPayload['domain:clip:deleted']): void {
+    const { clipId } = payload;
+    this.clips.delete(clipId);
+    this.updateView();
+  }
+
+  // 視圖更新
+  private updateView(): void {
+    // 這裡將添加視圖更新邏輯
+    console.debug('[DAWPresenter] Clips updated:', Array.from(this.clips.values()));
+  }
+
+  // 獲取當前狀態
+  public getClips(): ClipViewModel[] {
+    return Array.from(this.clips.values());
+  }
+
+  public getClipById(id: string): ClipViewModel | undefined {
+    return this.clips.get(id);
   }
 
   public dispose(): void {
-    this.removeAllListeners();
-    // 清理其他資源...
-  }
-
-  // 添加 EventEmitter 方法的類型定義
-  public on(event: keyof DAWPresenterEvents, listener: (...args: any[]) => void): this {
-    return super.on(event, listener);
-  }
-
-  public off(event: keyof DAWPresenterEvents, listener: (...args: any[]) => void): this {
-    return super.off(event, listener);
-  }
-
-  public emit(event: keyof DAWPresenterEvents, ...args: any[]): boolean {
-    return super.emit(event, ...args);
+    // 清理事件監聽器
+    this.domainEventBus.removeAllListeners();
   }
 } 

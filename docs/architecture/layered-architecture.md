@@ -966,3 +966,317 @@ src/
    - 易於模擬依賴
    - 清晰的接口
    - 可預測的行為
+
+# 分層架構設計
+
+## 架構概述
+
+本系統採用清晰的分層架構設計，每一層都有明確的職責和邊界。這種設計可以提高代碼的可維護性、可測試性和可擴展性。
+
+```mermaid
+graph TD
+    A[展示層 Presentation Layer] --> B[應用層 Application Layer]
+    B --> C[領域層 Domain Layer]
+    C --> D[基礎設施層 Infrastructure Layer]
+    
+    E[事件系統 Event System] --> A
+    E --> B
+    E --> C
+    E --> D
+    
+    F[依賴注入 DI System] --> A
+    F --> B
+    F --> C
+    F --> D
+```
+
+## 分層詳解
+
+### 1. 展示層（Presentation Layer）
+
+#### 職責
+- 處理用戶界面和交互
+- 管理視圖狀態
+- 處理用戶輸入
+- 展示數據和反饋
+
+#### 核心組件
+- **React 組件**：UI 渲染和交互
+- **Presenter**：業務邏輯和數據轉換
+- **ViewModel**：視圖數據模型
+- **事件處理器**：用戶操作響應
+
+#### 關鍵實現
+```typescript
+// Presenter 示例
+@injectable()
+class TrackPresenter {
+    constructor(
+        @inject(TYPES.TrackService) private trackService: TrackService,
+        @inject(TYPES.EventBus) private eventBus: EventBus
+    ) {}
+
+    async createTrack(name: string): Promise<void> {
+        const track = await this.trackService.createTrack(name);
+        this.eventBus.emit('track:created', track);
+    }
+}
+
+// ViewModel 示例
+interface TrackViewModel {
+    id: string;
+    name: string;
+    volume: number;
+    pan: number;
+    isMuted: boolean;
+    isSoloed: boolean;
+}
+```
+
+### 2. 應用層（Application Layer）
+
+#### 職責
+- 協調業務流程
+- 處理用戶操作
+- 管理應用狀態
+- 處理事件轉換
+
+#### 核心組件
+- **Service**：業務邏輯服務
+- **EventHandler**：事件處理器
+- **StateManager**：狀態管理
+- **CommandHandler**：命令處理器
+
+#### 關鍵實現
+```typescript
+// Service 示例
+@injectable()
+class TrackService {
+    constructor(
+        @inject(TYPES.TrackRepository) private trackRepo: TrackRepository,
+        @inject(TYPES.AudioEngine) private audioEngine: AudioEngine
+    ) {}
+
+    async createTrack(name: string): Promise<Track> {
+        const track = new Track(name);
+        await this.trackRepo.save(track);
+        this.audioEngine.createAudioTrack(track.id);
+        return track;
+    }
+}
+```
+
+### 3. 領域層（Domain Layer）
+
+#### 職責
+- 實現核心業務邏輯
+- 定義領域模型
+- 維護業務規則
+- 處理領域事件
+
+#### 核心組件
+- **Entity**：領域實體
+- **ValueObject**：值對象
+- **DomainEvent**：領域事件
+- **Repository**：數據訪問接口
+
+#### 關鍵實現
+```typescript
+// Entity 示例
+class Track extends Entity {
+    private _volume: number = 1;
+    private _pan: number = 0;
+    private _clips: Clip[] = [];
+
+    constructor(
+        public readonly name: string,
+        public readonly id: string = uuid()
+    ) {
+        super();
+    }
+
+    addClip(clip: Clip): void {
+        if (this.hasOverlappingClip(clip)) {
+            throw new DomainError('Clip overlaps with existing clip');
+        }
+        this._clips.push(clip);
+    }
+}
+
+// Repository 接口示例
+interface TrackRepository {
+    save(track: Track): Promise<void>;
+    findById(id: string): Promise<Track | null>;
+    findAll(): Promise<Track[]>;
+    delete(id: string): Promise<void>;
+}
+```
+
+### 4. 基礎設施層（Infrastructure Layer）
+
+#### 職責
+- 提供技術實現
+- 處理外部集成
+- 管理資源訪問
+- 實現持久化
+
+#### 核心組件
+- **AudioEngine**：音頻引擎
+- **StorageService**：存儲服務
+- **EventBus**：事件總線
+- **Logger**：日誌服務
+
+#### 關鍵實現
+```typescript
+// AudioEngine 示例
+@injectable()
+class AudioEngine {
+    private context: AudioContext;
+    private tracks: Map<string, AudioTrack>;
+
+    constructor() {
+        this.context = new AudioContext();
+        this.tracks = new Map();
+    }
+
+    createAudioTrack(id: string): void {
+        const track = new AudioTrack(this.context);
+        this.tracks.set(id, track);
+    }
+}
+
+// StorageService 示例
+@injectable()
+class LocalStorageService implements StorageService {
+    private prefix = 'daw_';
+
+    async save<T>(key: string, data: T): Promise<void> {
+        localStorage.setItem(
+            this.prefix + key,
+            JSON.stringify(data)
+        );
+    }
+}
+```
+
+## 跨層級機制
+
+### 1. 依賴注入（DI）
+
+- 使用 Inversify 實現依賴注入
+- 通過接口定義服務契約
+- 支持生命週期管理
+- 便於單元測試
+
+### 2. 事件系統
+
+- 採用發布/訂閱模式
+- 支持同步和異步事件
+- 實現層級間的解耦
+- 提供事件追蹤
+
+### 3. 錯誤處理
+
+- 定義領域錯誤類型
+- 實現錯誤轉換機制
+- 統一錯誤處理流程
+- 提供錯誤追蹤
+
+## 開發規範
+
+### 1. 依賴原則
+
+- 遵循依賴倒置原則
+- 避免跨層級直接依賴
+- 通過接口進行通信
+- 保持層級邊界清晰
+
+### 2. 命名規範
+
+- 使用明確的命名約定
+- 遵循領域驅動設計術語
+- 保持命名一致性
+- 避免技術實現相關命名
+
+### 3. 文件組織
+
+- 按層級組織源代碼
+- 遵循模塊化原則
+- 保持相關代碼集中
+- 避免循環依賴
+
+## 測試策略
+
+### 1. 單元測試
+
+- 針對各層級的獨立組件
+- 使用模擬對象隔離依賴
+- 驗證業務邏輯正確性
+- 保持測試代碼簡潔
+
+### 2. 集成測試
+
+- 驗證層級間的交互
+- 測試關鍵業務流程
+- 檢查事件處理機制
+- 驗證數據一致性
+
+### 3. 端到端測試
+
+- 模擬用戶操作場景
+- 驗證系統整體功能
+- 檢查性能指標
+- 測試錯誤處理
+
+## 性能考慮
+
+### 1. 數據流優化
+
+- 減少跨層級數據傳遞
+- 優化數據結構設計
+- 實現數據緩存機制
+- 避免不必要的轉換
+
+### 2. 事件優化
+
+- 合理使用事件機制
+- 避免事件風暴
+- 實現事件批處理
+- 優化事件傳播路徑
+
+### 3. 資源管理
+
+- 及時釋放資源
+- 實現資源池化
+- 控制內存使用
+- 優化 CPU 使用
+
+## 擴展性設計
+
+### 1. 插件機制
+
+- 定義插件接口
+- 支持動態加載
+- 實現功能擴展
+- 保持核心穩定
+
+### 2. 配置管理
+
+- 支持外部配置
+- 實現運行時配置
+- 管理環境變量
+- 控制功能開關
+
+### 3. 版本兼容
+
+- 實現版本管理
+- 處理向後兼容
+- 支持平滑升級
+- 維護接口穩定
+
+## 參考資料
+
+- [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+- [Domain-Driven Design](https://domainlanguage.com/ddd/)
+- [Onion Architecture](https://jeffreypalermo.com/2008/07/the-onion-architecture-part-1/)
+- [SOLID Principles](https://en.wikipedia.org/wiki/SOLID)

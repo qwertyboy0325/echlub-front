@@ -27,17 +27,29 @@ export const TYPES = {
     LayoutService: Symbol.for('LayoutService'),
     
     // Presenters
-    DAWPresenter: Symbol.for('DAWPresenter')
-};
+    DAWPresenter: Symbol.for('DAWPresenter'),
+
+    // 事件系統相關
+    UIEventBus: Symbol.for('UIEventBus'),
+    DomainEventBus: Symbol.for('DomainEventBus'),
+    EventTranslator: Symbol.for('EventTranslator'),
+} as const;
 
 // 定義介面
-export interface IAudioContext extends BaseAudioContext {
-    onInit(): void;
-    onDestroy(): void;
+export interface IAudioContext {
+    onInit(): Promise<void>;
+    onDestroy(): Promise<void>;
     getContext(): AudioContext | null;
     resume(): Promise<void>;
     suspend(): Promise<void>;
     close(): Promise<void>;
+    readonly currentTime: number;
+    readonly sampleRate: number;
+    readonly state: AudioContextState;
+    decodeAudioData(arrayBuffer: ArrayBuffer): Promise<AudioBuffer>;
+    createGain(): GainNode;
+    createOscillator(): OscillatorNode;
+    createBufferSource(): AudioBufferSourceNode;
 }
 
 export interface IEventBus {
@@ -49,10 +61,9 @@ export interface IEventBus {
 }
 
 export interface IAudioEngine {
-    onInit(): void;
-    onDestroy(): void;
     context: IAudioContext;
-    eventBus: IEventBus;
+    onInit(): Promise<void>;
+    onDestroy(): Promise<void>;
     play(): void;
     pause(): void;
     stop(): void;
@@ -60,4 +71,5 @@ export interface IAudioEngine {
     getCurrentTime(): number;
     setBPM(bpm: number): void;
     getBPM(): number;
+    loadAudio(file: File): Promise<string>;
 } 

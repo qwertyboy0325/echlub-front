@@ -1,239 +1,140 @@
-import React, { useEffect, useRef } from 'react';
-import * as PIXI from 'pixi.js';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { inject, injectable } from 'inversify';
+import { TYPES } from '../../core/di/types';
 import { DAWPresenter } from '../presenters/DAWPresenter';
+import { RenderEngine } from '../graphics/RenderEngine';
+import { DAWScene } from '../graphics/DAWScene';
+import { DragSystem } from '../graphics/DragSystem';
 import { ClipViewModel } from '../models/ClipViewModel';
 
 interface DAWViewProps {
   width: number;
   height: number;
-  presenter: DAWPresenter | null;
+  presenter: DAWPresenter;
 }
 
-interface DraggableContainer extends PIXI.Container {
-  dragging?: boolean;
-}
-
-const TIMELINE_HEIGHT = 30;
-const TRACK_HEIGHT = 80;
-const TRACK_COUNT = 8;
-const PIXELS_PER_SECOND = 100;
-const CLIP_HEIGHT = TRACK_HEIGHT - 10;
-
-/**
- * DAW 視圖組件
- * 使用 PixiJS 渲染 DAW 界面
- */
 export const DAWView: React.FC<DAWViewProps> = ({ width, height, presenter }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const appRef = useRef<PIXI.Application | null>(null);
-  const clipsContainerRef = useRef<PIXI.Container | null>(null);
-  const isInitializedRef = useRef(false);
+  const renderEngineRef = useRef<RenderEngine | null>(null);
+  const dawSceneRef = useRef<DAWScene | null>(null);
+  const dragSystemRef = useRef<DragSystem | null>(null);
 
-  const drawTimeline = () => {
-    if (!appRef.current) return;
+  const initializeEngine = useCallback(() => {
+    if (!canvasRef.current) return;
 
-    const timeline = new PIXI.Container();
-    timeline.y = 0;
+    // 初始化渲染引擎
+    const renderEngine = new RenderEngine({
+      view: canvasRef.current,
+      width,
+      height,
+      backgroundColor: 0x1e1e1e,
+      antialias: true
+    });
 
-    // Draw background
-    const background = new PIXI.Graphics();
-    background.beginFill(0x1a1a1a);
-    background.drawRect(0, 0, width, TIMELINE_HEIGHT);
-    background.endFill();
-    timeline.addChild(background);
+    // 初始化場景
+    const dawScene = new DAWScene(renderEngine, {
+      width,
+      height,
+      trackCount: 8,
+      pixelsPerSecond: 100
+    });
 
-    // Draw time markers
-    const graphics = new PIXI.Graphics();
-    graphics.lineStyle(1, 0x333333);
+    // 初始化拖拽系統
+    const dragSystem = new DragSystem(dawScene);
 
-    for (let i = 0; i <= width; i += PIXELS_PER_SECOND) {
-      const seconds = i / PIXELS_PER_SECOND;
-      const minutes = Math.floor(seconds / 60);
-      const remainingSeconds = Math.floor(seconds % 60);
-      const timeText = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    // 設置拖拽事件處理
+    dragSystem.onClipDragStart = (clipId: string) => {
+      console.debug('[DAWView] Clip drag start:', clipId);
+    };
 
-      graphics.moveTo(i, 0);
-      graphics.lineTo(i, TIMELINE_HEIGHT);
+    dragSystem.onClipDragMove = (clipId: string, position: number, trackId: string) => {
+      presenter.moveClip(clipId, position, trackId);
+    };
 
-      const text = new PIXI.Text(timeText, {
-        fontFamily: 'Arial',
-        fontSize: 10,
-        fill: 0x888888
-      });
-      text.x = i + 2;
-      text.y = 2;
-      timeline.addChild(text);
-    }
+    dragSystem.onClipDragEnd = (clipId: string, position: number, trackId: string) => {
+      presenter.moveClip(clipId, position, trackId);
+    };
 
-    timeline.addChild(graphics);
-    appRef.current.stage.addChild(timeline);
-  };
+    // 保存引用
+    renderEngineRef.current = renderEngine;
+    dawSceneRef.current = dawScene;
+    dragSystemRef.current = dragSystem;
 
-  const drawTracks = () => {
-    if (!appRef.current) return;
+    // 初始化視圖
+    updateView(presenter.getClips());
+  }, [width, height, presenter]);
 
-    const tracks = new PIXI.Container();
-    tracks.y = TIMELINE_HEIGHT;
+  const updateView = useCallback((clips: ClipViewModel[]) => {
+    if (!dawSceneRef.current) return;
+    dawSceneRef.current.updateClips(clips);
+  }, []);
 
-    for (let i = 0; i < TRACK_COUNT; i++) {
-      const track = new PIXI.Container();
-      track.y = i * TRACK_HEIGHT;
-
-      // Draw track background
-      const background = new PIXI.Graphics();
-      background.beginFill(i % 2 === 0 ? 0x2a2a2a : 0x252525);
-      background.drawRect(0, 0, width, TRACK_HEIGHT);
-      background.endFill();
-      track.addChild(background);
-
-      // Add track label
-      const label = new PIXI.Text(`Track ${i + 1}`, {
-        fontFamily: 'Arial',
-        fontSize: 12,
-        fill: 0x888888
-      });
-      label.x = 5;
-      label.y = 5;
-      track.addChild(label);
-
-      tracks.addChild(track);
-    }
-
-    appRef.current.stage.addChild(tracks);
-  };
-
-  // Initialize PixiJS application
+  // 處理組件掛載和卸載
   useEffect(() => {
-    if (!canvasRef.current || !width || !height || isInitializedRef.current) return;
+    // 等待 DOM 更新後初始化
+    requestAnimationFrame(() => {
+      initializeEngine();
+    });
 
-    console.log('Initializing PixiJS with dimensions:', width, height);
-
-    try {
-      const app = new PIXI.Application({
-        view: canvasRef.current,
-        width,
-        height,
-        backgroundColor: 0x2c2c2c,
-        antialias: true,
-        resolution: window.devicePixelRatio || 1,
-        eventMode: 'static'
-      });
-
-      if (canvasRef.current) {
-        canvasRef.current.style.width = '100%';
-        canvasRef.current.style.height = '100%';
-        canvasRef.current.style.display = 'block';
+    return () => {
+      // 清理資源
+      if (renderEngineRef.current) {
+        renderEngineRef.current.dispose();
       }
+      if (dragSystemRef.current) {
+        dragSystemRef.current.dispose();
+      }
+      if (dawSceneRef.current) {
+        dawSceneRef.current.dispose();
+      }
+    };
+  }, [initializeEngine]);
 
-      appRef.current = app;
-      isInitializedRef.current = true;
-
-      // Create main container for clips
-      const clipsContainer = new PIXI.Container();
-      clipsContainer.y = TIMELINE_HEIGHT;
-      clipsContainerRef.current = clipsContainer;
-      app.stage.addChild(clipsContainer);
-
-      // Draw timeline and tracks
-      drawTimeline();
-      drawTracks();
-
-      console.log('PixiJS application initialized successfully');
-
-      return () => {
-        if (app) {
-          app.destroy(true);
-        }
-      };
-    } catch (error) {
-      console.error('Failed to initialize PixiJS application:', error);
-    }
+  // 處理尺寸變化
+  useEffect(() => {
+    if (!renderEngineRef.current || !dawSceneRef.current) return;
+    renderEngineRef.current.resize(width, height);
+    dawSceneRef.current.resize(width, height);
   }, [width, height]);
 
-  const createClipContainer = (clip: ClipViewModel): DraggableContainer => {
-    console.log('Creating clip container:', clip);
-    const container = new PIXI.Container() as DraggableContainer;
-    container.name = clip.id;
-    container.x = clip.position * PIXELS_PER_SECOND;
-    container.y = clip.trackId ? parseInt(clip.trackId) * TRACK_HEIGHT : 0;
-    container.eventMode = 'static';
-
-    // Create clip background
-    const background = new PIXI.Graphics();
-    background.beginFill(0x4a90e2);
-    background.drawRoundedRect(0, 0, clip.duration * PIXELS_PER_SECOND, CLIP_HEIGHT, 4);
-    background.endFill();
-    container.addChild(background);
-
-    // Add clip label
-    const label = new PIXI.Text(clip.name, {
-      fontFamily: 'Arial',
-      fontSize: 12,
-      fill: 0xffffff
-    });
-    label.x = 5;
-    label.y = 5;
-    container.addChild(label);
-
-    // Add drag functionality
-    container
-      .on('pointerdown', onDragStart)
-      .on('pointerup', onDragEnd)
-      .on('pointerupoutside', onDragEnd)
-      .on('pointermove', onDragMove);
-
-    return container;
-  };
-
-  const onDragStart = (event: PIXI.FederatedPointerEvent): void => {
-    const container = event.currentTarget as DraggableContainer;
-    container.alpha = 0.5;
-    container.dragging = true;
-  };
-
-  const onDragEnd = (event: PIXI.FederatedPointerEvent): void => {
-    const container = event.currentTarget as DraggableContainer;
-    container.alpha = 1;
-    container.dragging = false;
-    
-    const trackIndex = Math.floor(container.y / TRACK_HEIGHT);
-    const trackId = trackIndex.toString();
-    
-    if (presenter && container.name) {
-      presenter.updateClip(new ClipViewModel(
-        'test-audio.mp3',
-        0,
-        4,
-        container.x / PIXELS_PER_SECOND,
-        'Test Clip',
-        container.name,
-        trackId
-      ));
+  // 處理音頻文件拖放
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('audio/')) {
+      const audioUrl = URL.createObjectURL(file);
+      const position = 0; // 這裡可以根據拖放位置計算實際位置
+      const duration = 0; // 這裡需要獲取音頻文件的實際時長
+      const trackId = '1'; // 這裡需要獲取實際的軌道 ID
+      presenter.addClip(audioUrl, position, duration, trackId);
     }
-  };
+  }, [presenter]);
 
-  const onDragMove = (event: PIXI.FederatedPointerEvent): void => {
-    const container = event.currentTarget as DraggableContainer;
-    if (container.dragging) {
-      const newPosition = event.getLocalPosition(container.parent);
-      
-      const maxX = width - container.width;
-      const maxY = (TRACK_COUNT - 1) * TRACK_HEIGHT;
-      
-      container.x = Math.max(0, Math.min(maxX, newPosition.x));
-      container.y = Math.max(0, Math.min(maxY, Math.floor(newPosition.y / TRACK_HEIGHT) * TRACK_HEIGHT));
-    }
-  };
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'block',
-        touchAction: 'none'
+    <div 
+      style={{ 
+        width, 
+        height, 
+        position: 'relative',
+        backgroundColor: '#1e1e1e'
       }}
-    />
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+    >
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%'
+        }}
+      />
+    </div>
   );
 }; 

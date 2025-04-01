@@ -1,162 +1,308 @@
-# 依賴注入系統
+# 依賴注入系統使用指南
 
 ## 概述
 
-本專案使用 Inversify 作為依賴注入容器。Inversify 是一個強大的 TypeScript 依賴注入容器，提供了完整的依賴注入功能，包括：
+本專案使用 Inversify 作為依賴注入容器，實現了一個模塊化的依賴注入系統。主要功能包括：
 
 - 類型安全的依賴注入
-- 裝飾器支援
+- 模塊化的服務註冊
 - 生命週期管理
-- 作用域管理
-- 工廠模式支援
-- 循環依賴處理
+- 事件系統整合
+- 狀態管理整合
 
-## 安裝
+## 系統架構
 
-```bash
-npm install inversify reflect-metadata
+### 核心模塊
+
+1. **事件模塊 (`eventModule`)**
+   ```typescript
+   // 獲取事件總線
+   const uiEventBus = container.get<UIEventBus>(TYPES.UIEventBus);
+   const domainEventBus = container.get<DomainEventBus>(TYPES.DomainEventBus);
+
+   // 使用示例
+   uiEventBus.on('ui:playback:start', () => {
+     // 處理播放開始事件
+   });
+
+   domainEventBus.emit('domain:clip:added', { 
+     clip: newClip 
+   });
+   ```
+
+2. **音頻模塊 (`audioModule`)**
+   ```typescript
+   // 獲取音頻服務
+   const audioEngine = container.get<IAudioEngine>(TYPES.AudioEngine);
+   const audioContext = container.get<IAudioContext>(TYPES.AudioContext);
+
+   // 使用示例
+   await audioEngine.loadAudio(file);
+   audioEngine.play();
+   ```
+
+3. **DAW 模塊 (`dawModule`)**
+   ```typescript
+   // 獲取 DAW 服務
+   const dawPresenter = container.get<DAWPresenter>(TYPES.DAWPresenter);
+   const clipRepository = container.get<ClipRepository>(TYPES.ClipRepository);
+
+   // 使用示例
+   await dawPresenter.createNewTrack();
+   const clips = await clipRepository.findByTrackId(trackId);
+   ```
+
+4. **存儲模塊 (`storageModule`)**
+   ```typescript
+   // 獲取存儲服務
+   const storage = container.get<Storage>(TYPES.Storage);
+   const stateManager = container.get<StateManager>(TYPES.StateManager);
+
+   // 使用示例
+   await storage.set('key', value);
+   const state = await stateManager.getState();
+   ```
+
+## 在不同場景中使用
+
+### 1. React 組件中使用
+
+```typescript
+// 使用自定義 Hook
+const useAudioSystem = () => {
+  const audioEngine = container.get<IAudioEngine>(TYPES.AudioEngine);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const togglePlayback = () => {
+    if (isPlaying) {
+      audioEngine.pause();
+    } else {
+      audioEngine.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  return { isPlaying, togglePlayback };
+};
+
+// 在組件中使用
+const AudioControls: React.FC = () => {
+  const { isPlaying, togglePlayback } = useAudioSystem();
+  
+  return (
+    <button onClick={togglePlayback}>
+      {isPlaying ? '暫停' : '播放'}
+    </button>
+  );
+};
 ```
 
-## 配置
+### 2. 服務類中使用
 
-在 `tsconfig.json` 中啟用裝飾器支援：
+```typescript
+@injectable()
+class TrackService {
+  constructor(
+    @inject(TYPES.TrackRepository) private trackRepo: TrackRepository,
+    @inject(TYPES.AudioEngine) private audioEngine: AudioEngine,
+    @inject(TYPES.UIEventBus) private uiEventBus: UIEventBus
+  ) {}
 
-```json
-{
-  "compilerOptions": {
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+  async createTrackWithAudio(file: File) {
+    const audioId = await this.audioEngine.loadAudio(file);
+    const track = await this.trackRepo.add({
+      id: crypto.randomUUID(),
+      name: file.name,
+      clips: []
+    });
+    
+    this.uiEventBus.emit('ui:track:created', { trackId: track.id });
+    return track;
   }
 }
 ```
 
-## 基本用法
-
-### 1. 定義介面
-
-```typescript
-interface IAudioContext {
-    onInit(): void;
-    onDestroy(): void;
-}
-```
-
-### 2. 定義 Token
-
-```typescript
-const TYPES = {
-    AudioContext: Symbol.for("AudioContext")
-};
-```
-
-### 3. 實現類別
+### 3. 事件處理中使用
 
 ```typescript
 @injectable()
-class AudioContext implements IAudioContext {
-    constructor() {
-        console.log("AudioContext constructed");
-    }
+class AudioEventHandler {
+  constructor(
+    @inject(TYPES.DomainEventBus) private domainEventBus: DomainEventBus,
+    @inject(TYPES.AudioEngine) private audioEngine: AudioEngine
+  ) {
+    this.setupEventListeners();
+  }
 
-    onInit(): void {
-        console.log("AudioContext initialized");
-    }
+  private setupEventListeners() {
+    this.domainEventBus.on('domain:bpm:changed', this.handleBPMChange);
+    this.domainEventBus.on('domain:playback:started', this.handlePlaybackStart);
+  }
 
-    onDestroy(): void {
-        console.log("AudioContext destroyed");
-    }
-}
-```
+  private handleBPMChange = ({ bpm }: { bpm: number }) => {
+    this.audioEngine.setBPM(bpm);
+  };
 
-### 4. 註冊服務
-
-```typescript
-const container = new Container();
-container.bind<IAudioContext>(TYPES.AudioContext).to(AudioContext).inSingletonScope();
-```
-
-### 5. 使用服務
-
-```typescript
-const context = container.get<IAudioContext>(TYPES.AudioContext);
-```
-
-## 進階用法
-
-### 1. 依賴注入
-
-```typescript
-@injectable()
-class AudioEngine {
-    constructor(
-        @inject(TYPES.AudioContext) private context: IAudioContext,
-        @inject(TYPES.EventBus) private eventBus: IEventBus
-    ) {}
-}
-```
-
-### 2. 作用域管理
-
-```typescript
-// 單例作用域
-container.bind<IAudioContext>(TYPES.AudioContext).to(AudioContext).inSingletonScope();
-
-// 瞬態作用域
-container.bind<IAudioContext>(TYPES.AudioContext).to(AudioContext).inTransientScope();
-
-// 請求作用域
-container.bind<IAudioContext>(TYPES.AudioContext).to(AudioContext).inRequestScope();
-```
-
-### 3. 工廠模式
-
-```typescript
-container.bind<IAudioContext>(TYPES.AudioContext).toFactory((context) => {
-    return () => new AudioContext();
-});
-```
-
-### 4. 生命週期管理
-
-```typescript
-@injectable()
-class AudioContext implements IAudioContext {
-    onInit(): void {
-        // 初始化邏輯
-    }
-
-    onDestroy(): void {
-        // 清理邏輯
-    }
+  private handlePlaybackStart = () => {
+    this.audioEngine.play();
+  };
 }
 ```
 
 ## 最佳實踐
 
-1. **使用介面**
-   - 總是為服務定義介面
-   - 使用介面而不是具體實現
+### 1. 類型安全
 
-2. **使用 Symbol 作為 Token**
-   - 避免使用字串作為 Token
-   - 使用 Symbol 確保唯一性
+```typescript
+// 定義明確的類型
+interface TrackData {
+  id: string;
+  name: string;
+  clips: ClipViewModel[];
+}
 
-3. **適當的作用域**
-   - 使用單例作用域共享狀態
-   - 使用瞬態作用域避免狀態共享
+// 使用泛型約束
+class Repository<T extends { id: string }> {
+  async get(id: string): Promise<T | undefined> {
+    // 實現細節
+  }
+}
+```
 
-4. **生命週期管理**
-   - 實現 `onInit` 和 `onDestroy` 方法
-   - 在適當的時機調用這些方法
+### 2. 錯誤處理
 
-5. **錯誤處理**
-   - 使用 try-catch 處理初始化錯誤
-   - 提供適當的錯誤信息
+```typescript
+try {
+  const service = container.get<MyService>(TYPES.MyService);
+  await service.doSomething();
+} catch (error) {
+  if (error instanceof NotFoundError) {
+    // 處理特定錯誤
+  } else {
+    // 處理一般錯誤
+  }
+}
+```
 
-## 示例
+### 3. 生命週期管理
 
-完整的示例可以參考 `src/docs/examples/di-example.ts`。
+```typescript
+class MyComponent extends React.Component {
+  private service: MyService;
 
-## 測試
+  componentDidMount() {
+    this.service = container.get<MyService>(TYPES.MyService);
+    this.service.onInit();
+  }
 
-測試示例可以參考 `src/__tests__/examples/di-example.test.ts`。
+  componentWillUnmount() {
+    this.service.onDestroy();
+  }
+}
+```
+
+### 4. 測試
+
+```typescript
+describe('TrackService', () => {
+  let container: Container;
+  let trackService: TrackService;
+  let mockTrackRepo: jest.Mocked<TrackRepository>;
+
+  beforeEach(() => {
+    container = new Container();
+    mockTrackRepo = {
+      add: jest.fn(),
+      get: jest.fn(),
+      // ... 其他方法
+    };
+
+    container.bind(TYPES.TrackRepository).toConstantValue(mockTrackRepo);
+    container.bind(TYPES.TrackService).to(TrackService);
+    
+    trackService = container.get(TYPES.TrackService);
+  });
+
+  it('should create track with audio', async () => {
+    const file = new File([], 'test.mp3');
+    await trackService.createTrackWithAudio(file);
+    
+    expect(mockTrackRepo.add).toHaveBeenCalled();
+  });
+});
+```
+
+## 常見問題解決
+
+### 1. 循環依賴
+
+```typescript
+// 使用 @lazyInject 解決循環依賴
+@injectable()
+class ServiceA {
+  @lazyInject(TYPES.ServiceB)
+  private serviceB!: ServiceB;
+}
+```
+
+### 2. 作用域問題
+
+```typescript
+// 使用工廠模式處理複雜的作用域需求
+container.bind<IAudioContext>(TYPES.AudioContext).toFactory((context) => {
+  return () => {
+    const ctx = new AudioContext();
+    // 自定義初始化邏輯
+    return ctx;
+  };
+});
+```
+
+### 3. 狀態管理
+
+```typescript
+@injectable()
+class StateManager {
+  private state: AppState;
+
+  @postConstruct()
+  init() {
+    // 初始化狀態
+  }
+
+  getState(): AppState {
+    return this.state;
+  }
+
+  setState(newState: Partial<AppState>) {
+    this.state = { ...this.state, ...newState };
+  }
+}
+```
+
+## 擴展指南
+
+### 1. 添加新服務
+
+1. 定義介面
+2. 實現服務類
+3. 在適當的模塊中註冊
+4. 更新 TYPES 定義
+
+### 2. 添加新模塊
+
+1. 創建新的模塊文件
+2. 定義模塊的綁定
+3. 在容器中加載模塊
+
+### 3. 自定義作用域
+
+1. 定義作用域介面
+2. 實現作用域邏輯
+3. 在綁定時使用自定義作用域
+
+## 參考資料
+
+- [Inversify 文檔](https://inversify.io/)
+- [TypeScript 裝飾器](https://www.typescriptlang.org/docs/handbook/decorators.html)
+- [依賴注入模式](https://en.wikipedia.org/wiki/Dependency_injection)

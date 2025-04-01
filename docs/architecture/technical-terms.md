@@ -156,3 +156,116 @@
 - **Error Tracking**：錯誤追蹤
 - **Logging**：日誌記錄
 - **Debugging**：調試
+
+# 技術術語表
+
+## 架構相關術語
+
+### 依賴注入（Dependency Injection）
+- **Container**：依賴注入容器，負責管理所有服務的實例
+- **Injectable**：可注入的服務，使用 `@injectable()` 裝飾器標記
+- **Binding**：服務綁定，定義服務的實現和生命週期
+- **Scope**：服務作用域，包括 Singleton、Transient 等
+
+### 事件系統（Event System）
+- **EventBus**：事件總線，負責事件的發布和訂閱
+- **EventTranslator**：事件轉換器，處理不同層級間的事件轉換
+- **EventFilter**：事件過濾器，過濾不需要處理的事件
+- **EventHandler**：事件處理器，處理具體的事件邏輯
+
+### 狀態管理（State Management）
+- **StateStore**：狀態存儲，保存應用的狀態數據
+- **StateSlice**：狀態切片，將狀態分割為可管理的部分
+- **StateManager**：狀態管理器，處理狀態的讀寫操作
+- **StatePersistence**：狀態持久化，將狀態保存到存儲設備
+
+## 音頻處理術語
+
+### 音頻引擎（Audio Engine）
+- **AudioContext**：Web Audio API 的核心對象
+- **AudioNode**：音頻處理節點，如 GainNode、DelayNode 等
+- **AudioBuffer**：音頻緩衝區，存儲音頻數據
+- **AudioWorklet**：音頻工作線程，處理複雜的音頻運算
+
+### 音頻處理（Audio Processing）
+- **Sample Rate**：採樣率，每秒採樣次數
+- **Buffer Size**：緩衝區大小，影響延遲和性能
+- **Latency**：延遲，從輸入到輸出的時間差
+- **DSP**：數字信號處理，音頻處理的核心技術
+
+## UI 相關術語
+
+### 渲染系統（Rendering System）
+- **PixiJS**：2D 渲染引擎，用於音頻可視化
+- **Container**：顯示對象容器，管理顯示層級
+- **Sprite**：精靈圖，基本的顯示對象
+- **Stage**：舞台，渲染的根容器
+
+### React 組件（React Components）
+- **Functional Component**：函數式組件，主要的組件類型
+- **Hook**：鉤子函數，處理組件的狀態和副作用
+- **Props**：屬性，組件間的數據傳遞
+- **State**：狀態，組件內部的數據管理
+
+## 性能優化術語
+
+### 渲染優化（Rendering Optimization）
+- **Virtual List**：虛擬列表，優化長列表渲染
+- **Frame Rate**：幀率，每秒渲染次數
+- **GPU Acceleration**：GPU 加速，使用硬件加速渲染
+- **Batch Processing**：批處理，合併多個操作
+
+### 音頻優化（Audio Optimization）
+- **Audio Buffer Pool**：音頻緩衝池，重用音頻緩衝區
+- **Zero Copy**：零拷貝，避免不必要的數據複製
+- **Real-time Processing**：實時處理，保證音頻處理的即時性
+- **Worklet Threading**：工作線程，避免阻塞主線程
+
+## 開發工具術語
+
+### 版本控制（Version Control）
+- **Git**：分佈式版本控制系統
+- **Branch**：分支，並行開發的基礎
+- **Commit**：提交，代碼變更的基本單位
+- **Pull Request**：合併請求，代碼審查的基礎
+
+### 開發環境（Development Environment）
+- **Node.js**：JavaScript 運行時環境
+- **TypeScript**：JavaScript 的超集，添加類型系統
+- **Webpack**：模塊打包工具
+- **ESLint**：代碼質量檢查工具
+
+## 測試相關術語
+
+### 測試類型（Test Types）
+- **Unit Test**：單元測試，測試最小的功能單元
+- **Integration Test**：集成測試，測試多個單元的協作
+- **E2E Test**：端到端測試，測試完整的用戶流程
+- **Performance Test**：性能測試，測試系統性能指標
+
+### 測試工具（Test Tools）
+- **Jest**：JavaScript 測試框架
+- **React Testing Library**：React 組件測試工具
+- **Cypress**：端到端測試工具
+- **Lighthouse**：性能測試工具
+
+## 監控和調試術語
+
+### 監控系統（Monitoring System）
+- **Metrics**：指標，系統運行的各項數據
+- **Logging**：日誌，記錄系統運行狀態
+- **Tracing**：追蹤，記錄請求的完整路徑
+- **Alerting**：告警，異常情況的通知機制
+
+### 調試工具（Debug Tools）
+- **Chrome DevTools**：Chrome 開發者工具
+- **React DevTools**：React 調試工具
+- **Web Audio Debug**：Web Audio API 調試工具
+- **Performance Monitor**：性能監控工具
+
+## 參考資料
+
+- [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+- [React 術語表](https://reactjs.org/docs/glossary.html)
+- [TypeScript 手冊](https://www.typescriptlang.org/docs/)
+- [PixiJS API 文檔](https://pixijs.download/release/docs/index.html)

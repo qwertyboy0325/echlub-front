@@ -3,11 +3,11 @@ import type { BaseModel } from '../models/BaseModel';
 /**
  * Base repository interface
  */
-export interface BaseRepository<T extends BaseModel> {
-  save(entity: T): Promise<T>;
-  findById(id: string): Promise<T | null>;
-  findAll(): Promise<T[]>;
+export interface BaseRepository<T> {
+  add(entity: T): Promise<void>;
+  get(id: string): Promise<T | undefined>;
+  getAll(): Promise<T[]>;
+  update(entity: T): Promise<void>;
   delete(id: string): Promise<void>;
-  exists(id: string): Promise<boolean>;
-  count(): Promise<number>;
+  clear(): Promise<void>;
 } 

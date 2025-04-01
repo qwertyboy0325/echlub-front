@@ -169,3 +169,407 @@
    - 及時更新文檔
    - 記錄重要決策
    - 維護 API 文檔
+
+# 開發序列指南
+
+## 概述
+
+本文檔描述了數字音頻工作站（DAW）的開發序列和最佳實踐。遵循這些步驟可以確保開發過程的順暢和代碼質量。
+
+## 開發流程
+
+### 1. 環境設置
+
+1. 克隆代碼庫：
+```bash
+git clone https://github.com/your-org/echlub_front.git
+cd echlub_front
+```
+
+2. 安裝依賴：
+```bash
+npm install
+```
+
+3. 設置開發環境：
+```bash
+npm run setup
+```
+
+### 2. 開發新功能
+
+#### 步驟 1：創建功能分支
+
+```bash
+git checkout -b feature/your-feature-name
+```
+
+#### 步驟 2：實現領域模型
+
+1. 在 `src/domain/models` 中創建模型類：
+```typescript
+// src/domain/models/Track.ts
+export class Track {
+  constructor(
+    public readonly id: string,
+    private _name: string,
+    private _volume: number = 1,
+    private _pan: number = 0,
+    private _muted: boolean = false,
+    private _soloed: boolean = false
+  ) {}
+
+  // Getters
+  get name() { return this._name; }
+  get volume() { return this._volume; }
+  get pan() { return this._pan; }
+  get muted() { return this._muted; }
+  get soloed() { return this._soloed; }
+
+  // Methods
+  public setVolume(value: number) {
+    if (value < 0 || value > 1) {
+      throw new Error('Volume must be between 0 and 1');
+    }
+    this._volume = value;
+  }
+
+  public setPan(value: number) {
+    if (value < -1 || value > 1) {
+      throw new Error('Pan must be between -1 and 1');
+    }
+    this._pan = value;
+  }
+}
+```
+
+#### 步驟 3：實現倉儲接口
+
+1. 在 `src/domain/repositories` 中定義接口：
+```typescript
+// src/domain/repositories/TrackRepository.ts
+export interface TrackRepository {
+  create(track: Track): Promise<void>;
+  findById(id: string): Promise<Track | null>;
+  findAll(): Promise<Track[]>;
+  update(track: Track): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+```
+
+#### 步驟 4：實現事件定義
+
+1. 在 `src/events` 中定義事件：
+```typescript
+// src/events/TrackEvents.ts
+export interface TrackEventPayload {
+  'track:created': {
+    trackId: string;
+    name: string;
+  };
+  'track:updated': {
+    trackId: string;
+    changes: Partial<Track>;
+  };
+  'track:deleted': {
+    trackId: string;
+  };
+}
+```
+
+#### 步驟 5：實現展示層
+
+1. 創建 ViewModel：
+```typescript
+// src/presentation/viewModels/TrackViewModel.ts
+export interface TrackViewModel {
+  id: string;
+  name: string;
+  volume: number;
+  pan: number;
+  muted: boolean;
+  soloed: boolean;
+  clips: ClipViewModel[];
+}
+```
+
+2. 實現 Presenter：
+```typescript
+// src/presentation/presenters/TrackPresenter.ts
+@injectable()
+export class TrackPresenter {
+  constructor(
+    @inject(TYPES.TrackRepository) private trackRepository: TrackRepository,
+    @inject(TYPES.EventBus) private eventBus: EventBus
+  ) {
+    this.setupEventHandlers();
+  }
+
+  private setupEventHandlers() {
+    this.eventBus.on('track:created', this.handleTrackCreated);
+    this.eventBus.on('track:updated', this.handleTrackUpdated);
+  }
+
+  public async createTrack(name: string): Promise<void> {
+    const track = new Track(uuid(), name);
+    await this.trackRepository.create(track);
+    this.eventBus.emit('track:created', {
+      trackId: track.id,
+      name: track.name
+    });
+  }
+}
+```
+
+3. 實現 View：
+```typescript
+// src/presentation/components/Track.tsx
+export const Track: React.FC<TrackProps> = ({ track, onVolumeChange }) => {
+  return (
+    <div className="track">
+      <div className="track-header">
+        <h3>{track.name}</h3>
+        <VolumeSlider
+          value={track.volume}
+          onChange={onVolumeChange}
+        />
+      </div>
+      <div className="track-content">
+        {track.clips.map(clip => (
+          <Clip key={clip.id} clip={clip} />
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+#### 步驟 6：實現基礎設施
+
+1. 實現倉儲實現：
+```typescript
+// src/infrastructure/repositories/IndexedDBTrackRepository.ts
+@injectable()
+export class IndexedDBTrackRepository implements TrackRepository {
+  constructor(
+    @inject(TYPES.Database) private db: IDBDatabase
+  ) {}
+
+  public async create(track: Track): Promise<void> {
+    const transaction = this.db.transaction(['tracks'], 'readwrite');
+    const store = transaction.objectStore('tracks');
+    await store.add(track);
+  }
+
+  public async findById(id: string): Promise<Track | null> {
+    const transaction = this.db.transaction(['tracks'], 'readonly');
+    const store = transaction.objectStore('tracks');
+    const data = await store.get(id);
+    return data ? new Track(data.id, data.name, data.volume) : null;
+  }
+}
+```
+
+2. 配置依賴注入：
+```typescript
+// src/infrastructure/di/container.ts
+container.bind<TrackRepository>(TYPES.TrackRepository)
+  .to(IndexedDBTrackRepository)
+  .inSingletonScope();
+```
+
+#### 步驟 7：實現單元測試
+
+1. 測試領域模型：
+```typescript
+// tests/domain/models/Track.test.ts
+describe('Track', () => {
+  let track: Track;
+
+  beforeEach(() => {
+    track = new Track('1', 'Test Track');
+  });
+
+  it('should set volume within valid range', () => {
+    track.setVolume(0.5);
+    expect(track.volume).toBe(0.5);
+  });
+
+  it('should throw error for invalid volume', () => {
+    expect(() => track.setVolume(1.5)).toThrow();
+  });
+});
+```
+
+2. 測試 Presenter：
+```typescript
+// tests/presentation/presenters/TrackPresenter.test.ts
+describe('TrackPresenter', () => {
+  let presenter: TrackPresenter;
+  let mockRepository: MockTrackRepository;
+  let mockEventBus: MockEventBus;
+
+  beforeEach(() => {
+    mockRepository = new MockTrackRepository();
+    mockEventBus = new MockEventBus();
+    presenter = new TrackPresenter(mockRepository, mockEventBus);
+  });
+
+  it('should create track and emit event', async () => {
+    await presenter.createTrack('Test Track');
+    expect(mockRepository.create).toHaveBeenCalled();
+    expect(mockEventBus.emit).toHaveBeenCalledWith(
+      'track:created',
+      expect.any(Object)
+    );
+  });
+});
+```
+
+### 3. 代碼審查清單
+
+- [ ] 領域模型是否包含所有必要的業務邏輯？
+- [ ] 是否正確實現了倉儲接口？
+- [ ] 事件定義是否完整且類型安全？
+- [ ] Presenter 是否正確處理所有用例？
+- [ ] View 組件是否遵循 React 最佳實踐？
+- [ ] 是否添加了足夠的單元測試？
+- [ ] 是否正確配置了依賴注入？
+- [ ] 代碼是否遵循項目的代碼風格指南？
+
+### 4. 提交代碼
+
+1. 提交更改：
+```bash
+git add .
+git commit -m "feat: implement track management"
+```
+
+2. 推送到遠程倉庫：
+```bash
+git push origin feature/your-feature-name
+```
+
+3. 創建合併請求：
+- 填寫詳細的功能描述
+- 列出測試步驟
+- 添加相關文檔鏈接
+
+### 5. 部署流程
+
+1. 合併到開發分支：
+```bash
+git checkout develop
+git merge feature/your-feature-name
+```
+
+2. 運行測試：
+```bash
+npm run test
+```
+
+3. 構建應用：
+```bash
+npm run build
+```
+
+4. 部署到測試環境：
+```bash
+npm run deploy:staging
+```
+
+## 開發標準
+
+### 1. 代碼風格
+
+- 使用 TypeScript 嚴格模式
+- 遵循 ESLint 規則
+- 使用有意義的變量和函數名
+- 添加適當的註釋和文檔
+
+### 2. 架構原則
+
+- 遵循領域驅動設計（DDD）原則
+- 使用依賴注入進行解耦
+- 實現清晰的分層架構
+- 保持組件的單一職責
+
+### 3. 測試策略
+
+- 單元測試覆蓋核心業務邏輯
+- 集成測試驗證組件交互
+- 端到端測試確保功能完整性
+- 使用測試驅動開發（TDD）方法
+
+### 4. 性能考慮
+
+- 實現適當的緩存策略
+- 優化組件渲染
+- 使用懶加載和代碼分割
+- 監控關鍵性能指標
+
+## 故障排除
+
+### 1. 常見問題
+
+1. 依賴注入錯誤：
+```typescript
+// 檢查綁定配置
+container.bind<Interface>(TYPES.Interface)
+  .to(Implementation)
+  .inSingletonScope();
+```
+
+2. 事件處理問題：
+```typescript
+// 確保正確訂閱和取消訂閱
+useEffect(() => {
+  const unsubscribe = eventBus.on('event', handler);
+  return () => unsubscribe();
+}, []);
+```
+
+3. 狀態更新問題：
+```typescript
+// 使用函數式更新
+setTracks(prev => [...prev, newTrack]);
+```
+
+### 2. 調試技巧
+
+1. 使用日誌記錄：
+```typescript
+class Logger {
+  static debug(message: string, data?: any) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEBUG] ${message}`, data);
+    }
+  }
+}
+```
+
+2. 使用性能分析：
+```typescript
+const withPerformanceLogging = (
+  target: any,
+  propertyKey: string,
+  descriptor: PropertyDescriptor
+) => {
+  const originalMethod = descriptor.value;
+  descriptor.value = async function (...args: any[]) {
+    const start = performance.now();
+    const result = await originalMethod.apply(this, args);
+    const end = performance.now();
+    Logger.debug(`${propertyKey} took ${end - start}ms`);
+    return result;
+  };
+  return descriptor;
+};
+```
+
+## 參考資料
+
+- [領域驅動設計](https://martinfowler.com/tags/domain%20driven%20design.html)
+- [React 最佳實踐](https://reactjs.org/docs/thinking-in-react.html)
+- [TypeScript 文檔](https://www.typescriptlang.org/docs/)
+- [測試驅動開發](https://www.agilealliance.org/glossary/tdd/)

@@ -3,6 +3,23 @@ import { v4 as uuidv4 } from 'uuid';
 /**
  * 音頻片段的視圖模型
  */
+interface AutomationData {
+  time: number;
+  value: number;
+  curveType: 'linear' | 'exponential' | 'step';
+}
+
+interface ClipMetadata {
+  bpm?: number;
+  key?: string;
+  tags?: string[];
+}
+
+interface ClipAutomation {
+  volume?: AutomationData[];
+  pan?: AutomationData[];
+}
+
 export class ClipViewModel {
   public readonly id: string;
   public name: string;
@@ -10,16 +27,19 @@ export class ClipViewModel {
   public startTime: number;
   public duration: number;
   public position: number;
+  public trackId: string;
   public volume: number;
   public pan: number;
   public muted: boolean;
   public soloed: boolean;
-  public effects: any[];
-  public automation: any[];
+  public color: string;
+  public waveformData?: Float32Array;
+  public effects: string[];
+  public metadata: ClipMetadata;
+  public automation: ClipAutomation;
   public createdAt: Date;
   public updatedAt: Date;
   public version: number;
-  public trackId: string;
 
   constructor(
     audioUrl: string,
@@ -36,16 +56,18 @@ export class ClipViewModel {
     this.startTime = startTime;
     this.duration = duration;
     this.position = position;
+    this.trackId = trackId;
     this.volume = 1;
     this.pan = 0;
     this.muted = false;
     this.soloed = false;
+    this.color = '#' + Math.floor(Math.random()*16777215).toString(16);
     this.effects = [];
-    this.automation = [];
+    this.metadata = {};
+    this.automation = {};
     this.createdAt = new Date();
     this.updatedAt = new Date();
     this.version = 1;
-    this.trackId = trackId;
   }
 
   static fromDomain(domainClip: any): ClipViewModel {
@@ -62,11 +84,16 @@ export class ClipViewModel {
     viewModel.pan = domainClip.pan;
     viewModel.muted = domainClip.muted;
     viewModel.soloed = domainClip.soloed;
+    viewModel.color = domainClip.color;
     viewModel.effects = [...domainClip.effects];
-    viewModel.automation = [...domainClip.automation];
+    viewModel.metadata = { ...domainClip.metadata };
+    viewModel.automation = { ...domainClip.automation };
     viewModel.createdAt = domainClip.createdAt;
     viewModel.updatedAt = domainClip.updatedAt;
     viewModel.version = domainClip.version;
+    if (domainClip.waveformData) {
+      viewModel.waveformData = new Float32Array(domainClip.waveformData);
+    }
     return viewModel;
   }
 
@@ -78,16 +105,19 @@ export class ClipViewModel {
       startTime: this.startTime,
       duration: this.duration,
       position: this.position,
+      trackId: this.trackId,
       volume: this.volume,
       pan: this.pan,
       muted: this.muted,
       soloed: this.soloed,
+      color: this.color,
       effects: [...this.effects],
-      automation: [...this.automation],
+      metadata: { ...this.metadata },
+      automation: { ...this.automation },
+      waveformData: this.waveformData ? Array.from(this.waveformData) : undefined,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      version: this.version,
-      trackId: this.trackId
+      version: this.version
     };
   }
 } 

@@ -1,72 +1,80 @@
-import { Event } from './Event';
-import { ErrorHandler } from '../error/ErrorHandler';
+import { injectable } from 'inversify';
+import { UIEventBus } from './UIEventBus';
+import { DomainEventBus } from './DomainEventBus';
+import { UIEventPayload, DomainEventPayload } from './types';
+import { ClipViewModel } from '../../presentation/models/ClipViewModel';
 
 /**
  * Event Translator
  * Translates events from one type to another
  */
+@injectable()
 export class EventTranslator {
-    private static instance: EventTranslator | null = null;
-    private translations: Map<string, Map<string, (event: Event) => Event>>;
-    private errorHandler: ErrorHandler;
-    
-    private constructor() {
-        this.translations = new Map();
-        this.errorHandler = ErrorHandler.getInstance();
+    constructor(
+        private uiEventBus: UIEventBus,
+        private domainEventBus: DomainEventBus
+    ) {
+        this.initializeEventHandlers();
     }
-    
-    static getInstance(): EventTranslator {
-        if (!EventTranslator.instance) {
-            EventTranslator.instance = new EventTranslator();
-        }
-        return EventTranslator.instance;
+
+    private initializeEventHandlers(): void {
+        // UI -> Domain 事件轉換
+        this.uiEventBus.on('ui:clip:add', this.handleClipAdd.bind(this));
+        this.uiEventBus.on('ui:clip:move', this.handleClipMove.bind(this));
+        this.uiEventBus.on('ui:clip:delete', this.handleClipDelete.bind(this));
+
+        // Domain -> UI 事件轉換
+        this.domainEventBus.on('domain:clip:added', this.handleClipAdded.bind(this));
+        this.domainEventBus.on('domain:clip:moved', this.handleClipMoved.bind(this));
+        this.domainEventBus.on('domain:clip:deleted', this.handleClipDeleted.bind(this));
     }
-    
-    addTranslation(sourceType: string, targetType: string, translator: (event: Event) => Event): void {
-        if (!this.translations.has(sourceType)) {
-            this.translations.set(sourceType, new Map());
-        }
-        this.translations.get(sourceType)?.set(targetType, translator);
+
+    // UI -> Domain 事件處理器
+    private handleClipAdd(payload: UIEventPayload['ui:clip:add']): void {
+        const clip = new ClipViewModel(
+            payload.audioUrl,
+            payload.position,
+            payload.duration,
+            payload.position,
+            `Clip ${Date.now()}`,
+            undefined,
+            payload.trackId
+        );
+
+        this.domainEventBus.emit('domain:clip:added', { clip });
     }
-    
-    removeTranslation(sourceType: string, targetType: string): void {
-        this.translations.get(sourceType)?.delete(targetType);
+
+    private handleClipMove(payload: UIEventPayload['ui:clip:move']): void {
+        this.domainEventBus.emit('domain:clip:moved', {
+            clipId: payload.clipId,
+            newStartTime: payload.newPosition,
+            trackId: payload.trackId
+        });
     }
-    
-    translate(event: Event): Event | Event[] | undefined {
-        const translators = this.translations.get(event.type);
-        if (!translators || translators.size === 0) {
-            return undefined;
-        }
-        
-        try {
-            const results: Event[] = [];
-            
-            // 嘗試所有翻譯器
-            for (const [targetType, translator] of translators) {
-                try {
-                    const result = translator(event);
-                    results.push(result);
-                } catch (error) {
-                    this.errorHandler.handleError(new Error('Translation error'));
-                }
-            }
-            
-            if (results.length === 0) {
-                return undefined;
-            }
-            
-            // 如果只有一個結果，返回單個事件
-            // 如果有多個結果，返回事件數組
-            return results.length === 1 ? results[0] : results;
-        } catch (error) {
-            this.errorHandler.handleError(new Error(`Error in event translation for ${event.type}: ${error instanceof Error ? error.message : String(error)}`));
-            return undefined;
-        }
+
+    private handleClipDelete(payload: UIEventPayload['ui:clip:delete']): void {
+        this.domainEventBus.emit('domain:clip:deleted', {
+            clipId: payload.clipId
+        });
     }
-    
-    destroy(): void {
-        this.translations.clear();
-        EventTranslator.instance = null;
+
+    // Domain -> UI 事件處理器
+    private handleClipAdded(payload: DomainEventPayload['domain:clip:added']): void {
+        // 這裡可以添加額外的 UI 更新邏輯
+        console.debug('[EventTranslator] Clip added:', payload.clip);
+    }
+
+    private handleClipMoved(payload: DomainEventPayload['domain:clip:moved']): void {
+        console.debug('[EventTranslator] Clip moved:', payload);
+    }
+
+    private handleClipDeleted(payload: DomainEventPayload['domain:clip:deleted']): void {
+        console.debug('[EventTranslator] Clip deleted:', payload.clipId);
+    }
+
+    public dispose(): void {
+        // 清理所有事件監聽器
+        this.uiEventBus.removeAllListeners();
+        this.domainEventBus.removeAllListeners();
     }
 } 

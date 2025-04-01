@@ -692,3 +692,499 @@ describe('EventTranslator', () => {
    - 測試事件轉換的正確性
    - 模擬事件流進行集成測試
    - 確保事件清理機制正常工作
+
+# 事件系統使用指南
+
+## 概述
+
+本專案實現了一個雙層事件系統，包括：
+- UI 事件總線：處理用戶界面相關的事件
+- 領域事件總線：處理業務邏輯相關的事件
+
+## 事件類型
+
+### UI 事件
+
+```typescript
+export interface UIEventPayload {
+  // 片段相關事件
+  'ui:clip:add': {
+    trackId: string;
+    position: number;
+    duration: number;
+    audioUrl: string;
+  };
+  'ui:clip:move': {
+    clipId: string;
+    newPosition: number;
+    trackId: string;
+  };
+  'ui:clip:delete': {
+    clipId: string;
+  };
+
+  // 播放控制事件
+  'ui:playback:start': void;
+  'ui:playback:pause': void;
+  'ui:playback:stop': void;
+  'ui:bpm:change': {
+    bpm: number;
+  };
+}
+```
+
+### 領域事件
+
+```typescript
+export interface DomainEventPayload {
+  // 片段相關事件
+  'domain:clip:added': {
+    clip: ClipViewModel;
+  };
+  'domain:clip:moved': {
+    clipId: string;
+    newStartTime: number;
+    trackId: string;
+  };
+  'domain:clip:deleted': {
+    clipId: string;
+  };
+
+  // 播放狀態事件
+  'domain:playback:started': {
+    time: number;
+  };
+  'domain:playback:paused': {
+    time: number;
+  };
+  'domain:playback:stopped': {
+    time: number;
+  };
+  'domain:bpm:changed': {
+    bpm: number;
+  };
+}
+```
+
+## 使用方式
+
+### 1. 在 React 組件中使用
+
+```typescript
+const TrackComponent: React.FC<{ trackId: string }> = ({ trackId }) => {
+  const uiEventBus = container.get<UIEventBus>(TYPES.UIEventBus);
+  const [clips, setClips] = useState<ClipViewModel[]>([]);
+
+  useEffect(() => {
+    // 監聽片段添加事件
+    const handleClipAdded = (event: DomainEventPayload['domain:clip:added']) => {
+      setClips(prev => [...prev, event.clip]);
+    };
+
+    const domainEventBus = container.get<DomainEventBus>(TYPES.DomainEventBus);
+    domainEventBus.on('domain:clip:added', handleClipAdded);
+
+    return () => {
+      domainEventBus.off('domain:clip:added', handleClipAdded);
+    };
+  }, []);
+
+  const handleAddClip = () => {
+    uiEventBus.emit('ui:clip:add', {
+      trackId,
+      position: 0,
+      duration: 4,
+      audioUrl: 'path/to/audio.mp3'
+    });
+  };
+
+  return (
+    <div>
+      <button onClick={handleAddClip}>添加片段</button>
+      {clips.map(clip => (
+        <ClipView key={clip.id} clip={clip} />
+      ))}
+    </div>
+  );
+};
+```
+
+### 2. 在服務中使用
+
+```typescript
+@injectable()
+class AudioService {
+  constructor(
+    @inject(TYPES.UIEventBus) private uiEventBus: UIEventBus,
+    @inject(TYPES.DomainEventBus) private domainEventBus: DomainEventBus,
+    @inject(TYPES.AudioEngine) private audioEngine: AudioEngine
+  ) {
+    this.setupEventHandlers();
+  }
+
+  private setupEventHandlers() {
+    // 監聽 UI 事件
+    this.uiEventBus.on('ui:playback:start', () => {
+      this.audioEngine.play();
+      this.domainEventBus.emit('domain:playback:started', {
+        time: this.audioEngine.getCurrentTime()
+      });
+    });
+
+    this.uiEventBus.on('ui:bpm:change', ({ bpm }) => {
+      this.audioEngine.setBPM(bpm);
+      this.domainEventBus.emit('domain:bpm:changed', { bpm });
+    });
+  }
+}
+```
+
+### 3. 使用事件轉換器
+
+```typescript
+@injectable()
+class EventTranslator {
+  constructor(
+    @inject(TYPES.UIEventBus) private uiEventBus: UIEventBus,
+    @inject(TYPES.DomainEventBus) private domainEventBus: DomainEventBus
+  ) {
+    this.setupTranslations();
+  }
+
+  private setupTranslations() {
+    // UI -> Domain 事件轉換
+    this.uiEventBus.on('ui:clip:add', async (payload) => {
+      const clip = await this.createClip(payload);
+      this.domainEventBus.emit('domain:clip:added', { clip });
+    });
+
+    // Domain -> UI 事件轉換
+    this.domainEventBus.on('domain:playback:started', (payload) => {
+      this.updateUIPlaybackState(payload.time);
+    });
+  }
+}
+```
+
+## 最佳實踐
+
+### 1. 事件命名規範
+
+```typescript
+// UI 事件：ui:模塊:動作
+'ui:clip:add'
+'ui:playback:start'
+
+// 領域事件：domain:模塊:動作
+'domain:clip:added'
+'domain:playback:started'
+```
+
+### 2. 類型安全的事件處理
+
+```typescript
+// 定義事件處理器類型
+type ClipAddedHandler = (event: DomainEventPayload['domain:clip:added']) => void;
+
+// 使用類型安全的事件處理
+const handleClipAdded: ClipAddedHandler = (event) => {
+  // event.clip 已經被正確類型推斷
+  console.log(event.clip.id);
+};
+```
+
+### 3. 事件清理
+
+```typescript
+class MyComponent extends React.Component {
+  private eventSubscriptions: (() => void)[] = [];
+
+  componentDidMount() {
+    const domainEventBus = container.get<DomainEventBus>(TYPES.DomainEventBus);
+    
+    // 保存取消訂閱函數
+    this.eventSubscriptions.push(
+      domainEventBus.on('domain:clip:added', this.handleClipAdded),
+      domainEventBus.on('domain:playback:started', this.handlePlaybackStarted)
+    );
+  }
+
+  componentWillUnmount() {
+    // 清理所有事件訂閱
+    this.eventSubscriptions.forEach(unsubscribe => unsubscribe());
+  }
+}
+```
+
+### 4. 錯誤處理
+
+```typescript
+@injectable()
+class ErrorHandler {
+  constructor(
+    @inject(TYPES.DomainEventBus) private domainEventBus: DomainEventBus
+  ) {
+    this.setupErrorHandling();
+  }
+
+  private setupErrorHandling() {
+    this.domainEventBus.onError((error, eventName) => {
+      console.error(`Error handling event ${eventName}:`, error);
+      // 可以發送錯誤到監控系統
+    });
+  }
+}
+```
+
+## 調試技巧
+
+### 1. 事件日誌
+
+```typescript
+// 開啟事件日誌
+uiEventBus.enableLogging();
+domainEventBus.enableLogging();
+
+// 自定義日誌處理
+uiEventBus.setLogger((eventName, payload) => {
+  console.log(`[UI Event] ${eventName}:`, payload);
+});
+```
+
+### 2. 事件追蹤
+
+```typescript
+@injectable()
+class EventTracer {
+  private eventHistory: Array<{
+    timestamp: number;
+    bus: 'ui' | 'domain';
+    event: string;
+    payload: any;
+  }> = [];
+
+  constructor(
+    @inject(TYPES.UIEventBus) uiEventBus: UIEventBus,
+    @inject(TYPES.DomainEventBus) domainEventBus: DomainEventBus
+  ) {
+    this.setupTracing(uiEventBus, 'ui');
+    this.setupTracing(domainEventBus, 'domain');
+  }
+
+  private setupTracing(eventBus: UIEventBus | DomainEventBus, type: 'ui' | 'domain') {
+    eventBus.onAny((eventName, payload) => {
+      this.eventHistory.push({
+        timestamp: Date.now(),
+        bus: type,
+        event: eventName,
+        payload
+      });
+    });
+  }
+
+  public getEventHistory() {
+    return this.eventHistory;
+  }
+}
+```
+
+## 效能考慮
+
+### 1. 事件批處理
+
+```typescript
+@injectable()
+class BatchEventProcessor {
+  private batchTimeout: number = 16; // ~1 幀
+  private pendingEvents: Array<{
+    name: string;
+    payload: any;
+  }> = [];
+
+  constructor(
+    @inject(TYPES.DomainEventBus) private domainEventBus: DomainEventBus
+  ) {}
+
+  public queueEvent(name: string, payload: any) {
+    this.pendingEvents.push({ name, payload });
+    this.scheduleBatchProcess();
+  }
+
+  private scheduleBatchProcess() {
+    setTimeout(() => {
+      const events = [...this.pendingEvents];
+      this.pendingEvents = [];
+      
+      events.forEach(event => {
+        this.domainEventBus.emit(event.name, event.payload);
+      });
+    }, this.batchTimeout);
+  }
+}
+```
+
+### 2. 事件過濾
+
+```typescript
+@injectable()
+class EventFilter {
+  constructor(
+    @inject(TYPES.DomainEventBus) private domainEventBus: DomainEventBus
+  ) {}
+
+  public addFilter<T extends keyof DomainEventPayload>(
+    eventName: T,
+    filter: (payload: DomainEventPayload[T]) => boolean
+  ) {
+    const originalEmit = this.domainEventBus.emit;
+    
+    this.domainEventBus.emit = (name: T, payload: DomainEventPayload[T]) => {
+      if (name === eventName && !filter(payload)) {
+        return;
+      }
+      originalEmit.call(this.domainEventBus, name, payload);
+    };
+  }
+}
+```
+
+## 測試
+
+### 1. 模擬事件總線
+
+```typescript
+class MockEventBus implements IEventBus {
+  private handlers: Map<string, Function[]> = new Map();
+  private emittedEvents: Array<{ name: string; payload: any }> = [];
+
+  on(eventName: string, handler: Function) {
+    const handlers = this.handlers.get(eventName) || [];
+    handlers.push(handler);
+    this.handlers.set(eventName, handlers);
+  }
+
+  emit(eventName: string, payload: any) {
+    this.emittedEvents.push({ name: eventName, payload });
+    const handlers = this.handlers.get(eventName) || [];
+    handlers.forEach(handler => handler(payload));
+  }
+
+  getEmittedEvents() {
+    return this.emittedEvents;
+  }
+}
+
+// 在測試中使用
+describe('AudioService', () => {
+  let mockUiEventBus: MockEventBus;
+  let mockDomainEventBus: MockEventBus;
+  let audioService: AudioService;
+
+  beforeEach(() => {
+    mockUiEventBus = new MockEventBus();
+    mockDomainEventBus = new MockEventBus();
+    
+    audioService = new AudioService(
+      mockUiEventBus,
+      mockDomainEventBus,
+      mockAudioEngine
+    );
+  });
+
+  it('should emit domain event when UI event received', () => {
+    mockUiEventBus.emit('ui:playback:start', undefined);
+    
+    const emittedEvents = mockDomainEventBus.getEmittedEvents();
+    expect(emittedEvents[0].name).toBe('domain:playback:started');
+  });
+});
+```
+
+## 擴展
+
+### 1. 添加新事件類型
+
+1. 在事件類型定義中添加新事件：
+```typescript
+export interface UIEventPayload {
+  // 添加新的 UI 事件
+  'ui:newFeature:action': {
+    // 事件參數
+  };
+}
+
+export interface DomainEventPayload {
+  // 添加新的領域事件
+  'domain:newFeature:happened': {
+    // 事件參數
+  };
+}
+```
+
+2. 實現事件處理：
+```typescript
+@injectable()
+class NewFeatureHandler {
+  constructor(
+    @inject(TYPES.UIEventBus) private uiEventBus: UIEventBus,
+    @inject(TYPES.DomainEventBus) private domainEventBus: DomainEventBus
+  ) {
+    this.setupHandlers();
+  }
+
+  private setupHandlers() {
+    this.uiEventBus.on('ui:newFeature:action', this.handleNewFeatureAction);
+  }
+
+  private handleNewFeatureAction = (payload: UIEventPayload['ui:newFeature:action']) => {
+    // 處理邏輯
+  };
+}
+```
+
+### 2. 添加事件中間件
+
+```typescript
+@injectable()
+class EventMiddleware {
+  constructor(
+    @inject(TYPES.DomainEventBus) private domainEventBus: DomainEventBus
+  ) {}
+
+  public addMiddleware(
+    middleware: (eventName: string, payload: any, next: () => void) => void
+  ) {
+    const originalEmit = this.domainEventBus.emit;
+    
+    this.domainEventBus.emit = (name: string, payload: any) => {
+      middleware(name, payload, () => {
+        originalEmit.call(this.domainEventBus, name, payload);
+      });
+    };
+  }
+}
+
+// 使用中間件
+const middleware = new EventMiddleware(domainEventBus);
+
+// 添加日誌中間件
+middleware.addMiddleware((name, payload, next) => {
+  console.log(`[Event] ${name}:`, payload);
+  next();
+});
+
+// 添加驗證中間件
+middleware.addMiddleware((name, payload, next) => {
+  if (validatePayload(name, payload)) {
+    next();
+  } else {
+    console.error(`Invalid payload for event ${name}`);
+  }
+});
+```
+
+## 參考資料
+
+- [Event Emitter Pattern](https://en.wikipedia.org/wiki/Observer_pattern)
+- [TypeScript Event Handling](https://www.typescriptlang.org/docs/handbook/decorators.html)
+- [React Event Handling](https://reactjs.org/docs/handling-events.html)
