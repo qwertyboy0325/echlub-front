@@ -9,6 +9,7 @@
 ### 1. 狀態類型
 
 #### 應用狀態（Application State）
+
 ```typescript
 interface AppState {
     project: ProjectState;
@@ -64,6 +65,7 @@ interface AudioState {
 ```
 
 #### 持久化狀態（Persistent State）
+
 ```typescript
 interface PersistentState {
     project: ProjectState;
@@ -82,6 +84,7 @@ interface UserSettings {
 ### 2. 狀態管理器
 
 #### StateManager
+
 ```typescript
 @injectable()
 class StateManager {
@@ -144,6 +147,7 @@ class StateManager {
 ```
 
 #### StateSubscriber
+
 ```typescript
 interface StateSubscriber {
     onStateChanged(state: AppState): void;
@@ -164,6 +168,7 @@ class TrackListComponent implements StateSubscriber {
 ### 3. 狀態持久化
 
 #### LocalStorageService
+
 ```typescript
 @injectable()
 class LocalStorageService {

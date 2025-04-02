@@ -89,7 +89,7 @@ npm run build
 
 ## 專案結構
 
-```
+``` bash
 echlub_front/
 ├── src/                    # 源代碼
 │   ├── data/              # 數據層

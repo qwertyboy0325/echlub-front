@@ -814,6 +814,7 @@
 ## 9. 數據流轉
 
 ### 9.1 DTO (Data Transfer Object) 模式
+
 ```typescript
 // 數據層 DTO
 interface ClipDTO {
@@ -839,6 +840,7 @@ interface Clip {
 ```
 
 ### 9.2 Mapper 模式
+
 ```typescript
 // 基礎設施層 Mapper
 class ClipMapper {
@@ -864,6 +866,7 @@ class ClipMapper {
 ```
 
 ### 9.3 目錄結構
+
 ```
 src/
 ├── data/                 // 數據層
@@ -877,6 +880,7 @@ src/
 ```
 
 ### 9.4 命名規範
+
 1. **數據層**：
    - `ClipDTO`
    - `TrackDTO`
@@ -895,16 +899,19 @@ src/
 ## 10. 層間通信
 
 ### 10.1 數據層 → 領域層
+
 - 使用 Mapper 將 DTO 轉換為領域模型
 - 保持領域模型的純粹性
 - 避免數據持久化邏輯污染領域邏輯
 
 ### 10.2 領域層 → 應用層
+
 - 通過倉儲接口訪問數據
 - 使用領域服務處理複雜業務邏輯
 - 發布領域事件
 
 ### 10.3 應用層 → 展示層
+
 - 使用 Presenter 轉換數據
 - 處理 UI 事件
 - 更新 UI 狀態
@@ -998,18 +1005,21 @@ graph TD
 ### 1. 展示層（Presentation Layer）
 
 #### 職責
+
 - 處理用戶界面和交互
 - 管理視圖狀態
 - 處理用戶輸入
 - 展示數據和反饋
 
 #### 核心組件
+
 - **React 組件**：UI 渲染和交互
 - **Presenter**：業務邏輯和數據轉換
 - **ViewModel**：視圖數據模型
 - **事件處理器**：用戶操作響應
 
 #### 關鍵實現
+
 ```typescript
 // Presenter 示例
 @injectable()
@@ -1039,18 +1049,21 @@ interface TrackViewModel {
 ### 2. 應用層（Application Layer）
 
 #### 職責
+
 - 協調業務流程
 - 處理用戶操作
 - 管理應用狀態
 - 處理事件轉換
 
 #### 核心組件
+
 - **Service**：業務邏輯服務
 - **EventHandler**：事件處理器
 - **StateManager**：狀態管理
 - **CommandHandler**：命令處理器
 
 #### 關鍵實現
+
 ```typescript
 // Service 示例
 @injectable()
@@ -1072,18 +1085,21 @@ class TrackService {
 ### 3. 領域層（Domain Layer）
 
 #### 職責
+
 - 實現核心業務邏輯
 - 定義領域模型
 - 維護業務規則
 - 處理領域事件
 
 #### 核心組件
+
 - **Entity**：領域實體
 - **ValueObject**：值對象
 - **DomainEvent**：領域事件
 - **Repository**：數據訪問接口
 
 #### 關鍵實現
+
 ```typescript
 // Entity 示例
 class Track extends Entity {
@@ -1118,18 +1134,21 @@ interface TrackRepository {
 ### 4. 基礎設施層（Infrastructure Layer）
 
 #### 職責
+
 - 提供技術實現
 - 處理外部集成
 - 管理資源訪問
 - 實現持久化
 
 #### 核心組件
+
 - **AudioEngine**：音頻引擎
 - **StorageService**：存儲服務
 - **EventBus**：事件總線
 - **Logger**：日誌服務
 
 #### 關鍵實現
+
 ```typescript
 // AudioEngine 示例
 @injectable()
