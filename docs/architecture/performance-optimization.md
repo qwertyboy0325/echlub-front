@@ -2,540 +2,363 @@
 
 ## 概述
 
-本文檔詳細說明了 DAW 系統的性能優化策略，包括音頻處理、UI 渲染、狀態管理等方面的優化方案。
+本文檔概述了 DAW 專案的性能優化策略和實現方案。我們將從多個層面進行優化，確保系統的響應性和流暢性。
 
-## 音頻處理優化
+## 1. 狀態管理優化
 
-### 1. 音頻引擎優化
-
-```typescript
-class OptimizedAudioEngine {
-    private bufferPool: AudioBufferPool;
-    private workletManager: AudioWorkletManager;
-    private wasmProcessor: WasmAudioProcessor;
-
-    constructor() {
-        this.bufferPool = new AudioBufferPool();
-        this.workletManager = new AudioWorkletManager();
-        this.wasmProcessor = new WasmAudioProcessor();
-    }
-
-    async processAudio(buffer: AudioBuffer): Promise<AudioBuffer> {
-        // 檢查緩存
-        const cached = this.bufferPool.get(buffer.id);
-        if (cached) return cached;
-
-        // 使用 WebAssembly 處理複雜運算
-        const processed = await this.wasmProcessor.process(buffer);
-
-        // 使用 AudioWorklet 處理實時效果
-        return await this.workletManager.applyEffects(processed);
-    }
-}
-```
-
-### 2. 緩衝區管理
+### 1.1 選擇器記憶化
 
 ```typescript
-class AudioBufferPool {
-    private pool: LRUCache<string, AudioBuffer>;
+// 1. 實現記憶化選擇器
+@injectable()
+class MemoizedStateSelector implements StateSelector {
+    private memoizedSelectors = new Map<string, Function>();
     
-    constructor(maxSize: number = 100) {
-        this.pool = new LRUCache(maxSize);
+    select<T>(selector: (state: DAWState) => T): (state: DAWState) => T {
+        const key = selector.toString();
+        if (!this.memoizedSelectors.has(key)) {
+            this.memoizedSelectors.set(key, createSelector(selector));
+        }
+        return this.memoizedSelectors.get(key)!;
     }
+}
 
-    add(id: string, buffer: AudioBuffer): void {
-        this.pool.set(id, buffer);
-    }
-
-    get(id: string): AudioBuffer | undefined {
-        return this.pool.get(id);
-    }
-
-    clear(): void {
-        this.pool.clear();
+// 2. 使用記憶化選擇器
+class TrackComponent {
+    private getTrackSelector = this.stateSelector.select(
+        state => state.tracks.find(t => t.id === this.trackId)
+    );
+    
+    render() {
+        const track = this.getTrackSelector(this.state);
+        // 渲染軌道
     }
 }
 ```
 
-### 3. 音頻工作線程
+### 1.2 批量更新
 
 ```typescript
-class AudioWorkletManager {
-    private worklets: Map<string, AudioWorkletNode>;
-
-    async loadWorklet(name: string, url: string): Promise<void> {
-        await audioContext.audioWorklet.addModule(url);
-        const worklet = new AudioWorkletNode(audioContext, name);
-        this.worklets.set(name, worklet);
+// 1. 實現批量更新管理器
+@injectable()
+class BatchedStateManager implements StateManager {
+    private updateQueue: Array<(state: DAWState) => DAWState> = [];
+    
+    updateState(updater: (state: DAWState) => DAWState): void {
+        this.updateQueue.push(updater);
+        this.scheduleBatchUpdate();
     }
-
-    async process(name: string, data: Float32Array): Promise<Float32Array> {
-        const worklet = this.worklets.get(name);
-        if (!worklet) throw new Error(`Worklet ${name} not found`);
-
-        return new Promise((resolve) => {
-            worklet.port.onmessage = (e) => resolve(e.data);
-            worklet.port.postMessage(data);
+    
+    private scheduleBatchUpdate(): void {
+        if (this.updateQueue.length === 0) return;
+        
+        requestAnimationFrame(() => {
+            const updates = [...this.updateQueue];
+            this.updateQueue = [];
+            
+            this.state = updates.reduce(
+                (state, updater) => updater(state),
+                this.state
+            );
+            
+            this.notifySubscribers();
         });
     }
 }
 ```
 
-## UI 渲染優化
+## 2. 事件系統優化
 
-### 1. 虛擬列表
+### 2.1 事件批處理
 
 ```typescript
-class VirtualList<T> {
-    private items: T[];
-    private visibleItems: T[];
-    private itemHeight: number;
-    private containerHeight: number;
-    private scrollTop: number = 0;
-
-    constructor(
-        items: T[],
-        itemHeight: number,
-        containerHeight: number
-    ) {
-        this.items = items;
-        this.itemHeight = itemHeight;
-        this.containerHeight = containerHeight;
-        this.updateVisibleItems();
+// 1. 實現事件批處理器
+@injectable()
+class BatchedEventBus implements EventBus {
+    private eventQueue: Array<{
+        event: string;
+        payload: any;
+    }> = [];
+    
+    emit<T extends keyof UIEventPayload | keyof DomainEventPayload>(
+        event: T,
+        payload: UIEventPayload[T] | DomainEventPayload[T]
+    ): void {
+        this.eventQueue.push({ event, payload });
+        this.scheduleBatchProcess();
     }
-
-    private updateVisibleItems(): void {
-        const startIndex = Math.floor(this.scrollTop / this.itemHeight);
-        const endIndex = Math.min(
-            startIndex + Math.ceil(this.containerHeight / this.itemHeight),
-            this.items.length
-        );
-
-        this.visibleItems = this.items.slice(startIndex, endIndex);
-    }
-
-    onScroll(scrollTop: number): void {
-        this.scrollTop = scrollTop;
-        this.updateVisibleItems();
-    }
-
-    getVisibleItems(): T[] {
-        return this.visibleItems;
+    
+    private scheduleBatchProcess(): void {
+        if (this.eventQueue.length === 0) return;
+        
+        requestAnimationFrame(() => {
+            const events = [...this.eventQueue];
+            this.eventQueue = [];
+            
+            events.forEach(({ event, payload }) => {
+                this.processEvent(event, payload);
+            });
+        });
     }
 }
 ```
 
-### 2. 組件記憶化
+### 2.2 事件過濾
 
 ```typescript
-const MemoizedTrackComponent = memo<TrackProps>(
-    ({ track, onVolumeChange, onPanChange }) => {
-        const volume = useMemo(() => track.volume, [track.volume]);
-        const pan = useMemo(() => track.pan, [track.pan]);
+// 1. 實現事件過濾器
+@injectable()
+class FilteredEventBus implements EventBus {
+    private filters: Map<string, Set<(payload: any) => boolean>> = new Map();
+    
+    addFilter<T extends keyof UIEventPayload | keyof DomainEventPayload>(
+        event: T,
+        filter: (payload: UIEventPayload[T] | DomainEventPayload[T]) => boolean
+    ): void {
+        if (!this.filters.has(event)) {
+            this.filters.set(event, new Set());
+        }
+        this.filters.get(event)!.add(filter);
+    }
+    
+    emit<T extends keyof UIEventPayload | keyof DomainEventPayload>(
+        event: T,
+        payload: UIEventPayload[T] | DomainEventPayload[T]
+    ): void {
+        const filters = this.filters.get(event);
+        if (filters && !Array.from(filters).every(filter => filter(payload))) {
+            return;
+        }
+        
+        this.processEvent(event, payload);
+    }
+}
+```
 
-        const handleVolumeChange = useCallback(
-            (value: number) => onVolumeChange(track.id, value),
-            [track.id, onVolumeChange]
-        );
+## 3. 渲染優化
 
-        const handlePanChange = useCallback(
-            (value: number) => onPanChange(track.id, value),
-            [track.id, onPanChange]
-        );
+### 3.1 虛擬化列表
 
+```typescript
+// 1. 實現虛擬化軌道列表
+class VirtualizedTrackList extends React.Component {
+    private virtualizer = new Virtualizer({
+        itemCount: this.tracks.length,
+        itemSize: 100,
+        overscan: 5
+    });
+    
+    render() {
         return (
-            <div className="track">
-                <VolumeSlider value={volume} onChange={handleVolumeChange} />
-                <PanKnob value={pan} onChange={handlePanChange} />
+            <div style={{ height: '100%', overflow: 'auto' }}>
+                {this.virtualizer.getVirtualItems().map(virtualItem => (
+                    <TrackComponent
+                        key={virtualItem.index}
+                        track={this.tracks[virtualItem.index]}
+                        style={{
+                            position: 'absolute',
+                            top: virtualItem.start,
+                            height: virtualItem.size
+                        }}
+                    />
+                ))}
             </div>
         );
-    },
-    (prev, next) => prev.track.id === next.track.id
-);
+    }
+}
 ```
 
-### 3. 渲染優化
+### 3.2 渲染優化器
 
 ```typescript
+// 1. 實現渲染優化器
+@injectable()
 class RenderOptimizer {
-    private rafId: number | null = null;
-    private updates: Set<() => void> = new Set();
-
-    scheduleUpdate(update: () => void): void {
-        this.updates.add(update);
-        this.scheduleRender();
+    private renderQueue: Set<Component> = new Set();
+    private isProcessing = false;
+    
+    scheduleRender(component: Component): void {
+        this.renderQueue.add(component);
+        this.scheduleProcess();
     }
-
-    private scheduleRender(): void {
-        if (this.rafId === null) {
-            this.rafId = requestAnimationFrame(() => {
-                this.processUpdates();
-            });
-        }
-    }
-
-    private processUpdates(): void {
-        this.updates.forEach(update => update());
-        this.updates.clear();
-        this.rafId = null;
-    }
-
-    cancelUpdate(update: () => void): void {
-        this.updates.delete(update);
-    }
-}
-```
-
-## 狀態管理優化
-
-### 1. 狀態分片
-
-```typescript
-class StateOptimizer {
-    private slices: Map<string, any> = new Map();
-    private dependencies: Map<string, Set<string>> = new Map();
-
-    registerSlice(name: string, initialState: any): void {
-        this.slices.set(name, initialState);
-        this.dependencies.set(name, new Set());
-    }
-
-    addDependency(slice: string, dependency: string): void {
-        const deps = this.dependencies.get(slice);
-        if (deps) deps.add(dependency);
-    }
-
-    updateSlice(name: string, update: (state: any) => any): void {
-        const state = this.slices.get(name);
-        const newState = update(state);
-        this.slices.set(name, newState);
-
-        // 更新依賴此切片的其他切片
-        this.dependencies.forEach((deps, slice) => {
-            if (deps.has(name)) {
-                this.notifySliceUpdate(slice);
-            }
-        });
-    }
-
-    private notifySliceUpdate(name: string): void {
-        // 通知訂閱者
-    }
-}
-```
-
-### 2. 選擇器優化
-
-```typescript
-class SelectorOptimizer {
-    private cache: Map<string, any> = new Map();
-    private dependencies: Map<string, Set<string>> = new Map();
-
-    createSelector<T, R>(
-        dependencies: string[],
-        selector: (...args: T[]) => R
-    ): (...args: T[]) => R {
-        const key = dependencies.join(',');
+    
+    private scheduleProcess(): void {
+        if (this.isProcessing) return;
         
-        return (...args: T[]): R => {
-            const currentDeps = dependencies.map(dep => 
-                JSON.stringify(this.cache.get(dep))
-            ).join(',');
-
-            if (this.cache.has(key)) {
-                const { deps, result } = this.cache.get(key);
-                if (deps === currentDeps) {
-                    return result;
-                }
-            }
-
-            const result = selector(...args);
-            this.cache.set(key, {
-                deps: currentDeps,
-                result
+        requestAnimationFrame(() => {
+            this.isProcessing = true;
+            const components = [...this.renderQueue];
+            this.renderQueue.clear();
+            
+            components.forEach(component => {
+                this.optimizeRender(component);
             });
-
-            return result;
-        };
-    }
-
-    invalidateCache(): void {
-        this.cache.clear();
-    }
-}
-```
-
-## 記憶體優化
-
-### 1. 對象池
-
-```typescript
-class ObjectPool<T> {
-    private pool: T[] = [];
-    private factory: () => T;
-    private reset: (item: T) => void;
-
-    constructor(
-        factory: () => T,
-        reset: (item: T) => void,
-        initialSize: number = 0
-    ) {
-        this.factory = factory;
-        this.reset = reset;
-
-        // 預先創建對象
-        for (let i = 0; i < initialSize; i++) {
-            this.pool.push(this.factory());
-        }
-    }
-
-    acquire(): T {
-        return this.pool.pop() || this.factory();
-    }
-
-    release(item: T): void {
-        this.reset(item);
-        this.pool.push(item);
-    }
-
-    clear(): void {
-        this.pool = [];
-    }
-}
-```
-
-### 2. 記憶體監控
-
-```typescript
-class MemoryMonitor {
-    private maxMemory: number;
-    private warningThreshold: number;
-    private criticalThreshold: number;
-
-    constructor(
-        maxMemory: number,
-        warningThreshold: number = 0.7,
-        criticalThreshold: number = 0.9
-    ) {
-        this.maxMemory = maxMemory;
-        this.warningThreshold = warningThreshold;
-        this.criticalThreshold = criticalThreshold;
-    }
-
-    checkMemory(): void {
-        const used = performance.memory.usedJSHeapSize;
-        const total = performance.memory.totalJSHeapSize;
-        const ratio = used / total;
-
-        if (ratio > this.criticalThreshold) {
-            this.handleCriticalMemory();
-        } else if (ratio > this.warningThreshold) {
-            this.handleWarningMemory();
-        }
-    }
-
-    private handleWarningMemory(): void {
-        // 發出警告
-        console.warn('Memory usage is high');
-    }
-
-    private handleCriticalMemory(): void {
-        // 強制垃圾回收
-        // 清理緩存
-        // 釋放非必要資源
-    }
-}
-```
-
-## 網絡優化
-
-### 1. 資源加載
-
-```typescript
-class ResourceLoader {
-    private cache: Map<string, any> = new Map();
-    private loading: Map<string, Promise<any>> = new Map();
-
-    async load(url: string): Promise<any> {
-        // 檢查緩存
-        if (this.cache.has(url)) {
-            return this.cache.get(url);
-        }
-
-        // 檢查是否正在加載
-        if (this.loading.has(url)) {
-            return this.loading.get(url);
-        }
-
-        // 開始加載
-        const promise = fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                this.cache.set(url, data);
-                this.loading.delete(url);
-                return data;
-            });
-
-        this.loading.set(url, promise);
-        return promise;
-    }
-
-    preload(urls: string[]): void {
-        urls.forEach(url => this.load(url));
-    }
-}
-```
-
-### 2. 數據壓縮
-
-```typescript
-class DataCompressor {
-    compress(data: ArrayBuffer): Promise<ArrayBuffer> {
-        return new Promise((resolve, reject) => {
-            const compressed = pako.deflate(data);
-            resolve(compressed.buffer);
+            
+            this.isProcessing = false;
         });
     }
-
-    decompress(data: ArrayBuffer): Promise<ArrayBuffer> {
-        return new Promise((resolve, reject) => {
-            const decompressed = pako.inflate(data);
-            resolve(decompressed.buffer);
-        });
+    
+    private optimizeRender(component: Component): void {
+        // 實現渲染優化邏輯
     }
 }
 ```
 
-## 監控和分析
+## 4. 音頻處理優化
 
-### 1. 性能監控
+### 4.1 音頻緩衝管理
 
 ```typescript
+// 1. 實現音頻緩衝管理器
+@injectable()
+class AudioBufferManager {
+    private bufferCache: Map<string, AudioBuffer> = new Map();
+    private maxCacheSize: number = 100;
+    
+    async getBuffer(url: string): Promise<AudioBuffer> {
+        if (this.bufferCache.has(url)) {
+            return this.bufferCache.get(url)!;
+        }
+        
+        const buffer = await this.loadBuffer(url);
+        this.cacheBuffer(url, buffer);
+        return buffer;
+    }
+    
+    private cacheBuffer(url: string, buffer: AudioBuffer): void {
+        if (this.bufferCache.size >= this.maxCacheSize) {
+            const firstKey = this.bufferCache.keys().next().value;
+            this.bufferCache.delete(firstKey);
+        }
+        this.bufferCache.set(url, buffer);
+    }
+}
+```
+
+### 4.2 音頻處理優化
+
+```typescript
+// 1. 實現音頻處理優化器
+@injectable()
+class AudioProcessingOptimizer {
+    private processingQueue: Array<AudioProcessingTask> = [];
+    private isProcessing = false;
+    
+    scheduleProcessing(task: AudioProcessingTask): void {
+        this.processingQueue.push(task);
+        this.scheduleProcess();
+    }
+    
+    private scheduleProcess(): void {
+        if (this.isProcessing) return;
+        
+        requestAnimationFrame(() => {
+            this.isProcessing = true;
+            const tasks = [...this.processingQueue];
+            this.processingQueue.clear();
+            
+            tasks.forEach(task => {
+                this.processTask(task);
+            });
+            
+            this.isProcessing = false;
+        });
+    }
+    
+    private processTask(task: AudioProcessingTask): void {
+        // 實現音頻處理邏輯
+    }
+}
+```
+
+## 5. 性能監控
+
+### 5.1 性能指標收集
+
+```typescript
+// 1. 實現性能監視器
+@injectable()
 class PerformanceMonitor {
     private metrics: Map<string, number[]> = new Map();
-    private thresholds: Map<string, number> = new Map();
-
-    measure(name: string, operation: () => void): void {
-        const start = performance.now();
-        operation();
-        const duration = performance.now() - start;
-
-        const measurements = this.metrics.get(name) || [];
-        measurements.push(duration);
-        this.metrics.set(name, measurements);
-
-        this.checkThreshold(name, duration);
-    }
-
-    async measureAsync(
-        name: string,
-        operation: () => Promise<void>
-    ): Promise<void> {
-        const start = performance.now();
-        await operation();
-        const duration = performance.now() - start;
-
-        const measurements = this.metrics.get(name) || [];
-        measurements.push(duration);
-        this.metrics.set(name, measurements);
-
-        this.checkThreshold(name, duration);
-    }
-
-    setThreshold(name: string, threshold: number): void {
-        this.thresholds.set(name, threshold);
-    }
-
-    private checkThreshold(name: string, duration: number): void {
-        const threshold = this.thresholds.get(name);
-        if (threshold && duration > threshold) {
-            console.warn(
-                `Performance warning: ${name} took ${duration}ms ` +
-                `(threshold: ${threshold}ms)`
-            );
+    
+    recordMetric(name: string, value: number): void {
+        if (!this.metrics.has(name)) {
+            this.metrics.set(name, []);
         }
+        this.metrics.get(name)!.push(value);
     }
+    
+    getAverageMetric(name: string): number {
+        const values = this.metrics.get(name);
+        if (!values || values.length === 0) return 0;
+        return values.reduce((a, b) => a + b, 0) / values.length;
+    }
+}
+```
 
-    getMetrics(name: string): {
-        avg: number;
-        min: number;
-        max: number;
-        count: number;
-    } {
-        const measurements = this.metrics.get(name) || [];
+### 5.2 性能報告生成
+
+```typescript
+// 1. 實現性能報告生成器
+@injectable()
+class PerformanceReporter {
+    constructor(
+        @inject(TYPES.PerformanceMonitor)
+        private monitor: PerformanceMonitor
+    ) {}
+    
+    generateReport(): PerformanceReport {
         return {
-            avg: measurements.reduce((a, b) => a + b, 0) / measurements.length,
-            min: Math.min(...measurements),
-            max: Math.max(...measurements),
-            count: measurements.length
+            timestamp: Date.now(),
+            metrics: Array.from(this.monitor.getMetrics()).map(([name, values]) => ({
+                name,
+                average: values.reduce((a, b) => a + b, 0) / values.length,
+                min: Math.min(...values),
+                max: Math.max(...values)
+            }))
         };
     }
 }
 ```
 
-### 2. 錯誤追蹤
+## 性能優化檢查清單
 
-```typescript
-class ErrorTracker {
-    private errors: Error[] = [];
-    private maxErrors: number = 100;
+### 1. 狀態管理
+- [ ] 實現選擇器記憶化
+- [ ] 實現批量更新機制
+- [ ] 優化狀態訂閱機制
 
-    track(error: Error): void {
-        this.errors.push({
-            ...error,
-            timestamp: new Date(),
-            stack: error.stack
-        });
+### 2. 事件系統
+- [ ] 實現事件批處理
+- [ ] 實現事件過濾
+- [ ] 優化事件監聽器
 
-        if (this.errors.length > this.maxErrors) {
-            this.errors.shift();
-        }
+### 3. 渲染優化
+- [ ] 實現虛擬化列表
+- [ ] 實現渲染優化器
+- [ ] 優化組件重渲染
 
-        this.reportError(error);
-    }
+### 4. 音頻處理
+- [ ] 實現音頻緩衝管理
+- [ ] 實現音頻處理優化
+- [ ] 優化音頻資源加載
 
-    private reportError(error: Error): void {
-        // 發送錯誤報告
-        console.error('Error tracked:', error);
-    }
+### 5. 監控系統
+- [ ] 實現性能指標收集
+- [ ] 實現性能報告生成
+- [ ] 設置性能警報機制
 
-    getErrors(): Error[] {
-        return this.errors;
-    }
+## 注意事項
 
-    clear(): void {
-        this.errors = [];
-    }
-}
-```
-
-## 最佳實踐
-
-### 1. 性能優化原則
-
-- 使用適當的數據結構
-- 實現緩存機制
-- 優化渲染性能
-- 管理記憶體使用
-
-### 2. 監控建議
-
-- 實時監控性能指標
-- 追蹤錯誤和異常
-- 分析性能瓶頸
-- 優化關鍵路徑
-
-### 3. 調試技巧
-
-- 使用性能分析工具
-- 監控記憶體使用
-- 追蹤性能問題
-- 優化加載時間
+1. 定期進行性能測試
+2. 監控關鍵性能指標
+3. 及時處理性能問題
+4. 保持代碼可維護性
+5. 遵循性能最佳實踐
 
 ## 參考資料
 
-- [Web Performance](https://web.dev/performance)
-- [React Performance](https://reactjs.org/docs/optimizing-performance.html)
-- [Memory Management](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management)
-- [Performance API](https://developer.mozilla.org/en-US/docs/Web/API/Performance)
+- [React Performance Optimization](https://reactjs.org/docs/optimizing-performance.html)
+- [Web Audio API Performance](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Performance)
+- [JavaScript Performance](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Performance)
+- [Browser Rendering Optimization](https://developers.google.com/web/fundamentals/performance/rendering)

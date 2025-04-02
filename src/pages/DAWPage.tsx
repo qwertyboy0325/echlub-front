@@ -1,5 +1,5 @@
 import React from 'react';
-import DAWContainer from '../presentation/components/DAWContainer';
+import { DAWContainer } from '../presentation/containers/DAWContainer';
 
 /**
  * DAW 頁面

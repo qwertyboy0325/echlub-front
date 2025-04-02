@@ -5,6 +5,7 @@ export const TYPES = {
     // Core Services
     DAWManager: Symbol.for('DAWManager'),
     EventBus: Symbol.for('EventBus'),
+    UIEventBus: Symbol.for('UIEventBus'),
     
     // Audio Services
     AudioContext: Symbol.for('AudioContext'),
@@ -28,11 +29,23 @@ export const TYPES = {
     
     // Presenters
     DAWPresenter: Symbol.for('DAWPresenter'),
+    TrackPresenter: Symbol.for('TrackPresenter'),
 
     // 事件系統相關
-    UIEventBus: Symbol.for('UIEventBus'),
     DomainEventBus: Symbol.for('DomainEventBus'),
     EventTranslator: Symbol.for('EventTranslator'),
+
+    // 圖形系統
+    RenderEngine: Symbol.for('RenderEngine'),
+    DragSystem: Symbol.for('DragSystem'),
+    DAWScene: Symbol.for('DAWScene'),
+
+    EventMonitor: Symbol.for('EventMonitor'),
+
+    // Graphics
+    DAWRenderer: Symbol.for('DAWRenderer'),
+
+    PerformanceMonitor: Symbol.for('PerformanceMonitor'),
 } as const;
 
 // 定義介面

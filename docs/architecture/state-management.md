@@ -2,7 +2,7 @@
 
 ## 概述
 
-本系統採用分層的狀態管理架構，結合事件驅動和響應式編程模式，實現了高效、可靠的狀態管理機制。
+本系統採用集中式狀態管理，作為表現層和領域層之間的橋樑，負責管理應用狀態、處理狀態更新、發送領域事件，並確保狀態的一致性。
 
 ## 核心概念
 
@@ -89,10 +89,10 @@ class StateManager {
     private subscribers: Set<StateSubscriber>;
 
     constructor(
-        @inject(TYPES.LocalStorageService) 
-        private storage: LocalStorageService,
-        @inject(TYPES.EventBus)
-        private eventBus: EventBus
+        @inject(TYPES.StorageService) 
+        private storage: StorageService,
+        @inject(TYPES.DomainEventBus)
+        private domainEventBus: EventBus
     ) {
         this.state = this.getInitialState();
         this.subscribers = new Set();
@@ -100,9 +100,10 @@ class StateManager {
     }
 
     private initializeEventHandlers(): void {
-        this.eventBus.on('track:created', this.handleTrackCreated);
-        this.eventBus.on('clip:added', this.handleClipAdded);
-        this.eventBus.on('state:changed', this.handleStateChanged);
+        // 監聽領域事件
+        this.domainEventBus.on('domain:track:created', this.handleTrackCreated);
+        this.domainEventBus.on('domain:track:updated', this.handleTrackUpdated);
+        this.domainEventBus.on('domain:track:deleted', this.handleTrackDeleted);
     }
 
     public getState<T>(selector: (state: AppState) => T): T {
@@ -114,8 +115,30 @@ class StateManager {
     ): Promise<void> {
         const updates = updater(this.state);
         this.state = { ...this.state, ...updates };
+        
+        // 發送領域事件
+        if (updates.tracks) {
+            this.domainEventBus.emit('domain:track:updated', {
+                track: updates.tracks[updates.tracks.length - 1]
+            });
+        }
+        
         await this.notifySubscribers();
         await this.persistState();
+    }
+
+    private async persistState(): Promise<void> {
+        await this.storage.saveState({
+            project: this.state.project,
+            tracks: this.state.tracks,
+            clips: this.state.clips
+        });
+    }
+
+    private async notifySubscribers(): Promise<void> {
+        for (const subscriber of this.subscribers) {
+            await subscriber.onStateChanged(this.state);
+        }
     }
 }
 ```
@@ -127,9 +150,13 @@ interface StateSubscriber {
 }
 
 class TrackListComponent implements StateSubscriber {
+    constructor(private stateManager: StateManager) {
+        this.stateManager.subscribe(this);
+    }
+
     onStateChanged(state: AppState): void {
         const tracks = state.tracks;
-        // 更新視圖
+        this.renderTracks(tracks);
     }
 }
 ```
@@ -171,10 +198,9 @@ class LocalStorageService {
 
 ## 狀態更新流程
 
-### 1. 同步更新
+### 1. UI 觸發更新
 
 ```typescript
-// 在組件中更新狀態
 class TrackComponent {
     constructor(
         @inject(TYPES.StateManager)
@@ -193,54 +219,42 @@ class TrackComponent {
 }
 ```
 
-### 2. 事件驅動更新
+### 2. 領域事件處理
 
 ```typescript
-// 通過事件更新狀態
-class AudioEngine {
-    constructor(
-        @inject(TYPES.EventBus)
-        private eventBus: EventBus
-    ) {
-        this.eventBus.on('track:volume:changed', this.handleVolumeChange);
-    }
+class StateManager {
+    private handleTrackCreated = (payload: DomainEventPayload['domain:track:created']): void => {
+        this.updateState(state => ({
+            tracks: [...state.tracks, payload.track]
+        }));
+    };
 
-    private handleVolumeChange = (
-        payload: { trackId: string; volume: number }
-    ): void => {
-        const { trackId, volume } = payload;
-        const track = this.tracks.get(trackId);
-        if (track) {
-            track.setVolume(volume);
-        }
+    private handleTrackUpdated = (payload: DomainEventPayload['domain:track:updated']): void => {
+        this.updateState(state => ({
+            tracks: state.tracks.map(track =>
+                track.id === payload.track.id
+                    ? payload.track
+                    : track
+            )
+        }));
     };
 }
 ```
 
 ## 性能優化
 
-### 1. 狀態分片
+### 1. 狀態選擇器
 
 ```typescript
-// 將狀態分割為更小的部分
-interface TrackSlice {
-    tracks: TrackState[];
-    selectedTrackId: string | null;
-}
+// 使用選擇器優化性能
+const selectTrackById = (state: AppState, trackId: string): TrackState | undefined =>
+    state.tracks.find(track => track.id === trackId);
 
-interface ClipSlice {
-    clips: ClipState[];
-    selectedClipId: string | null;
-}
-
-// 使用選擇器獲取特定狀態片段
-const selectTrackSlice = (state: AppState): TrackSlice => ({
-    tracks: state.tracks,
-    selectedTrackId: state.ui.selectedTrackId
-});
+const selectActiveClips = (state: AppState): ClipState[] =>
+    state.clips.filter(clip => !clip.isDeleted);
 ```
 
-### 2. 記憶化選擇器
+### 2. 記憶化
 
 ```typescript
 // 使用記憶化避免不必要的重新計算
@@ -248,52 +262,31 @@ const selectTrackById = memoize(
     (state: AppState, trackId: string): TrackState | undefined =>
         state.tracks.find(track => track.id === trackId)
 );
-
-const selectTrackClips = memoize(
-    (state: AppState, trackId: string): ClipState[] =>
-        state.clips.filter(clip => clip.trackId === trackId)
-);
 ```
 
 ### 3. 批量更新
 
 ```typescript
-// 合併多個更新操作
-class BatchUpdateManager {
-    private updates: Array<(state: AppState) => Partial<AppState>> = [];
-    private isScheduled = false;
+class StateManager {
+    private updateQueue: Partial<AppState>[] = [];
+    private isUpdating: boolean = false;
 
-    constructor(
-        @inject(TYPES.StateManager)
-        private stateManager: StateManager
-    ) {}
-
-    addUpdate(
-        update: (state: AppState) => Partial<AppState>
-    ): void {
-        this.updates.push(update);
-        this.scheduleUpdate();
-    }
-
-    private scheduleUpdate(): void {
-        if (!this.isScheduled) {
-            this.isScheduled = true;
-            requestAnimationFrame(this.processUpdates);
+    async batchUpdate(updates: Partial<AppState>[]): Promise<void> {
+        this.updateQueue.push(...updates);
+        if (!this.isUpdating) {
+            await this.processUpdateQueue();
         }
     }
 
-    private processUpdates = async (): Promise<void> => {
-        const updates = this.updates;
-        this.updates = [];
-        this.isScheduled = false;
-
-        await this.stateManager.updateState(state => {
-            return updates.reduce(
-                (acc, update) => ({ ...acc, ...update(state) }),
-                {}
-            );
-        });
-    };
+    private async processUpdateQueue(): Promise<void> {
+        this.isUpdating = true;
+        while (this.updateQueue.length > 0) {
+            const updates = this.updateQueue.splice(0, 10);
+            const mergedUpdate = this.mergeUpdates(updates);
+            await this.updateState(() => mergedUpdate);
+        }
+        this.isUpdating = false;
+    }
 }
 ```
 
@@ -377,69 +370,100 @@ class StatePerformanceMonitor {
 
 ## 錯誤處理
 
-### 1. 狀態驗證
+### 1. 狀態錯誤
 
 ```typescript
-// 驗證狀態更新
-class StateValidator {
-    validate(state: AppState): void {
-        this.validateProject(state.project);
-        this.validateTracks(state.tracks);
-        this.validateClips(state.clips);
-        this.validateAudioState(state.audio);
+class StateError extends Error {
+    constructor(
+        message: string,
+        public code: string,
+        public state: Partial<AppState>
+    ) {
+        super(message);
+        this.name = 'StateError';
     }
+}
 
-    private validateProject(project: ProjectState): void {
-        if (project.bpm < 20 || project.bpm > 400) {
-            throw new StateValidationError(
-                'Project BPM out of valid range'
+class StateManager {
+    private validateState(state: AppState): void {
+        if (!state.project) {
+            throw new StateError(
+                'Project state is required',
+                'INVALID_STATE',
+                state
             );
-        }
-    }
-
-    private validateTracks(tracks: TrackState[]): void {
-        const trackIds = new Set<string>();
-        for (const track of tracks) {
-            if (trackIds.has(track.id)) {
-                throw new StateValidationError(
-                    'Duplicate track ID detected'
-                );
-            }
-            trackIds.add(track.id);
         }
     }
 }
 ```
 
-### 2. 狀態恢復
+### 2. 錯誤恢復
 
 ```typescript
-// 實現狀態回滾機制
-class StateRecovery {
+class StateManager {
     private stateHistory: AppState[] = [];
-    private maxHistoryLength = 10;
 
-    constructor(
-        @inject(TYPES.StateManager)
-        private stateManager: StateManager
-    ) {
-        this.stateManager.subscribe(this.saveStateToHistory);
-    }
-
-    private saveStateToHistory = (state: AppState): void => {
-        this.stateHistory.push(JSON.parse(JSON.stringify(state)));
-        if (this.stateHistory.length > this.maxHistoryLength) {
-            this.stateHistory.shift();
-        }
-    };
-
-    public async rollbackToLastValidState(): Promise<void> {
-        const lastValidState = this.stateHistory.pop();
-        if (lastValidState) {
-            await this.stateManager.resetState(lastValidState);
+    async updateState(updater: (state: AppState) => Partial<AppState>): Promise<void> {
+        try {
+            this.stateHistory.push({ ...this.state });
+            const updates = updater(this.state);
+            this.state = { ...this.state, ...updates };
+            await this.notifySubscribers();
+        } catch (error) {
+            if (this.stateHistory.length > 0) {
+                this.state = this.stateHistory.pop()!;
+            }
+            throw error;
         }
     }
 }
+```
+
+## 測試策略
+
+### 1. 單元測試
+
+```typescript
+describe('StateManager', () => {
+    let stateManager: StateManager;
+    let storage: StorageService;
+    let eventBus: EventBus;
+
+    beforeEach(() => {
+        storage = mock<StorageService>();
+        eventBus = mock<EventBus>();
+        stateManager = new StateManager(storage, eventBus);
+    });
+
+    it('should update state and notify subscribers', async () => {
+        const subscriber = mock<StateSubscriber>();
+        stateManager.subscribe(subscriber);
+
+        await stateManager.updateState(state => ({
+            tracks: [...state.tracks, newTrack]
+        }));
+
+        expect(subscriber.onStateChanged).toHaveBeenCalled();
+    });
+});
+```
+
+### 2. 集成測試
+
+```typescript
+describe('State Management Integration', () => {
+    it('should handle track creation flow', async () => {
+        const stateManager = container.get<StateManager>(TYPES.StateManager);
+        const eventBus = container.get<EventBus>(TYPES.EventBus);
+
+        // 觸發 UI 事件
+        eventBus.emit('ui:track:create');
+
+        // 驗證狀態更新
+        const state = stateManager.getState(state => state.tracks);
+        expect(state).toHaveLength(1);
+    });
+});
 ```
 
 ## 最佳實踐

@@ -1,6 +1,8 @@
 import { Event } from './Event';
 import { ErrorHandler } from '../error/ErrorHandler';
-import { IEventBus } from '../di/types';
+import { injectable } from 'inversify';
+import { EventPayload, EventHandlerOptions, EventFilter } from './types';
+import { EventPriority } from './EventPriority';
 
 /**
  * Event Priority Levels
@@ -17,13 +19,17 @@ export enum EventPriority {
  */
 export type EventHandler<T = any> = (event: Event<T>) => void | Promise<void>;
 
-/**
- * Event Bus
- * Manages event emission and subscription
- */
-export class EventBus<T extends Record<string, any>> implements IEventBus {
-    private static instance: EventBus<any> | null = null;
-    private handlers: Map<string, Set<EventHandler<any>>> = new Map();
+export interface IEventBus {
+    on<T extends keyof EventPayload>(type: T, handler: (payload: EventPayload[T]) => void, options?: EventHandlerOptions): void;
+    off<T extends keyof EventPayload>(type: T, handler: (payload: EventPayload[T]) => void): void;
+    emit<T extends keyof EventPayload>(type: T, payload: EventPayload[T]): void;
+}
+
+@injectable()
+export class EventBusImpl implements IEventBus {
+    private static instance: EventBusImpl | null = null;
+    private handlers: Map<string, Set<Function>> = new Map();
+    private filters: Map<string, EventFilter<any>> = new Map();
     private isDebugMode: boolean = false;
     private errorHandler: ErrorHandler;
     
@@ -31,11 +37,11 @@ export class EventBus<T extends Record<string, any>> implements IEventBus {
         this.errorHandler = ErrorHandler.getInstance();
     }
     
-    static getInstance<T extends Record<string, any>>(): EventBus<T> {
-        if (!EventBus.instance) {
-            EventBus.instance = new EventBus<T>();
+    public static getInstance(): EventBusImpl {
+        if (!EventBusImpl.instance) {
+            EventBusImpl.instance = new EventBusImpl();
         }
-        return EventBus.instance as EventBus<T>;
+        return EventBusImpl.instance;
     }
 
     onInit(): void {
@@ -46,29 +52,52 @@ export class EventBus<T extends Record<string, any>> implements IEventBus {
         this.destroy();
     }
     
-    // Emit event synchronously
-    emit(type: string, payload: any, priority: EventPriority = EventPriority.NORMAL): void {
-        const event = new Event(type, payload);
-        this.handleEvent(event, priority);
-    }
-    
-    // Emit event asynchronously
-    async emitAsync<K extends keyof T>(type: K, payload: T[K], priority: EventPriority = EventPriority.NORMAL): Promise<void> {
-        const event = new Event(type as string, payload);
-        await this.handleEventAsync(event, priority);
-    }
-    
-    // Subscribe to event
-    subscribe(type: string, handler: (event: any) => void, priority: EventPriority = EventPriority.NORMAL): void {
+    public on<T extends keyof EventPayload>(
+        type: T,
+        handler: (payload: EventPayload[T]) => void,
+        options: EventHandlerOptions = {}
+    ): void {
         if (!this.handlers.has(type)) {
             this.handlers.set(type, new Set());
         }
         this.handlers.get(type)?.add(handler);
     }
     
-    // Unsubscribe from event
-    unsubscribe(type: string, handler: (event: any) => void): void {
+    public off<T extends keyof EventPayload>(
+        type: T,
+        handler: (payload: EventPayload[T]) => void
+    ): void {
         this.handlers.get(type)?.delete(handler);
+    }
+    
+    public emit<T extends keyof EventPayload>(
+        type: T,
+        payload: EventPayload[T]
+    ): void {
+        const handlers = this.handlers.get(type);
+        if (!handlers) return;
+
+        const filter = this.filters.get(type);
+        if (filter && !filter.shouldProcess(payload)) return;
+
+        handlers.forEach(handler => {
+            try {
+                handler(payload);
+            } catch (error) {
+                console.error(`Error handling event ${type}:`, error);
+            }
+        });
+    }
+    
+    public setFilter<T extends keyof EventPayload>(
+        type: T,
+        filter: EventFilter<EventPayload[T]>
+    ): void {
+        this.filters.set(type, filter);
+    }
+    
+    public removeFilter<T extends keyof EventPayload>(type: T): void {
+        this.filters.delete(type);
     }
     
     // Set debug mode
@@ -78,7 +107,7 @@ export class EventBus<T extends Record<string, any>> implements IEventBus {
     
     // Handle event synchronously
     private handleEvent(event: Event, priority: EventPriority): void {
-        const handlers = this.handlers.get(event.type);
+        const handlers = this.handlers.get(event.type as string);
         if (!handlers) return;
         
         if (this.isDebugMode) {
@@ -87,7 +116,7 @@ export class EventBus<T extends Record<string, any>> implements IEventBus {
         
         handlers.forEach(handler => {
             try {
-                handler(event);
+                handler(event.data as EventPayload[keyof EventPayload]);
             } catch (error) {
                 this.errorHandler.handleError(new Error('Listener error'));
             }
@@ -96,7 +125,7 @@ export class EventBus<T extends Record<string, any>> implements IEventBus {
     
     // Handle event asynchronously
     private async handleEventAsync(event: Event, priority: EventPriority): Promise<void> {
-        const handlers = this.handlers.get(event.type);
+        const handlers = this.handlers.get(event.type as string);
         if (!handlers) return;
         
         if (this.isDebugMode) {
@@ -105,7 +134,7 @@ export class EventBus<T extends Record<string, any>> implements IEventBus {
         
         await Promise.all(
             Array.from(handlers).map(handler =>
-                Promise.resolve(handler(event)).catch(error =>
+                Promise.resolve(handler(event.data as EventPayload[keyof EventPayload])).catch(error =>
                     this.errorHandler.handleError(new Error('Listener error'))
                 )
             )
@@ -135,8 +164,9 @@ export class EventBus<T extends Record<string, any>> implements IEventBus {
         }
     }
     
-    destroy(): void {
+    public destroy(): void {
         this.handlers.clear();
-        EventBus.instance = null;
+        this.filters.clear();
+        EventBusImpl.instance = null;
     }
 } 

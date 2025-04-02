@@ -1,9 +1,10 @@
-import { injectable, inject } from 'inversify';
+import { injectable, inject, LazyServiceIdentifier } from 'inversify';
 import { TYPES } from './di/types';
 import { EventEmitter } from './events/EventEmitter';
 import type { ClipRepository } from '../domain/repositories/ClipRepository';
 import type { AudioEngine } from '../domain/audio/AudioEngine';
 import type { Clip } from '../domain/models/Clip';
+import { TrackPresenter } from '../presentation/presenters/TrackPresenter';
 
 /**
  * DAW 管理器
@@ -17,7 +18,9 @@ export class DAWManager extends EventEmitter {
 
     constructor(
         @inject(TYPES.ClipRepository) private clipRepository: ClipRepository,
-        @inject(TYPES.AudioEngine) private audioEngine: AudioEngine
+        @inject(TYPES.AudioEngine) private audioEngine: AudioEngine,
+        @inject(new LazyServiceIdentifier(() => TYPES.TrackPresenter)) 
+        private trackPresenter: TrackPresenter
     ) {
         super();
     }
@@ -92,5 +95,19 @@ export class DAWManager extends EventEmitter {
     public destroy(): void {
         this.removeAllListeners();
         this.clips.clear();
+    }
+
+    public async initialize(): Promise<void> {
+        console.log('[DAWManager] Initializing DAW');
+        
+        // 使用 public 方法來初始化
+        await this.trackPresenter.initializePresenter();
+        
+        console.log('[DAWManager] DAW initialized');
+    }
+
+    public dispose(): void {
+        console.log('[DAWManager] Disposing DAW');
+        this.trackPresenter.disposePresenter();
     }
 } 

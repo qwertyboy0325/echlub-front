@@ -1,158 +1,288 @@
 import * as PIXI from 'pixi.js';
-import { ClipViewModel } from '../models/ClipViewModel';
+import { injectable, inject, optional } from 'inversify';
+import { TYPES } from '../../core/types';
 import { RenderEngine } from './RenderEngine';
+import { ClipViewModel } from '../models/ClipViewModel';
+import { TrackViewModel } from '../models/TrackViewModel';
 
 export interface DAWSceneConfig {
   width: number;
   height: number;
-  trackCount: number;
+  trackHeight: number;
   pixelsPerSecond: number;
 }
 
-export class DAWScene {
-  private container: PIXI.Container;
-  private clipContainers: Map<string, PIXI.Container> = new Map();
+@injectable()
+export class DAWScene extends PIXI.Container {
+  private tracks: Map<string, PIXI.Container> = new Map();
+  private clips: Map<string, PIXI.Container> = new Map();
   private config: DAWSceneConfig;
+  private gridGraphics: PIXI.Graphics;
+  private timelineGraphics: PIXI.Graphics;
+  private trackHeadersContainer: PIXI.Container;
+  private tracksContainer: PIXI.Container;
 
-  constructor(engine: RenderEngine, config: DAWSceneConfig) {
-    this.container = new PIXI.Container();
+  constructor(
+    config: DAWSceneConfig,
+    @inject(TYPES.RenderEngine) @optional() private renderEngine?: RenderEngine
+  ) {
+    super();
+    
     this.config = config;
-    engine.getStage().addChild(this.container);
-    this.initializeScene();
-  }
 
-  private initializeScene(): void {
-    // 初始化背景和網格
-    this.drawBackground();
+    // 創建軌道標題容器
+    this.trackHeadersContainer = new PIXI.Container();
+    this.addChild(this.trackHeadersContainer);
+    this.trackHeadersContainer.position.set(0, 30); // 留出時間軸的空間
+
+    // 創建軌道內容容器
+    this.tracksContainer = new PIXI.Container();
+    this.addChild(this.tracksContainer);
+    this.tracksContainer.position.set(150, 30); // 留出軌道標題的空間
+
+    // 創建網格
+    this.gridGraphics = new PIXI.Graphics();
+    this.tracksContainer.addChild(this.gridGraphics);
+
+    // 創建時間軸
+    this.timelineGraphics = new PIXI.Graphics();
+    this.addChild(this.timelineGraphics);
+    
+    // 繪製初始網格和時間軸
     this.drawGrid();
-  }
+    this.drawTimeline();
 
-  private drawBackground(): void {
-    // 繪製背景
-    const background = new PIXI.Container();
-    const graphics = new PIXI.Graphics();
-    graphics.beginFill(0x1e1e1e);
-    graphics.drawRect(0, 0, this.config.width, this.config.height);
-    graphics.endFill();
-    background.addChild(graphics);
-    this.container.addChild(background);
+    // 如果有 RenderEngine，則添加到舞台
+    if (this.renderEngine) {
+      const stage = this.renderEngine.getStage();
+      if (stage) {
+        stage.addChild(this);
+      }
+    }
   }
 
   private drawGrid(): void {
-    // 繪製網格
-    const grid = new PIXI.Container();
-    const graphics = new PIXI.Graphics();
-    graphics.lineStyle(1, 0x333333);
+    const { width, height, pixelsPerSecond } = this.config;
+    
+    this.gridGraphics.clear();
+    
+    // 繪製背景
+    this.gridGraphics.beginFill(0x1a1a1a);  // 更深的背景色
+    this.gridGraphics.drawRect(0, 0, width, height);
+    this.gridGraphics.endFill();
 
-    // 垂直線（時間標記）
-    for (let x = 0; x <= this.config.width; x += this.config.pixelsPerSecond) {
-      graphics.moveTo(x, 0);
-      graphics.lineTo(x, this.config.height);
+    // 繪製網格線
+    // 垂直網格線（每秒一條）
+    for (let x = 0; x <= width; x += pixelsPerSecond) {
+      // 每4拍一條粗線
+      if ((x / pixelsPerSecond) % 4 === 0) {
+        this.gridGraphics.lineStyle(2, 0x666666, 1);  // 更粗更亮的主線
+      } else {
+        this.gridGraphics.lineStyle(1, 0x444444, 0.8);  // 更亮的次線
+      }
+      this.gridGraphics.moveTo(x, 0);
+      this.gridGraphics.lineTo(x, height);
+      this.gridGraphics.stroke();
     }
 
-    // 水平線（軌道分隔線）
-    const trackHeight = this.config.height / this.config.trackCount;
-    for (let y = 0; y <= this.config.height; y += trackHeight) {
-      graphics.moveTo(0, y);
-      graphics.lineTo(this.config.width, y);
+    // 水平網格線（每個軌道一條）
+    const trackCount = Math.floor(height / this.config.trackHeight);
+    for (let i = 0; i <= trackCount; i++) {
+      const y = i * this.config.trackHeight;
+      this.gridGraphics.lineStyle(1, 0x555555, 1);  // 更亮的水平線
+      this.gridGraphics.moveTo(0, y);
+      this.gridGraphics.lineTo(width, y);
+      this.gridGraphics.stroke();
     }
 
-    grid.addChild(graphics);
-    this.container.addChild(grid);
+    // 繪製細分網格（每拍一條）
+    this.gridGraphics.lineStyle(1, 0x333333, 0.5);  // 更明顯的細分線
+    for (let x = 0; x <= width; x += pixelsPerSecond / 4) {
+      if ((x / pixelsPerSecond * 4) % 4 !== 0) {  // 避免與主網格線重疊
+        this.gridGraphics.moveTo(x, 0);
+        this.gridGraphics.lineTo(x, height);
+        this.gridGraphics.stroke();
+      }
+    }
   }
 
-  public updateClips(clips: ClipViewModel[]): void {
-    // 清理不存在的片段
-    const currentClipIds = new Set(clips.map(clip => clip.id));
-    for (const [id, container] of this.clipContainers) {
-      if (!currentClipIds.has(id)) {
-        container.destroy();
-        this.clipContainers.delete(id);
+  private drawTimeline(): void {
+    const { width, pixelsPerSecond } = this.config;
+    
+    this.timelineGraphics.clear();
+    
+    // 繪製時間軸背景
+    this.timelineGraphics.beginFill(0x1a1a1a);  // 與網格背景一致
+    this.timelineGraphics.drawRect(150, 0, width, 30);
+    this.timelineGraphics.endFill();
+
+    // 繪製時間標記
+    this.timelineGraphics.lineStyle(1, 0x666666);  // 更亮的時間標記
+    for (let x = 0; x <= width; x += pixelsPerSecond) {
+      const seconds = x / pixelsPerSecond;
+      const text = new PIXI.Text(seconds.toString(), {
+        fontSize: 10,
+        fill: 0xcccccc,  // 更亮的文字
+        fontFamily: 'Arial'
+      });
+      text.position.set(x + 150, 8);
+      this.timelineGraphics.addChild(text);
+
+      // 刻度線
+      this.timelineGraphics.moveTo(x + 150, 20);
+      this.timelineGraphics.lineTo(x + 150, 30);
+      this.timelineGraphics.stroke();
+    }
+  }
+
+  updateTracks(tracks: TrackViewModel[]): void {
+    // 清理不存在的軌道
+    const currentTrackIds = new Set(tracks.map(t => t.id));
+    for (const [trackId, trackContainer] of this.tracks) {
+      if (!currentTrackIds.has(trackId)) {
+        trackContainer.destroy();
+        this.tracks.delete(trackId);
       }
     }
 
-    // 更新或創建片段
-    for (const clip of clips) {
-      this.updateClip(clip);
-    }
+    // 更新或創建軌道
+    tracks.forEach((track, index) => {
+      // 更新軌道標題
+      this.updateTrackHeader(track, index);
+
+      // 更新軌道內容
+      let trackContainer = this.tracks.get(track.id);
+      if (!trackContainer) {
+        trackContainer = new PIXI.Container();
+        this.tracks.set(track.id, trackContainer);
+        this.tracksContainer.addChild(trackContainer);
+      }
+
+      // 設置軌道位置
+      trackContainer.y = index * this.config.trackHeight;
+    });
   }
 
-  public updateClip(clip: ClipViewModel): void {
-    let clipContainer = this.clipContainers.get(clip.id);
-    if (!clipContainer) {
-      clipContainer = this.createClipContainer(clip);
-      this.clipContainers.set(clip.id, clipContainer);
-      this.container.addChild(clipContainer);
-    }
+  private updateTrackHeader(track: TrackViewModel, index: number): void {
+    const headerHeight = this.config.trackHeight;
+    const y = index * headerHeight;
 
-    // 更新位置和大小
-    clipContainer.x = clip.position * this.config.pixelsPerSecond;
-    clipContainer.y = parseInt(clip.trackId) * (this.config.height / this.config.trackCount);
+    // 創建或更新軌道標題背景
+    const header = new PIXI.Graphics();
+    header.beginFill(0x1a1a1a);  // 與網格背景一致
+    header.drawRect(0, y, 150, headerHeight);
+    header.endFill();
+
+    // 添加軌道名稱
+    const text = new PIXI.Text(track.name, {
+      fontSize: 12,
+      fill: 0xcccccc,  // 更亮的文字
+      padding: 4,
+      fontFamily: 'Arial'
+    });
+    text.position.set(8, y + (headerHeight - text.height) / 2);
+
+    this.trackHeadersContainer.addChild(header);
+    this.trackHeadersContainer.addChild(text);
+  }
+
+  addClip(clip: ClipViewModel): void {
+    const trackContainer = this.tracks.get(clip.trackId);
+    if (!trackContainer) return;
+
+    // 創建片段容器
+    const clipContainer = new PIXI.Container();
     
-    // 更新視覺狀態
-    const background = clipContainer.getChildByName('background') as PIXI.Graphics;
-    if (background) {
-      background.clear();
-      background.beginFill(clip.muted ? 0x666666 : parseInt(clip.color.replace('#', '0x')));
-      background.drawRoundedRect(
-        0, 0,
-        clip.duration * this.config.pixelsPerSecond,
-        this.config.height / this.config.trackCount - 10,
-        4
-      );
-      background.endFill();
-    }
-
-    const label = clipContainer.getChildByName('label') as PIXI.Text;
-    if (label) {
-      label.text = clip.name;
-    }
-  }
-
-  private createClipContainer(clip: ClipViewModel): PIXI.Container {
-    const container = new PIXI.Container();
-    container.name = clip.id;
-
     // 創建背景
     const background = new PIXI.Graphics();
-    background.name = 'background';
-    container.addChild(background);
+    background.beginFill(0x4a90e2, 0.8);
+    background.drawRoundedRect(
+      0, 2,
+      clip.duration * this.config.pixelsPerSecond,
+      this.config.trackHeight - 4,
+      4
+    );
+    background.endFill();
 
-    // 創建標籤
-    const label = new PIXI.Text(clip.name, {
-      fontFamily: 'Arial',
+    // 添加漸變效果
+    background.beginFill(0xffffff, 0.1);
+    background.drawRoundedRect(
+      0, 2,
+      clip.duration * this.config.pixelsPerSecond,
+      this.config.trackHeight / 2 - 2,
+      4
+    );
+    background.endFill();
+
+    clipContainer.addChild(background);
+
+    // 創建標題文本
+    const text = new PIXI.Text(clip.name, {
       fontSize: 12,
       fill: 0xffffff,
-      align: 'center'
+      padding: 4
     });
-    label.name = 'label';
-    label.x = 5;
-    label.y = 5;
-    container.addChild(label);
+    text.x = 8;
+    text.y = (this.config.trackHeight - text.height) / 2;
+    clipContainer.addChild(text);
 
-    return container;
+    // 設置位置
+    clipContainer.x = clip.startTime * this.config.pixelsPerSecond;
+    
+    // 添加到軌道
+    trackContainer.addChild(clipContainer);
+    this.clips.set(clip.id, clipContainer);
+
+    // 設置交互
+    clipContainer.eventMode = 'static';
+    clipContainer.cursor = 'pointer';
   }
 
-  public getContainer(): PIXI.Container {
-    return this.container;
+  updateClip(clip: ClipViewModel): void {
+    const clipContainer = this.clips.get(clip.id);
+    if (!clipContainer) return;
+
+    clipContainer.x = clip.startTime * this.config.pixelsPerSecond;
+    
+    // 更新背景
+    const background = clipContainer.getChildAt(0) as PIXI.Graphics;
+    background.clear();
+    background.beginFill(0x4a90e2, 0.8);
+    background.drawRoundedRect(
+      0, 2,
+      clip.duration * this.config.pixelsPerSecond,
+      this.config.trackHeight - 4,
+      4
+    );
+    background.endFill();
+
+    // 添加漸變效果
+    background.beginFill(0xffffff, 0.1);
+    background.drawRoundedRect(
+      0, 2,
+      clip.duration * this.config.pixelsPerSecond,
+      this.config.trackHeight / 2 - 2,
+      4
+    );
+    background.endFill();
+
+    // 更新文本
+    const text = clipContainer.getChildAt(1) as PIXI.Text;
+    text.text = clip.name;
   }
 
-  public resize(width: number, height: number): void {
-    this.config.width = width;
-    this.config.height = height;
-    
-    // 重新繪製場景
-    this.container.removeChildren();
-    this.initializeScene();
-    
-    // 重新添加所有片段
-    for (const container of this.clipContainers.values()) {
-      this.container.addChild(container);
+  removeClip(clipId: string): void {
+    const clipContainer = this.clips.get(clipId);
+    if (clipContainer) {
+      clipContainer.destroy();
+      this.clips.delete(clipId);
     }
   }
 
-  public dispose(): void {
-    this.container.destroy({ children: true });
-    this.clipContainers.clear();
+  resize(width: number, height: number): void {
+    this.config.width = width;
+    this.config.height = height;
+    this.drawGrid();
+    this.drawTimeline();
   }
 } 

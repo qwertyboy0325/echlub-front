@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { Clip } from '../../domain/Clip';
 
 /**
  * 音頻片段的視圖模型
@@ -18,6 +19,48 @@ interface ClipMetadata {
 interface ClipAutomation {
   volume?: AutomationData[];
   pan?: AutomationData[];
+}
+
+export interface ClipViewModel {
+  id: string;
+  trackId: string;
+  audioUrl: string;
+  startTime: number;
+  duration: number;
+  name: string;
+  selected: boolean;
+  
+  // 計算屬性
+  endTime: number;
+  width: number;
+  left: number;
+}
+
+export const PIXELS_PER_SECOND = 100;
+
+export class ClipViewModelFactory {
+  static fromDomain(clip: Clip): ClipViewModel {
+    return {
+      id: clip.id,
+      trackId: clip.trackId,
+      audioUrl: clip.audioUrl,
+      startTime: clip.startTime,
+      duration: clip.duration,
+      name: clip.name,
+      selected: clip.selected,
+      
+      // 計算屬性
+      get endTime() {
+        return this.startTime + this.duration;
+      },
+      get width() {
+        return this.duration * PIXELS_PER_SECOND;
+      },
+      get left() {
+        return this.startTime * PIXELS_PER_SECOND;
+      }
+    };
+  }
 }
 
 export class ClipViewModel {

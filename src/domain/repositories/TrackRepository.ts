@@ -3,59 +3,75 @@ import type { Track } from '../models/Track';
 import type { BaseRepository } from './BaseRepository';
 import { TYPES } from '../../core/di/types';
 import type { Storage } from '../../infrastructure/storage/Storage';
+import { DomainEventBus } from '../../core/events/DomainEventBus';
+import { Track as TrackEntity } from '../entities/Track';
 
-export interface TrackRepository extends BaseRepository<Track> {
-  findByProjectId(projectId: string): Promise<Track[]>;
-  findByClipId(clipId: string): Promise<Track[]>;
+export interface TrackRepository {
+  create(track: Omit<Track, 'id'>): Promise<Track>;
+  findById(id: string): Promise<Track | null>;
+  findAll(): Promise<Track[]>;
+  update(id: string, track: Partial<Track>): Promise<Track>;
+  delete(id: string): Promise<void>;
+  clear(): Promise<void>;
 }
 
 @injectable()
 export class TrackRepositoryImpl implements TrackRepository {
-  private tracks: Map<string, Track> = new Map();
+  private tracks: Map<string, TrackEntity> = new Map();
+  private nextTrackNumber: number = 1;
 
   constructor(
-    @inject(TYPES.Storage) private storage: Storage
+    @inject(TYPES.Storage) private storage: Storage,
+    @inject(TYPES.DomainEventBus) private domainEventBus: DomainEventBus
   ) {}
 
-  public async add(track: Track): Promise<void> {
-    this.tracks.set(track.id, track);
-    await this.saveToStorage();
+  async create(track: Omit<Track, 'id'>): Promise<Track> {
+    const id = crypto.randomUUID();
+    const newTrack: Track = {
+      ...track,
+      id
+    };
+    
+    this.tracks.set(id, newTrack);
+    return newTrack;
   }
 
-  public async get(id: string): Promise<Track | undefined> {
-    return this.tracks.get(id);
+  async findById(id: string): Promise<Track | null> {
+    return this.tracks.get(id) || null;
   }
 
-  public async getAll(): Promise<Track[]> {
+  async findAll(): Promise<Track[]> {
     return Array.from(this.tracks.values());
   }
 
-  public async update(track: Track): Promise<void> {
-    if (!this.tracks.has(track.id)) {
-      throw new Error(`Track with id ${track.id} not found`);
+  async update(id: string, track: Partial<Track>): Promise<Track> {
+    const existingTrack = await this.findById(id);
+    if (!existingTrack) {
+      throw new Error(`Track not found: ${id}`);
     }
-    this.tracks.set(track.id, track);
+    
+    const updatedTrack: Track = {
+      ...existingTrack,
+      ...track
+    };
+    
+    this.tracks.set(id, updatedTrack);
+    await this.saveToStorage();
+    return updatedTrack;
+  }
+
+  async delete(id: string): Promise<void> {
+    const track = this.tracks.get(id);
+    if (track) {
+      this.tracks.delete(id);
+      this.domainEventBus.emit('domain:track:deleted', { trackId: id });
+    }
     await this.saveToStorage();
   }
 
-  public async delete(id: string): Promise<void> {
-    this.tracks.delete(id);
-    await this.saveToStorage();
-  }
-
-  public async clear(): Promise<void> {
+  async clear(): Promise<void> {
     this.tracks.clear();
     await this.saveToStorage();
-  }
-
-  public async findByProjectId(projectId: string): Promise<Track[]> {
-    return Array.from(this.tracks.values()).filter(track => track.projectId === projectId);
-  }
-
-  public async findByClipId(clipId: string): Promise<Track[]> {
-    return Array.from(this.tracks.values()).filter(track => 
-      track.clips.some(clip => clip.id === clipId)
-    );
   }
 
   private async saveToStorage(): Promise<void> {
@@ -64,7 +80,7 @@ export class TrackRepositoryImpl implements TrackRepository {
   }
 
   private async loadFromStorage(): Promise<void> {
-    const data = await this.storage.get<Track[]>('tracks');
+    const data = await this.storage.get<TrackEntity[]>('tracks');
     if (data) {
       this.tracks.clear();
       data.forEach(track => this.tracks.set(track.id, track));

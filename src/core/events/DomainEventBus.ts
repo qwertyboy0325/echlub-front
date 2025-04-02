@@ -1,15 +1,14 @@
+import { EventEmitter } from '../EventEmitter';
 import { injectable } from 'inversify';
-import { EventEmitter } from 'events';
 import { DomainEventPayload, EventHandlerOptions } from './types';
 
 @injectable()
-export class DomainEventBus {
-  private eventEmitter: EventEmitter;
+export class DomainEventBus extends EventEmitter<DomainEventPayload> {
   private debug: boolean = false;
 
   constructor() {
-    this.eventEmitter = new EventEmitter();
-    this.eventEmitter.setMaxListeners(0); // 無限制監聽器數量
+    super();
+    this.setMaxListeners(0); // 無限制監聽器數量
   }
 
   public emit<K extends keyof DomainEventPayload>(
@@ -19,7 +18,7 @@ export class DomainEventBus {
     if (this.debug) {
       console.debug(`[DomainEventBus] Emitting ${String(event)}:`, payload);
     }
-    this.eventEmitter.emit(String(event), payload);
+    super.emit(event, payload);
   }
 
   public async emitAsync<K extends keyof DomainEventPayload>(
@@ -31,7 +30,7 @@ export class DomainEventBus {
     }
     return new Promise((resolve, reject) => {
       try {
-        this.eventEmitter.emit(String(event), payload);
+        super.emit(event, payload);
         resolve();
       } catch (error) {
         reject(error);
@@ -44,14 +43,14 @@ export class DomainEventBus {
     handler: (payload: DomainEventPayload[K]) => void,
     options?: EventHandlerOptions
   ): void {
-    this.eventEmitter.on(String(event), handler);
+    super.on(event, handler);
   }
 
   public off<K extends keyof DomainEventPayload>(
     event: K,
     handler: (payload: DomainEventPayload[K]) => void
   ): void {
-    this.eventEmitter.off(String(event), handler);
+    super.off(event, handler);
   }
 
   public once<K extends keyof DomainEventPayload>(
@@ -59,14 +58,14 @@ export class DomainEventBus {
     handler: (payload: DomainEventPayload[K]) => void,
     options?: EventHandlerOptions
   ): void {
-    this.eventEmitter.once(String(event), handler);
+    super.once(event, handler);
   }
 
   public setDebugMode(enabled: boolean): void {
     this.debug = enabled;
   }
 
-  public removeAllListeners(): void {
-    this.eventEmitter.removeAllListeners();
+  public removeAllListeners(event?: keyof DomainEventPayload): void {
+    super.removeAllListeners(event);
   }
 } 

@@ -32,7 +32,10 @@
     │   ├── di/              # 依賴注入
     │   │   ├── types.ts     # 類型定義
     │   │   └── container.ts # 容器配置
-    │   └── events/          # 事件系統
+    │   ├── events/          # 事件系統
+    │   └── state/           # 狀態管理
+    │       ├── StateManager.ts
+    │       └── types.ts
     │
     ├── types/                # 類型定義
     ├── config/               # 配置文件
