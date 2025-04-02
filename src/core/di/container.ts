@@ -1,143 +1,68 @@
+/**
+ * 依賴注入容器配置
+ */
+
 import { Container } from 'inversify';
-import { eventModule } from './eventModule';
-import { audioModule } from './audioModule';
-import { storageModule } from './storageModule';
-import { dawModule } from './dawModule';
 import { TYPES } from './types';
-import 'reflect-metadata';
-import type { ClipRepository } from '../../domain/repositories/ClipRepository';
-import type { TrackRepository } from '../../domain/repositories/TrackRepository';
-import type { ProjectRepository } from '../../domain/repositories/ProjectRepository';
-import type { AudioRepository } from '../../domain/repositories/AudioRepository';
-import type { Storage } from '../../infrastructure/storage/Storage';
-import type { IAudioContext } from './types';
-import type { IAudioEngine } from './types';
-import type { IEventBus } from './types';
-import { LocalStorageService } from '../storage/LocalStorageService';
-import { AudioContextWrapper } from '../audio/AudioContextWrapper';
-import { AudioEngine } from '../audio/AudioEngine';
-import { EventBus } from '../events/EventBus';
-import { DAWManager } from '../DAWManager';
-import { RenderEngine } from '../../presentation/graphics/RenderEngine';
-import { DragSystem } from '../../presentation/graphics/DragSystem';
-import { DAWScene } from '../../presentation/graphics/DAWScene';
-import { EventMonitor } from '../events/EventMonitor';
-import { TrackPresenter } from '../../presentation/presenters/TrackPresenter';
-import { DAWRenderer } from '../../presentation/graphics/DAWRenderer';
-import { UIEventBus } from '../events/UIEventBus';
+import { EventBus, StateManager, AudioEngine, TrackRepository, ClipRepository, StateStore, StateSelector, BaseService } from './types';
+import {
+    EventBusImpl,
+    UIEventBusImpl,
+    DomainEventBusImpl,
+    StateManagerImpl,
+    StateStoreImpl,
+    StateSelectorImpl,
+    AudioEngineImpl,
+    TrackRepositoryImpl,
+    ClipRepositoryImpl
+} from './implementations';
+import { EventTranslator } from './implementations/EventTranslator';
 
-// 創建 DI 容器
-const container = new Container({
-  defaultScope: 'Singleton',
-  autoBindInjectable: true
-});
+// 創建依賴注入容器
+const container = new Container();
 
-// 註冊所有服務
-registerServices(container);
+// 註冊服務
+export function registerServices(): void {
+    // 註冊事件總線
+    container.bind<EventBus>(TYPES.EventBus).to(EventBusImpl).inSingletonScope();
+    container.bind<EventBus>(TYPES.UIEventBus).to(EventBusImpl).inSingletonScope();
+    container.bind<EventBus>(TYPES.DomainEventBus).to(EventBusImpl).inSingletonScope();
+    
+    // 註冊事件轉換器
+    container.bind<EventTranslator>(TYPES.EventTranslator).to(EventTranslator).inSingletonScope();
 
-// 加載所有模塊
-container.load(
-  eventModule,   // 事件系統模塊
-  dawModule,     // DAW 相關模塊
-  audioModule,   // 音頻處理模塊
-  storageModule  // 存儲模塊
-);
+    // 註冊狀態管理
+    container.bind<StateManager>(TYPES.StateManager).to(StateManagerImpl).inSingletonScope();
+    container.bind<StateStore>(TYPES.StateStore).to(StateStoreImpl).inSingletonScope();
+    container.bind<StateSelector>(TYPES.StateSelector).to(StateSelectorImpl).inSingletonScope();
 
-export { container, TYPES };
+    // 註冊音頻引擎
+    container.bind<AudioEngine>(TYPES.AudioEngine).to(AudioEngineImpl).inSingletonScope();
 
-export function registerServices(container: Container): void {
-  // Register Event Buses
-  container.bind<IEventBus>(TYPES.EventBus)
-    .to(EventBus)
-    .inSingletonScope();
-
-  container.bind<UIEventBus>(TYPES.UIEventBus)
-    .to(UIEventBus)
-    .inSingletonScope();
-
-  // Register Storage
-  container.bind<Storage>(TYPES.Storage)
-    .to(LocalStorageService)
-    .inSingletonScope();
-
-  // Register Core Services
-  container.bind<DAWManager>(TYPES.DAWManager)
-    .to(DAWManager)
-    .inSingletonScope();
-
-  // Register Audio Services
-  container.bind<IAudioContext>(TYPES.AudioContext)
-    .to(AudioContextWrapper)
-    .inSingletonScope();
-
-  container.bind<IAudioEngine>(TYPES.AudioEngine)
-    .to(AudioEngine)
-    .inSingletonScope();
-
-  // Register Graphics Services
-  container.bind<RenderEngine>(TYPES.RenderEngine)
-    .to(RenderEngine)
-    .inSingletonScope();
-
-  container.bind<DragSystem>(TYPES.DragSystem)
-    .to(DragSystem)
-    .inSingletonScope();
-
-  container.bind<DAWScene>(TYPES.DAWScene)
-    .to(DAWScene)
-    .inSingletonScope();
-
-  // Register Event Monitor
-  container.bind<EventMonitor>(TYPES.EventMonitor).to(EventMonitor).inSingletonScope();
-
-  // Register Track Presenter
-  container.bind<TrackPresenter>(TYPES.TrackPresenter)
-    .to(TrackPresenter)
-    .inSingletonScope();
-
-  // Register DAWRenderer
-  container.bind<(canvas: HTMLCanvasElement, config?: Partial<DAWRendererConfig>) => DAWRenderer>(TYPES.DAWRenderer)
-    .toFactory((context) => {
-      return (canvas: HTMLCanvasElement, config?: Partial<DAWRendererConfig>) => {
-        if (!canvas) {
-          throw new Error('[DAWRenderer Factory] Canvas element is required');
-        }
-
-        try {
-          const uiEventBus = context.container.get<UIEventBus>(TYPES.UIEventBus);
-          if (!uiEventBus) {
-            throw new Error('[DAWRenderer Factory] UIEventBus not found in container');
-          }
-
-          // 默認配置
-          const defaultConfig: DAWRendererConfig = {
-            width: canvas.clientWidth || window.innerWidth,
-            height: canvas.clientHeight || window.innerHeight,
-            backgroundColor: 0x1a1a1a,
-            bpm: 120
-          };
-
-          // 合併配置
-          const finalConfig = {
-            ...defaultConfig,
-            ...config
-          };
-
-          console.log('[DAWRenderer Factory] Creating renderer with config:', finalConfig);
-          
-          return new DAWRenderer(uiEventBus, canvas, finalConfig);
-        } catch (error) {
-          console.error('[DAWRenderer Factory] Failed to create renderer:', error);
-          throw error;
-        }
-      };
-    });
+    // 註冊倉儲
+    container.bind<TrackRepository>(TYPES.TrackRepository).to(TrackRepositoryImpl).inSingletonScope();
+    container.bind<ClipRepository>(TYPES.ClipRepository).to(ClipRepositoryImpl).inSingletonScope();
 }
 
-// 定義 DAWRenderer 配置接口
-export interface DAWRendererConfig {
-  width: number;
-  height: number;
-  backgroundColor?: number;
-  bpm: number;
-} 
+// 獲取服務實例
+export function getService<T>(type: symbol): T {
+    return container.get<T>(type);
+}
+
+// 初始化所有服務
+export async function initializeServices(): Promise<void> {
+    const services = container.getAll<BaseService>(TYPES.BaseService);
+    for (const service of services) {
+        await service.initialize();
+    }
+}
+
+// 銷毀所有服務
+export async function destroyServices(): Promise<void> {
+    const services = container.getAll<BaseService>(TYPES.BaseService);
+    for (const service of services) {
+        await service.destroy();
+    }
+}
+
+export { container }; 
