@@ -1,41 +1,17 @@
-// Core Services
 export const TYPES = {
-    // Event System
-    EventBus: Symbol.for('EventBus'),
-    EventQueue: Symbol.for('EventQueue'),
-    EventStateSync: Symbol.for('EventStateSync'),
-    EventStateOptimizer: Symbol.for('EventStateOptimizer'),
-    EventStateErrorHandler: Symbol.for('EventStateErrorHandler'),
+  // 倉儲
+  TrackRepository: Symbol.for('TrackRepository'),
+  ClipRepository: Symbol.for('ClipRepository'),
+  PluginRepository: Symbol.for('PluginRepository'),
 
-    // State Management
-    StateManager: Symbol.for('StateManager'),
-    StateStore: Symbol.for('StateStore'),
-    StorageService: Symbol.for('StorageService'),
+  // 服務
+  TrackService: Symbol.for('TrackService'),
+  ClipService: Symbol.for('ClipService'),
+  PluginService: Symbol.for('PluginService'),
+  TrackStateService: Symbol.for('TrackStateService'),
 
-    // Audio Engine
-    AudioEngine: Symbol.for('AudioEngine'),
-    AudioProcessor: Symbol.for('AudioProcessor'),
-    AudioScheduler: Symbol.for('AudioScheduler'),
-
-    // Pixi
-    PixiManager: Symbol.for('PixiManager'),
-    PixiRenderer: Symbol.for('PixiRenderer'),
-    PixiLayerManager: Symbol.for('PixiLayerManager'),
-
-    // Infrastructure
-    Logger: Symbol.for('Logger'),
-    ConfigService: Symbol.for('ConfigService'),
-    ApiClient: Symbol.for('ApiClient'),
-
-    // Features
-    TrackService: Symbol.for('TrackService'),
-    ClipService: Symbol.for('ClipService'),
-    ProjectService: Symbol.for('ProjectService'),
-    TransportService: Symbol.for('TransportService'),
-
-    // Repositories
-    ProjectRepository: Symbol.for('ProjectRepository'),
-    TrackRepository: Symbol.for('TrackRepository'),
-    ClipRepository: Symbol.for('ClipRepository'),
-    UserRepository: Symbol.for('UserRepository')
+  // 核心服務
+  EventBus: Symbol.for('EventBus'),
+  StateManager: Symbol.for('StateManager'),
+  Logger: Symbol.for('Logger')
 } as const; 
