@@ -1,9 +1,9 @@
 import { injectable, inject } from 'inversify';
 import { TrackTypes } from '../../di/TrackTypes';
 import { ChangeTrackRoutingCommand } from '../commands/ChangeTrackRoutingCommand';
-import { ITrackRepository } from '../../domain/repositories/ITrackRepository';
+import type { ITrackRepository } from '../../domain/repositories/ITrackRepository';
 import { TrackRoutingChangedEvent } from '../../domain/events/TrackRoutingChangedEvent';
-import { IEventBus } from '../../../../core/event-bus/IEventBus';
+import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 
 @injectable()
 export class ChangeTrackRoutingCommandHandler {

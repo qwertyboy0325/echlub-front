@@ -1,9 +1,9 @@
 import { injectable, inject } from 'inversify';
 import { TrackTypes } from '../../di/TrackTypes';
 import { RemovePluginFromTrackCommand } from '../commands/RemovePluginFromTrackCommand';
-import { ITrackRepository } from '../../domain/repositories/ITrackRepository';
+import type { ITrackRepository } from '../../domain/repositories/ITrackRepository';
 import { PluginRemovedFromTrackEvent } from '../../domain/events/PluginRemovedFromTrackEvent';
-import { IEventBus } from '../../../../core/event-bus/IEventBus';
+import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 
 @injectable()
 export class RemovePluginFromTrackCommandHandler {

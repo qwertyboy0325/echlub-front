@@ -1,9 +1,9 @@
 import { injectable, inject } from 'inversify';
 import { TrackTypes } from '../../di/TrackTypes';
 import { AddClipToTrackCommand } from '../commands/AddClipToTrackCommand';
-import { ITrackRepository } from '../../domain/repositories/ITrackRepository';
+import type { ITrackRepository } from '../../domain/repositories/ITrackRepository';
 import { ClipAddedToTrackEvent } from '../../domain/events/ClipAddedToTrackEvent';
-import { IEventBus } from '../../../../core/event-bus/IEventBus';
+import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { AudioClipId } from '../../domain/value-objects/AudioClipId';
 import { MidiClipId } from '../../domain/value-objects/MidiClipId';
 
