@@ -5,7 +5,9 @@ import { TrackId } from '../../domain/value-objects/TrackId';
 import { TrackTypes } from '../../di/TrackTypes';
 import { TYPES } from '../../../../core/di/types';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
-import { TrackEvent } from '../../domain/events/TrackEvent';
+import { TrackCreatedEvent } from '../../domain/events/TrackCreatedEvent';
+import { TrackUpdatedEvent } from '../../domain/events/TrackUpdatedEvent';
+import { TrackDeletedEvent } from '../../domain/events/TrackDeletedEvent';
 
 @injectable()
 export class TrackRepositoryCoordinator implements ITrackRepository {
@@ -38,7 +40,7 @@ export class TrackRepositoryCoordinator implements ITrackRepository {
       //   console.error('Failed to sync track creation:', error);
       // });
 
-      await this.eventBus.publish(new TrackEvent('created', track));
+      await this.eventBus.publish(new TrackCreatedEvent(track.getTrackId(), track.getName(), track.getType() as 'audio' | 'instrument' | 'bus'));
     } catch (error) {
       throw new Error(`Failed to create track: ${error}`);
     }
@@ -79,7 +81,7 @@ export class TrackRepositoryCoordinator implements ITrackRepository {
       //   console.error('Failed to sync track update:', error);
       // });
 
-      await this.eventBus.publish(new TrackEvent('updated', track));
+      await this.eventBus.publish(new TrackUpdatedEvent(track.getTrackId(), track));
     } catch (error) {
       throw new Error(`Failed to save track: ${error}`);
     }
@@ -96,7 +98,7 @@ export class TrackRepositoryCoordinator implements ITrackRepository {
       //   console.error('Failed to sync track deletion:', error);
       // });
 
-      await this.eventBus.publish(new TrackEvent('deleted', { id }));
+      await this.eventBus.publish(new TrackDeletedEvent(id));
     } catch (error) {
       throw new Error(`Failed to delete track: ${error}`);
     }
