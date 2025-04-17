@@ -128,4 +128,14 @@ export abstract class BaseTrack implements IAggregate {
   getPluginInstanceIds(): PluginInstanceId[] {
     return [...this.pluginInstanceIds];
   }
+
+  toJSON(): object {
+    return {
+      trackId: this.trackId.toString(),
+      name: this.name,
+      routing: this.routing,
+      type: this.getType(),
+      version: this.getVersion()
+    };
+  }
 } 
