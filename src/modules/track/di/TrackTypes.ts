@@ -1,6 +1,9 @@
 export const TrackTypes = {
   // Repositories
   TrackRepository: Symbol.for('TrackRepository'),
+  LocalTrackRepository: Symbol.for('LocalTrackRepository'),
+  WebSocketTrackRepository: Symbol.for('WebSocketTrackRepository'),
+  WebRTCTrackRepository: Symbol.for('WebRTCTrackRepository'),
   
   // Services
   TrackService: Symbol.for('TrackService'),

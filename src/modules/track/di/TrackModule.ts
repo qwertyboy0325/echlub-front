@@ -1,7 +1,10 @@
-import { Container, interfaces } from 'inversify';
+import { Container } from 'inversify';
 import { TrackTypes } from './TrackTypes';
-import { ITrackRepository } from '../domain/repositories/ITrackRepository';
-import { TrackRepositoryImpl } from '../infrastructure/persistence/TrackRepositoryImpl';
+import { ITrackRepository, ILocalTrackRepository, IWebSocketTrackRepository, IWebRTCTrackRepository } from '../domain/repositories/ITrackRepository';
+import { LocalTrackRepository } from '../infrastructure/persistence/LocalTrackRepository';
+import { WebSocketTrackRepository } from '../infrastructure/persistence/WebSocketTrackRepository';
+import { WebRTCTrackRepository } from '../infrastructure/persistence/WebRTCTrackRepository';
+import { TrackRepositoryCoordinator } from '../infrastructure/persistence/TrackRepositoryCoordinator';
 import { TrackService } from '../application/services/TrackService';
 import { TrackDomainService } from '../domain/services/TrackDomainService';
 import { TrackValidator } from '../application/validators/TrackValidator';
@@ -19,8 +22,20 @@ import { RemovePluginFromTrackCommandHandler } from '../application/handlers/Rem
 export class TrackModule {
   static configure(container: Container): void {
     // Repositories
+    container.bind<ILocalTrackRepository>(TrackTypes.LocalTrackRepository)
+      .to(LocalTrackRepository)
+      .inSingletonScope();
+
+    container.bind<IWebSocketTrackRepository>(TrackTypes.WebSocketTrackRepository)
+      .to(WebSocketTrackRepository)
+      .inSingletonScope();
+
+    container.bind<IWebRTCTrackRepository>(TrackTypes.WebRTCTrackRepository)
+      .to(WebRTCTrackRepository)
+      .inSingletonScope();
+
     container.bind<ITrackRepository>(TrackTypes.TrackRepository)
-      .to(TrackRepositoryImpl)
+      .to(TrackRepositoryCoordinator)
       .inSingletonScope();
 
     // Services
