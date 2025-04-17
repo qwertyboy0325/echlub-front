@@ -3,13 +3,21 @@ import { TrackRouting } from '../value-objects/TrackRouting';
 import { IDomainEvent } from '../interfaces/IDomainEvent';
 
 export class TrackRoutingChangedEvent implements IDomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly routing: TrackRouting,
-    public readonly timestamp: Date = new Date()
-  ) {}
+  readonly eventType = 'track:routing:changed';
+  readonly timestamp: Date;
+  readonly aggregateId: string;
+  readonly payload: {
+    routing: TrackRouting;
+  };
 
-  getEventName(): string {
-    return 'track:routing:changed';
+  constructor(
+    trackId: TrackId,
+    routing: TrackRouting
+  ) {
+    this.timestamp = new Date();
+    this.aggregateId = trackId.toString();
+    this.payload = {
+      routing
+    };
   }
 } 

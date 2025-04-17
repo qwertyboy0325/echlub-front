@@ -1,13 +1,23 @@
 import { TrackId } from '../value-objects/TrackId';
+import { IDomainEvent } from '../interfaces/IDomainEvent';
+import { BaseTrack } from '../entities/BaseTrack';
 
-export class TrackUpdatedEvent {
+export class TrackUpdatedEvent implements IDomainEvent {
+  readonly eventType = 'track:updated';
+  readonly timestamp: Date;
+  readonly aggregateId: string;
+  readonly payload: {
+    track: BaseTrack;
+  };
+
   constructor(
-    public readonly trackId: TrackId,
-    public readonly changes: Partial<{
-      name: string;
-      volume: number;
-      mute: boolean;
-      solo: boolean;
-    }>
-  ) {}
+    trackId: TrackId,
+    track: BaseTrack
+  ) {
+    this.timestamp = new Date();
+    this.aggregateId = trackId.toString();
+    this.payload = {
+      track
+    };
+  }
 } 

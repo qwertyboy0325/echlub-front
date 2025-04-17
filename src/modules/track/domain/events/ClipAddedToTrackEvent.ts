@@ -3,12 +3,26 @@ import { ClipId } from '../value-objects/ClipId';
 import { IDomainEvent } from '../interfaces/IDomainEvent';
 
 export class ClipAddedToTrackEvent implements IDomainEvent {
+  readonly eventType = 'track:clip:added';
+  readonly timestamp: Date;
+  readonly aggregateId: string;
+  readonly payload: {
+    clipId: string;
+    type: 'audio' | 'midi';
+  };
+
   constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly type: 'audio' | 'midi',
-    public readonly timestamp: Date = new Date()
-  ) {}
+    trackId: TrackId,
+    clipId: ClipId,
+    type: 'audio' | 'midi'
+  ) {
+    this.timestamp = new Date();
+    this.aggregateId = trackId.toString();
+    this.payload = {
+      clipId: clipId.toString(),
+      type
+    };
+  }
 
   getEventName(): string {
     return 'clip:added';
