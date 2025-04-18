@@ -1,23 +1,24 @@
 import { BaseTrack } from './BaseTrack';
 import { TrackId } from '../value-objects/TrackId';
 import { TrackRouting } from '../value-objects/TrackRouting';
-import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
-import { MidiClipId } from '../value-objects/MidiClipId';
 import { ClipId } from '../value-objects/ClipId';
+import { MidiClipId } from '../value-objects/MidiClipId';
+import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
+import { PluginReference } from '../value-objects/PluginReference';
 
 export class InstrumentTrack extends BaseTrack {
   private midiClipIds: MidiClipId[] = [];
-  private instrumentPluginId?: PluginInstanceId;
 
   constructor(
     trackId: TrackId,
     name: string,
     routing: TrackRouting,
     type: string,
+    public readonly midiClips: string[] = [],
     plugins: PluginInstanceId[] = []
   ) {
     super(trackId, name, routing, type);
-    plugins.forEach(plugin => this.addPlugin(plugin));
+    plugins.forEach(plugin => this.addPlugin(PluginReference.create(plugin.toString())));
   }
 
   addClip(clipId: ClipId): void {
@@ -40,17 +41,8 @@ export class InstrumentTrack extends BaseTrack {
     }
   }
 
-  setInstrumentPlugin(pluginId: PluginInstanceId): void {
-    this.instrumentPluginId = pluginId;
-    this.incrementVersion();
-  }
-
   getMidiClips(): MidiClipId[] {
     return [...this.midiClipIds];
-  }
-
-  getInstrumentPlugin(): PluginInstanceId | undefined {
-    return this.instrumentPluginId;
   }
 
   getType(): string {

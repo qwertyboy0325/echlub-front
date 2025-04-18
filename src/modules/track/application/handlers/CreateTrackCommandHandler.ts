@@ -5,23 +5,29 @@ import type { ITrackRepository } from '../../domain/repositories/ITrackRepositor
 import { TrackCreatedEvent } from '../../domain/events/TrackCreatedEvent';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { TrackId } from '../../domain/value-objects/TrackId';
-import { AudioTrack } from '../../domain/entities/AudioTrack';
-import { TrackRouting } from '../../domain/value-objects/TrackRouting';
+import { TrackFactoryRegistry } from '../../domain/factories/TrackFactories';
 
 @injectable()
 export class CreateTrackCommandHandler {
   constructor(
     @inject(TrackTypes.TrackRepository) private repository: ITrackRepository,
-    @inject(TrackTypes.EventBus) private eventBus: IEventBus
+    @inject(TrackTypes.EventBus) private eventBus: IEventBus,
+    @inject(TrackTypes.TrackFactoryRegistry) private trackFactoryRegistry: TrackFactoryRegistry
   ) {}
 
   async handle(command: CreateTrackCommand): Promise<TrackId> {
     const trackId = TrackId.create();
-    const routing = new TrackRouting(null, null);
-    const track = new AudioTrack(trackId, command.name, routing, command.type);
+    const track = this.trackFactoryRegistry.createTrack(
+      command.type,
+      trackId,
+      command.name
+    );
+    
     await this.repository.create(track);
+    
     const event = new TrackCreatedEvent(trackId, command.name, command.type);
     await this.eventBus.publish(event);
+    
     return trackId;
   }
 } 

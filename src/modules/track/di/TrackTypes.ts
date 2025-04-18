@@ -37,4 +37,10 @@ export const TrackTypes = {
 
   // New PluginReferenceAdapter
   PluginReferenceAdapter: Symbol.for('PluginReferenceAdapter'),
+
+  // Track Factories
+  AudioTrackFactory: Symbol.for('AudioTrackFactory'),
+  InstrumentTrackFactory: Symbol.for('InstrumentTrackFactory'),
+  BusTrackFactory: Symbol.for('BusTrackFactory'),
+  TrackFactoryRegistry: Symbol.for('TrackFactoryRegistry'),
 }; 

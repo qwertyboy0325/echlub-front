@@ -7,7 +7,8 @@ import { TrackService } from '../application/services/TrackService';
 import { TrackDomainService } from '../domain/services/TrackDomainService';
 import { TrackValidator } from '../application/validators/TrackValidator';
 import { TrackMediator } from '../application/mediators/TrackMediator';
-import { TrackFactory } from '../domain/factories/TrackFactory';
+import { ITrackFactory } from '../domain/factories/ITrackFactory';
+import { AudioTrackFactory, InstrumentTrackFactory, BusTrackFactory, TrackFactoryRegistry } from '../domain/factories/TrackFactories';
 import { TrackEventHandler } from '../integration/handlers/TrackEventHandler';
 import { CreateTrackCommandHandler } from '../application/handlers/CreateTrackCommandHandler';
 import { RenameTrackCommandHandler } from '../application/handlers/RenameTrackCommandHandler';
@@ -52,9 +53,21 @@ export class TrackModule {
       .to(TrackMediator)
       .inSingletonScope();
 
-    // Factories
-    container.bind(TrackTypes.TrackFactory)
-      .to(TrackFactory)
+    // Track Factories
+    container.bind<ITrackFactory>(TrackTypes.AudioTrackFactory)
+      .to(AudioTrackFactory)
+      .inSingletonScope();
+
+    container.bind<ITrackFactory>(TrackTypes.InstrumentTrackFactory)
+      .to(InstrumentTrackFactory)
+      .inSingletonScope();
+
+    container.bind<ITrackFactory>(TrackTypes.BusTrackFactory)
+      .to(BusTrackFactory)
+      .inSingletonScope();
+
+    container.bind<TrackFactoryRegistry>(TrackTypes.TrackFactoryRegistry)
+      .to(TrackFactoryRegistry)
       .inSingletonScope();
 
     // Event Handlers

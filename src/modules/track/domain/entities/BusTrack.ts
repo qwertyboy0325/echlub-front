@@ -3,6 +3,7 @@ import { TrackId } from '../value-objects/TrackId';
 import { TrackRouting } from '../value-objects/TrackRouting';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 import { ClipId } from '../value-objects/ClipId';
+import { PluginReference } from '../value-objects/PluginReference';
 
 export interface SendSetting {
   id: string;
@@ -21,6 +22,7 @@ export interface ReturnSetting {
 export class BusTrack extends BaseTrack {
   private _sendSettings: SendSetting[] = [];
   private _returnSettings: ReturnSetting[] = [];
+  private inputTracks: Set<TrackId> = new Set();
 
   constructor(
     trackId: TrackId,
@@ -32,17 +34,17 @@ export class BusTrack extends BaseTrack {
     returnSettings: ReturnSetting[] = []
   ) {
     super(trackId, name, routing, type);
-    plugins.forEach(plugin => this.addPlugin(plugin));
+    plugins.forEach(plugin => this.addPlugin(PluginReference.create(plugin.toString())));
     this._sendSettings = [...sendSettings];
     this._returnSettings = [...returnSettings];
   }
 
   addClip(clipId: ClipId): void {
-    throw new Error('Bus tracks cannot contain clips');
+    throw new Error('Bus tracks cannot have clips');
   }
 
   removeClip(clipId: ClipId): void {
-    throw new Error('Bus tracks cannot contain clips');
+    throw new Error('Bus tracks cannot have clips');
   }
 
   addSendSetting(setting: SendSetting): void {
@@ -77,7 +79,31 @@ export class BusTrack extends BaseTrack {
     return [...this._returnSettings];
   }
 
+  addInputTrack(trackId: TrackId): void {
+    if (!this.inputTracks.has(trackId)) {
+      this.inputTracks.add(trackId);
+      this.incrementVersion();
+    }
+  }
+
+  removeInputTrack(trackId: TrackId): void {
+    if (this.inputTracks.delete(trackId)) {
+      this.incrementVersion();
+    }
+  }
+
+  getInputTracks(): TrackId[] {
+    return Array.from(this.inputTracks);
+  }
+
   getType(): string {
     return 'bus';
+  }
+
+  toJSON(): object {
+    return {
+      ...super.toJSON(),
+      inputTracks: Array.from(this.inputTracks).map(id => id.toString())
+    };
   }
 } 
