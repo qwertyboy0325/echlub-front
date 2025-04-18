@@ -3,6 +3,7 @@ import { TrackId } from '../value-objects/TrackId';
 import { TrackRouting } from '../value-objects/TrackRouting';
 import { AudioClipId } from '../value-objects/AudioClipId';
 import { ClipId } from '../value-objects/ClipId';
+import { TrackType } from '../value-objects/TrackType';
 
 export class AudioTrack extends BaseTrack {
   private audioClipIds: AudioClipId[] = [];
@@ -11,10 +12,9 @@ export class AudioTrack extends BaseTrack {
     trackId: TrackId,
     name: string,
     routing: TrackRouting,
-    type: string,
     public readonly audioClips: string[] = []
   ) {
-    super(trackId, name, routing, type);
+    super(trackId, name, routing, TrackType.AUDIO);
   }
 
   addClip(clipId: ClipId): void {
@@ -41,7 +41,10 @@ export class AudioTrack extends BaseTrack {
     return [...this.audioClipIds];
   }
 
-  getType(): string {
-    return 'audio';
+  toJSON(): object {
+    return {
+      ...super.toJSON(),
+      audioClips: this.audioClipIds.map(id => id.toString())
+    };
   }
 } 

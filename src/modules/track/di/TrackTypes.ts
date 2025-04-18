@@ -43,4 +43,7 @@ export const TrackTypes = {
   InstrumentTrackFactory: Symbol.for('InstrumentTrackFactory'),
   BusTrackFactory: Symbol.for('BusTrackFactory'),
   TrackFactoryRegistry: Symbol.for('TrackFactoryRegistry'),
+
+  // New TrackEventPublisher
+  TrackEventPublisher: Symbol.for('TrackEventPublisher'),
 }; 

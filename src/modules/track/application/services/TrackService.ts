@@ -14,6 +14,7 @@ import { RemoveClipFromTrackCommand } from '../commands/RemoveClipFromTrackComma
 import { ChangeTrackRoutingCommand } from '../commands/ChangeTrackRoutingCommand';
 import { AddPluginToTrackCommand } from '../commands/AddPluginToTrackCommand';
 import { RemovePluginFromTrackCommand } from '../commands/RemovePluginFromTrackCommand';
+import { TrackType } from '../../domain/value-objects/TrackType';
 
 @injectable()
 export class TrackService {
@@ -23,13 +24,14 @@ export class TrackService {
   ) {}
 
   async createTrack(name: string, type: 'audio' | 'instrument' | 'bus'): Promise<TrackId> {
-    const validationResult = this.validator.validateCreateTrack(name, type);
+    const trackType = TrackType.fromString(type);
+    const validationResult = this.validator.validateCreateTrack(name, trackType);
     if (!validationResult.isValid) {
       throw new TrackValidationError(validationResult.errors);
     }
 
     try {
-      const command = new CreateTrackCommand(name, type);
+      const command = new CreateTrackCommand(name, trackType);
       return await this.mediator.createTrack(command);
     } catch (error) {
       if (error instanceof TrackValidationError) {

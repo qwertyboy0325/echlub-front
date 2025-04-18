@@ -2,30 +2,31 @@ import { TrackId } from '../value-objects/TrackId';
 import { TrackRouting } from '../value-objects/TrackRouting';
 import { ClipId } from '../value-objects/ClipId';
 import { IAggregate } from '../interfaces/IAggregate';
-import { TrackCreatedEvent } from '../events/TrackCreatedEvent';
-import { TrackRenamedEvent } from '../events/TrackRenamedEvent';
-import { TrackRoutingChangedEvent } from '../events/TrackRoutingChangedEvent';
-import { PluginAddedToTrackEvent } from '../events/PluginAddedToTrackEvent';
-import { PluginRemovedFromTrackEvent } from '../events/PluginRemovedFromTrackEvent';
+import { TrackType } from '../value-objects/TrackType';
 import { IPluginReference } from '../interfaces/IPluginReference';
-import { PluginReference } from '../value-objects/PluginReference';
+
+export interface TrackState {
+  name: string;
+  routing: TrackRouting;
+  mute: boolean;
+  solo: boolean;
+  volume: number;
+  plugins: IPluginReference[];
+}
 
 export abstract class BaseTrack implements IAggregate {
   private _version: number = 0;
   private _plugins: IPluginReference[] = [];
   protected mute: boolean = false;
   protected solo: boolean = false;
-  protected type: string;
   protected volume: number = 1;
 
   constructor(
     protected readonly trackId: TrackId,
     protected name: string,
     protected routing: TrackRouting,
-    type: string
-  ) {
-    this.type = type;
-  }
+    protected readonly trackType: TrackType
+  ) {}
 
   getId(): string {
     return this.trackId.toString();
@@ -37,6 +38,10 @@ export abstract class BaseTrack implements IAggregate {
 
   incrementVersion(): void {
     this._version++;
+  }
+
+  protected doIncrementVersion(): void {
+    this.incrementVersion();
   }
 
   getTrackId(): TrackId {
@@ -99,6 +104,9 @@ export abstract class BaseTrack implements IAggregate {
   }
 
   setVolume(volume: number): void {
+    if (volume < 0) {
+      throw new Error('Volume cannot be negative');
+    }
     this.volume = volume;
     this.incrementVersion();
   }
@@ -107,22 +115,19 @@ export abstract class BaseTrack implements IAggregate {
     return this.volume;
   }
 
-  protected applyEvent(event: any): void {
-    if (event instanceof TrackCreatedEvent) {
-      this.name = event.payload.name;
-    } else if (event instanceof TrackRenamedEvent) {
-      this.name = event.payload.newName;
-    } else if (event instanceof TrackRoutingChangedEvent) {
-      this.routing = event.payload.routing;
-    } else if (event instanceof PluginAddedToTrackEvent) {
-      this.addPlugin(PluginReference.create(event.payload.pluginId));
-    } else if (event instanceof PluginRemovedFromTrackEvent) {
-      this.removePlugin(PluginReference.create(event.payload.pluginId));
-    }
+  getType(): TrackType {
+    return this.trackType;
   }
 
-  getType(): string {
-    return this.type;
+  getState(): TrackState {
+    return {
+      name: this.name,
+      routing: this.routing,
+      mute: this.mute,
+      solo: this.solo,
+      volume: this.volume,
+      plugins: [...this._plugins]
+    };
   }
 
   toJSON(): object {
@@ -130,9 +135,10 @@ export abstract class BaseTrack implements IAggregate {
       trackId: this.trackId.toString(),
       name: this.name,
       routing: this.routing,
-      type: this.getType(),
+      type: this.trackType.toString(),
       version: this.getVersion(),
-      plugins: this._plugins.map(p => p.toString())
+      plugins: this._plugins.map(p => p.toString()),
+      state: this.getState()
     };
   }
 } 

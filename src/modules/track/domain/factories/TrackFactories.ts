@@ -21,7 +21,7 @@ export class AudioTrackFactory implements ITrackFactory {
     routing: TrackRouting = new TrackRouting(null, null),
     plugins: IPluginReference[] = []
   ): AudioTrack {
-    const track = new AudioTrack(id, name, routing, 'audio');
+    const track = new AudioTrack(id, name, routing);
     plugins.forEach(plugin => track.addPlugin(plugin));
     return track;
   }
@@ -58,7 +58,7 @@ export class InstrumentTrackFactory implements ITrackFactory {
     routing: TrackRouting = new TrackRouting(null, null),
     plugins: IPluginReference[] = []
   ): InstrumentTrack {
-    const track = new InstrumentTrack(id, name, routing, 'instrument');
+    const track = new InstrumentTrack(id, name, routing);
     plugins.forEach(plugin => track.addPlugin(plugin));
     return track;
   }
@@ -95,7 +95,7 @@ export class BusTrackFactory implements ITrackFactory {
     routing: TrackRouting = new TrackRouting(null, null),
     plugins: IPluginReference[] = []
   ): BusTrack {
-    const track = new BusTrack(id, name, routing, 'bus');
+    const track = new BusTrack(id, name, routing);
     plugins.forEach(plugin => track.addPlugin(plugin));
     return track;
   }
@@ -133,9 +133,9 @@ export class TrackFactoryRegistry {
     @inject(TrackTypes.InstrumentTrackFactory) instrumentFactory: InstrumentTrackFactory,
     @inject(TrackTypes.BusTrackFactory) busFactory: BusTrackFactory
   ) {
-    this.factories.set('audio', audioFactory);
-    this.factories.set('instrument', instrumentFactory);
-    this.factories.set('bus', busFactory);
+    this.factories.set(TrackType.AUDIO, audioFactory);
+    this.factories.set(TrackType.INSTRUMENT, instrumentFactory);
+    this.factories.set(TrackType.BUS, busFactory);
   }
 
   getFactory(type: TrackType): ITrackFactory {

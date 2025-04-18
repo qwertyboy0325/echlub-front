@@ -5,6 +5,7 @@ import { ClipId } from '../value-objects/ClipId';
 import { MidiClipId } from '../value-objects/MidiClipId';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 import { PluginReference } from '../value-objects/PluginReference';
+import { TrackType } from '../value-objects/TrackType';
 
 export class InstrumentTrack extends BaseTrack {
   private midiClipIds: MidiClipId[] = [];
@@ -13,11 +14,10 @@ export class InstrumentTrack extends BaseTrack {
     trackId: TrackId,
     name: string,
     routing: TrackRouting,
-    type: string,
     public readonly midiClips: string[] = [],
     plugins: PluginInstanceId[] = []
   ) {
-    super(trackId, name, routing, type);
+    super(trackId, name, routing, TrackType.INSTRUMENT);
     plugins.forEach(plugin => this.addPlugin(PluginReference.create(plugin.toString())));
   }
 
@@ -45,7 +45,10 @@ export class InstrumentTrack extends BaseTrack {
     return [...this.midiClipIds];
   }
 
-  getType(): string {
-    return 'instrument';
+  toJSON(): object {
+    return {
+      ...super.toJSON(),
+      midiClips: this.midiClipIds.map(id => id.toString())
+    };
   }
 } 

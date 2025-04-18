@@ -4,6 +4,7 @@ import { TrackRouting } from '../value-objects/TrackRouting';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 import { ClipId } from '../value-objects/ClipId';
 import { PluginReference } from '../value-objects/PluginReference';
+import { TrackType } from '../value-objects/TrackType';
 
 export interface SendSetting {
   id: string;
@@ -28,12 +29,11 @@ export class BusTrack extends BaseTrack {
     trackId: TrackId,
     name: string,
     routing: TrackRouting,
-    type: string,
     plugins: PluginInstanceId[] = [],
     sendSettings: SendSetting[] = [],
     returnSettings: ReturnSetting[] = []
   ) {
-    super(trackId, name, routing, type);
+    super(trackId, name, routing, TrackType.BUS);
     plugins.forEach(plugin => this.addPlugin(PluginReference.create(plugin.toString())));
     this._sendSettings = [...sendSettings];
     this._returnSettings = [...returnSettings];
@@ -96,8 +96,8 @@ export class BusTrack extends BaseTrack {
     return Array.from(this.inputTracks);
   }
 
-  getType(): string {
-    return 'bus';
+  getType(): TrackType {
+    return TrackType.BUS;
   }
 
   toJSON(): object {

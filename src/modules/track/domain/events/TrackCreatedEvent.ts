@@ -1,4 +1,5 @@
 import { TrackId } from '../value-objects/TrackId';
+import { TrackType } from '../value-objects/TrackType';
 import { IDomainEvent } from '../interfaces/IDomainEvent';
 
 export class TrackCreatedEvent implements IDomainEvent {
@@ -7,13 +8,13 @@ export class TrackCreatedEvent implements IDomainEvent {
   readonly aggregateId: string;
   readonly payload: {
     name: string;
-    type: 'audio' | 'instrument' | 'bus';
+    type: TrackType;
   };
 
   constructor(
-    trackId: TrackId,
-    name: string,
-    type: 'audio' | 'instrument' | 'bus'
+    public readonly trackId: TrackId,
+    public readonly name: string,
+    public readonly type: TrackType
   ) {
     this.timestamp = new Date();
     this.aggregateId = trackId.toString();

@@ -18,6 +18,8 @@ import { ChangeTrackRoutingCommandHandler } from '../application/handlers/Change
 import { AddPluginToTrackCommandHandler } from '../application/handlers/AddPluginToTrackCommandHandler';
 import { RemovePluginFromTrackCommandHandler } from '../application/handlers/RemovePluginFromTrackCommandHandler';
 import { PluginReferenceAdapter } from '../infrastructure/adapters/PluginReferenceAdapter';
+import { TrackEventBusAdapter } from '../infrastructure/adapters/TrackEventBusAdapter';
+import { ITrackEventPublisher } from '../domain/ports/ITrackEventPublisher';
 
 export class TrackModule {
   static configure(container: Container): void {
@@ -102,6 +104,11 @@ export class TrackModule {
 
     container.bind(TrackTypes.RemovePluginFromTrackCommandHandler)
       .to(RemovePluginFromTrackCommandHandler)
+      .inSingletonScope();
+
+    // Event Publisher
+    container.bind<ITrackEventPublisher>(TrackTypes.TrackEventPublisher)
+      .to(TrackEventBusAdapter)
       .inSingletonScope();
   }
 } 
