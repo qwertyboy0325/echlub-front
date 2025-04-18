@@ -33,5 +33,8 @@ export const TrackTypes = {
 
   // Core Dependencies
   EventBus: Symbol.for('EventBus'),
-  StateManager: Symbol.for('StateManager')
+  StateManager: Symbol.for('StateManager'),
+
+  // New PluginReferenceAdapter
+  PluginReferenceAdapter: Symbol.for('PluginReferenceAdapter'),
 }; 

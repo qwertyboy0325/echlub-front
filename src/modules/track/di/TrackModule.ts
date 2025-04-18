@@ -1,9 +1,7 @@
 import { Container } from 'inversify';
 import { TrackTypes } from './TrackTypes';
-import { ITrackRepository, ILocalTrackRepository, IWebSocketTrackRepository, IWebRTCTrackRepository } from '../domain/repositories/ITrackRepository';
+import { ITrackRepository, ILocalTrackRepository } from '../domain/repositories/ITrackRepository';
 import { LocalTrackRepository } from '../infrastructure/persistence/LocalTrackRepository';
-import { WebSocketTrackRepository } from '../infrastructure/persistence/WebSocketTrackRepository';
-import { WebRTCTrackRepository } from '../infrastructure/persistence/WebRTCTrackRepository';
 import { TrackRepositoryCoordinator } from '../infrastructure/persistence/TrackRepositoryCoordinator';
 import { TrackService } from '../application/services/TrackService';
 import { TrackDomainService } from '../domain/services/TrackDomainService';
@@ -18,20 +16,13 @@ import { RemoveClipFromTrackCommandHandler } from '../application/handlers/Remov
 import { ChangeTrackRoutingCommandHandler } from '../application/handlers/ChangeTrackRoutingCommandHandler';
 import { AddPluginToTrackCommandHandler } from '../application/handlers/AddPluginToTrackCommandHandler';
 import { RemovePluginFromTrackCommandHandler } from '../application/handlers/RemovePluginFromTrackCommandHandler';
+import { PluginReferenceAdapter } from '../infrastructure/adapters/PluginReferenceAdapter';
 
 export class TrackModule {
   static configure(container: Container): void {
     // Repositories
     container.bind<ILocalTrackRepository>(TrackTypes.LocalTrackRepository)
       .to(LocalTrackRepository)
-      .inSingletonScope();
-
-    container.bind<IWebSocketTrackRepository>(TrackTypes.WebSocketTrackRepository)
-      .to(WebSocketTrackRepository)
-      .inSingletonScope();
-
-    container.bind<IWebRTCTrackRepository>(TrackTypes.WebRTCTrackRepository)
-      .to(WebRTCTrackRepository)
       .inSingletonScope();
 
     container.bind<ITrackRepository>(TrackTypes.TrackRepository)
@@ -49,6 +40,11 @@ export class TrackModule {
 
     container.bind(TrackTypes.TrackValidator)
       .to(TrackValidator)
+      .inSingletonScope();
+
+    // Adapters
+    container.bind(TrackTypes.PluginReferenceAdapter)
+      .to(PluginReferenceAdapter)
       .inSingletonScope();
 
     // Mediators

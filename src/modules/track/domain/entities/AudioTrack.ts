@@ -1,7 +1,6 @@
 import { BaseTrack } from './BaseTrack';
 import { TrackId } from '../value-objects/TrackId';
 import { TrackRouting } from '../value-objects/TrackRouting';
-import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 import { AudioClipId } from '../value-objects/AudioClipId';
 import { ClipId } from '../value-objects/ClipId';
 

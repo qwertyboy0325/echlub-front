@@ -1,18 +1,21 @@
-export class PluginInstanceId {
-  constructor(private readonly value: string) {}
+import { v4 as uuidv4 } from 'uuid';
 
-  equals(other: PluginInstanceId): boolean {
-    return this.value === other.value;
+export class PluginInstanceId {
+  private constructor(private readonly value: string) {}
+
+  static create(): PluginInstanceId {
+    return new PluginInstanceId(uuidv4());
+  }
+
+  static fromString(id: string): PluginInstanceId {
+    return new PluginInstanceId(id);
   }
 
   toString(): string {
     return this.value;
   }
 
-  static create(): PluginInstanceId {
-    if (typeof crypto === 'undefined' || !crypto.randomUUID) {
-      return new PluginInstanceId('test-plugin-id-' + Math.random().toString(36).substr(2, 9));
-    }
-    return new PluginInstanceId(crypto.randomUUID());
+  equals(other: PluginInstanceId): boolean {
+    return this.value === other.value;
   }
 } 

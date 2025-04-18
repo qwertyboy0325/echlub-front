@@ -8,16 +8,6 @@ export interface ITrackRepository {
   delete(id: TrackId): Promise<void>;
 }
 
-export interface ILocalTrackRepository extends ITrackRepository {
-  sync(): Promise<void>;
-}
-
-export interface IWebSocketTrackRepository extends ITrackRepository {
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-}
-
-export interface IWebRTCTrackRepository extends ITrackRepository {
-  establishConnection(): Promise<void>;
-  closeConnection(): Promise<void>;
-} 
+export interface ILocalTrackRepository extends ITrackRepository {}
+export interface IWebSocketTrackRepository extends ITrackRepository {}
+export interface IWebRTCTrackRepository extends ITrackRepository {} 

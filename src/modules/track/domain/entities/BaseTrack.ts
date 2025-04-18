@@ -1,6 +1,5 @@
 import { TrackId } from '../value-objects/TrackId';
 import { TrackRouting } from '../value-objects/TrackRouting';
-import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 import { ClipId } from '../value-objects/ClipId';
 import { IAggregate } from '../interfaces/IAggregate';
 import { TrackCreatedEvent } from '../events/TrackCreatedEvent';
@@ -8,15 +7,16 @@ import { TrackRenamedEvent } from '../events/TrackRenamedEvent';
 import { TrackRoutingChangedEvent } from '../events/TrackRoutingChangedEvent';
 import { PluginAddedToTrackEvent } from '../events/PluginAddedToTrackEvent';
 import { PluginRemovedFromTrackEvent } from '../events/PluginRemovedFromTrackEvent';
+import { IPluginReference } from '../interfaces/IPluginReference';
+import { PluginReference } from '../value-objects/PluginReference';
 
 export abstract class BaseTrack implements IAggregate {
   private _version: number = 0;
-  private _plugins: PluginInstanceId[] = [];
+  private _plugins: IPluginReference[] = [];
   protected mute: boolean = false;
   protected solo: boolean = false;
   protected type: string;
   protected volume: number = 1;
-  public pluginInstanceIds: PluginInstanceId[] = [];
 
   constructor(
     protected readonly trackId: TrackId,
@@ -47,7 +47,7 @@ export abstract class BaseTrack implements IAggregate {
     return this.name;
   }
 
-  getPlugins(): PluginInstanceId[] {
+  getPlugins(): IPluginReference[] {
     return [...this._plugins];
   }
 
@@ -58,15 +58,15 @@ export abstract class BaseTrack implements IAggregate {
   abstract addClip(clipId: ClipId): void;
   abstract removeClip(clipId: ClipId): void;
   
-  addPlugin(pluginId: PluginInstanceId): void {
-    if (!this._plugins.some(id => id.equals(pluginId))) {
-      this._plugins.push(pluginId);
+  addPlugin(pluginRef: IPluginReference): void {
+    if (!this._plugins.some(ref => ref.equals(pluginRef))) {
+      this._plugins.push(pluginRef);
       this.incrementVersion();
     }
   }
 
-  removePlugin(pluginId: PluginInstanceId): void {
-    this._plugins = this._plugins.filter(id => !id.equals(pluginId));
+  removePlugin(pluginRef: IPluginReference): void {
+    this._plugins = this._plugins.filter(ref => !ref.equals(pluginRef));
     this.incrementVersion();
   }
 
@@ -109,24 +109,20 @@ export abstract class BaseTrack implements IAggregate {
 
   protected applyEvent(event: any): void {
     if (event instanceof TrackCreatedEvent) {
-      this.name = event.name;
+      this.name = event.payload.name;
     } else if (event instanceof TrackRenamedEvent) {
-      this.name = event.newName;
+      this.name = event.payload.newName;
     } else if (event instanceof TrackRoutingChangedEvent) {
-      this.routing = event.routing;
+      this.routing = event.payload.routing;
     } else if (event instanceof PluginAddedToTrackEvent) {
-      this.addPlugin(event.pluginId);
+      this.addPlugin(PluginReference.create(event.payload.pluginId));
     } else if (event instanceof PluginRemovedFromTrackEvent) {
-      this.removePlugin(event.pluginId);
+      this.removePlugin(PluginReference.create(event.payload.pluginId));
     }
   }
 
   getType(): string {
     return this.type;
-  }
-
-  getPluginInstanceIds(): PluginInstanceId[] {
-    return [...this.pluginInstanceIds];
   }
 
   toJSON(): object {
@@ -135,7 +131,8 @@ export abstract class BaseTrack implements IAggregate {
       name: this.name,
       routing: this.routing,
       type: this.getType(),
-      version: this.getVersion()
+      version: this.getVersion(),
+      plugins: this._plugins.map(p => p.toString())
     };
   }
 } 
