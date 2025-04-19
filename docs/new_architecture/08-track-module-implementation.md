@@ -1,592 +1,325 @@
-# Track 模組實現指南
+# 模組實現指南：以音軌模組為例
 
-## 1. 目錄結構
+## 模組架構概述
+
+每個模組都應遵循以下架構原則：
+
+1. **領域驅動設計 (DDD)** 
+   - 清晰的領域邊界
+   - 豐富的領域模型
+   - 領域事件驅動
+
+2. **分層架構**
+   - 領域層：核心業務邏輯
+   - 應用層：用例協調
+   - 基礎設施層：技術實現
+
+3. **設計模式應用**
+   - 工廠模式：創建複雜對象
+   - 倉儲模式：數據持久化
+   - 中介者模式：跨層通信
+
+## 標準目錄結構
 
 ```
-src/modules/track/
-├── application/
-│   ├── commands/
-│   │   ├── CreateTrackCommand.ts
-│   │   ├── RenameTrackCommand.ts
-│   │   ├── AddClipToTrackCommand.ts
-│   │   ├── RemoveClipFromTrackCommand.ts
-│   │   ├── SetTrackRoutingCommand.ts
-│   │   ├── AddPluginToTrackCommand.ts
-│   │   └── RemovePluginFromTrackCommand.ts
-│   ├── queries/
-│   │   ├── GetTrackQuery.ts
-│   │   └── ListTracksQuery.ts
-│   └── services/
-│       └── TrackService.ts
+src/modules/{module-name}/
+├── domain/                 # 領域層
+│   ├── entities/          # 領域實體
+│   ├── value-objects/     # 值對象
+│   ├── events/            # 領域事件
+│   ├── interfaces/        # 領域接口
+│   ├── ports/            # 端口定義
+│   └── services/         # 領域服務
 │
-├── domain/
-│   ├── entities/
-│   │   ├── IAggregate.ts
-│   │   ├── ITrackAggregate.ts
-│   │   ├── IAudioTrackAggregate.ts
-│   │   ├── IInstrumentTrackAggregate.ts
-│   │   ├── IBusTrackAggregate.ts
-│   │   ├── BaseTrack.ts
-│   │   ├── AudioTrack.ts
-│   │   ├── InstrumentTrack.ts
-│   │   └── BusTrack.ts
-│   ├── value-objects/
-│   │   ├── TrackId.ts
-│   │   └── TrackType.ts
-│   ├── events/
-│   │   ├── TrackCreatedEvent.ts
-│   │   ├── TrackRenamedEvent.ts
-│   │   ├── ClipAddedToTrackEvent.ts
-│   │   ├── ClipRemovedFromTrackEvent.ts
-│   │   ├── TrackRoutingChangedEvent.ts
-│   │   ├── PluginAddedToTrackEvent.ts
-│   │   └── PluginRemovedFromTrackEvent.ts
-│   ├── aggregates/
-│   │   ├── BaseTrackAggregate.ts
-│   │   ├── AudioTrackAggregate.ts
-│   │   ├── InstrumentTrackAggregate.ts
-│   │   └── BusTrackAggregate.ts
-│   └── repositories/
-│       └── ITrackRepository.ts
+├── application/           # 應用層
+│   ├── commands/         # 命令定義
+│   ├── handlers/         # 命令處理器
+│   ├── mediators/        # 中介者
+│   ├── services/         # 應用服務
+│   └── validators/       # 驗證器
 │
-├── infrastructure/
-│   ├── persistence/
-│   │   └── TrackRepositoryImpl.ts
-│   ├── services/
-│   │   └── TrackStateService.ts
-│   └── repositories/
-│       └── TrackRepository.ts
+├── infrastructure/        # 基礎設施層
+│   ├── persistence/      # 持久化實現
+│   ├── adapters/         # 適配器
+│   └── services/         # 基礎服務
 │
-└── integration/
-    ├── handlers/
-    │   └── TrackEventHandler.ts
-    └── publishers/
-        └── TrackEventPublisher.ts
+├── di/                    # 依賴注入
+│   ├── types.ts          # 類型定義
+│   └── module.ts         # 模組配置
+│
+└── integration/           # 集成
+    ├── handlers/         # 事件處理器
+    └── publishers/       # 事件發布器
 ```
 
-## 2. 核心實現
+## 核心組件實現指南
 
-### 2.1 領域層
+### 1. 領域層實現
+
+#### 1.1 實體基類
+每個模組應定義自己的實體基類：
 
 ```typescript
-// domain/entities/IAggregate.ts
-export interface IAggregate {
-  getTrackId(): TrackId;
-  getName(): string;
-  getType(): string;
-  getVersion(): number;
-  incrementVersion(): void;
-}
-
-// domain/entities/ITrackAggregate.ts
-export interface ITrackAggregate extends IAggregate {
-  getRouting(): TrackRouting;
-  getPlugins(): PluginInstanceId[];
-  addPlugin(pluginId: PluginInstanceId): void;
-  removePlugin(pluginId: PluginInstanceId): void;
-  updateRouting(routing: TrackRouting): void;
-}
-
-// domain/entities/IAudioTrackAggregate.ts
-export interface IAudioTrackAggregate extends ITrackAggregate {
-  getAudioClips(): AudioClipId[];
-  addClip(clipId: ClipId): void;
-  removeClip(clipId: ClipId): void;
-}
-
-// domain/entities/IInstrumentTrackAggregate.ts
-export interface IInstrumentTrackAggregate extends ITrackAggregate {
-  getMidiClips(): MidiClipId[];
-  getInstrumentPlugin(): PluginInstanceId | undefined;
-  setInstrumentPlugin(pluginId: PluginInstanceId): void;
-  addClip(clipId: ClipId): void;
-  removeClip(clipId: ClipId): void;
-}
-
-// domain/entities/IBusTrackAggregate.ts
-export interface IBusTrackAggregate extends ITrackAggregate {
-  getSendSettings(): SendSetting[];
-  getReturnSettings(): ReturnSetting[];
-  addSendSetting(setting: SendSetting): void;
-  removeSendSetting(settingId: string): void;
-  addReturnSetting(setting: ReturnSetting): void;
-  removeReturnSetting(settingId: string): void;
-}
-
-// domain/entities/BaseTrack.ts
-export abstract class BaseTrack implements ITrackAggregate {
-  protected version: number = 0;
-  protected plugins: PluginInstanceId[] = [];
-
+export abstract class BaseEntity implements IAggregate {
+  private _version: number = 0;
+  
   constructor(
-    protected readonly trackId: TrackId,
-    protected readonly name: string,
-    protected readonly routing: TrackRouting,
-    protected readonly type: string
+    protected readonly id: EntityId,
+    protected name: string
   ) {}
-
-  getTrackId(): TrackId {
-    return this.trackId;
+  
+  // 版本控制
+  protected incrementVersion(): void {
+    this._version++;
   }
-
+  
+  // 基礎屬性
+  getId(): string {
+    return this.id.toString();
+  }
+  
   getName(): string {
     return this.name;
   }
-
-  getType(): string {
-    return this.type;
-  }
-
-  getVersion(): number {
-    return this.version;
-  }
-
-  incrementVersion(): void {
-    this.version++;
-  }
-
-  getRouting(): TrackRouting {
-    return this.routing;
-  }
-
-  getPlugins(): PluginInstanceId[] {
-    return [...this.plugins];
-  }
-
-  addPlugin(pluginId: PluginInstanceId): void {
-    if (!this.plugins.some(id => id.equals(pluginId))) {
-      this.plugins.push(pluginId);
-      this.incrementVersion();
-    }
-  }
-
-  removePlugin(pluginId: PluginInstanceId): void {
-    this.plugins = this.plugins.filter(id => !id.equals(pluginId));
-    this.incrementVersion();
-  }
-
-  updateRouting(routing: TrackRouting): void {
-    Object.assign(this.routing, routing);
-    this.incrementVersion();
-  }
-}
-
-// domain/entities/AudioTrack.ts
-export class AudioTrack extends BaseTrack implements IAudioTrackAggregate {
-  private audioClipIds: AudioClipId[] = [];
-
-  constructor(
-    trackId: TrackId,
-    name: string,
-    routing: TrackRouting,
-    type: string,
-    plugins: PluginInstanceId[] = []
-  ) {
-    super(trackId, name, routing, type);
-    plugins.forEach(plugin => this.addPlugin(plugin));
-  }
-
-  getAudioClips(): AudioClipId[] {
-    return [...this.audioClipIds];
-  }
-
-  addClip(clipId: ClipId): void {
-    if (clipId instanceof AudioClipId) {
-      if (!this.audioClipIds.some(id => id.equals(clipId))) {
-        this.audioClipIds.push(clipId);
-        this.incrementVersion();
-      }
-    } else {
-      throw new Error('Only audio clips can be added to audio tracks');
-    }
-  }
-
-  removeClip(clipId: ClipId): void {
-    if (clipId instanceof AudioClipId) {
-      this.audioClipIds = this.audioClipIds.filter(id => !id.equals(clipId));
-      this.incrementVersion();
-    } else {
-      throw new Error('Only audio clips can be removed from audio tracks');
-    }
-  }
-}
-
-// domain/entities/InstrumentTrack.ts
-export class InstrumentTrack extends BaseTrack implements IInstrumentTrackAggregate {
-  private midiClipIds: MidiClipId[] = [];
-  private instrumentPluginId?: PluginInstanceId;
-
-  constructor(
-    trackId: TrackId,
-    name: string,
-    routing: TrackRouting,
-    type: string,
-    plugins: PluginInstanceId[] = []
-  ) {
-    super(trackId, name, routing, type);
-    plugins.forEach(plugin => this.addPlugin(plugin));
-  }
-
-  getMidiClips(): MidiClipId[] {
-    return [...this.midiClipIds];
-  }
-
-  getInstrumentPlugin(): PluginInstanceId | undefined {
-    return this.instrumentPluginId;
-  }
-
-  setInstrumentPlugin(pluginId: PluginInstanceId): void {
-    this.instrumentPluginId = pluginId;
-    this.incrementVersion();
-  }
-
-  addClip(clipId: ClipId): void {
-    if (clipId instanceof MidiClipId) {
-      if (!this.midiClipIds.some(id => id.equals(clipId))) {
-        this.midiClipIds.push(clipId);
-        this.incrementVersion();
-      }
-    } else {
-      throw new Error('Only MIDI clips can be added to instrument tracks');
-    }
-  }
-
-  removeClip(clipId: ClipId): void {
-    if (clipId instanceof MidiClipId) {
-      this.midiClipIds = this.midiClipIds.filter(id => !id.equals(clipId));
-      this.incrementVersion();
-    } else {
-      throw new Error('Only MIDI clips can be removed from instrument tracks');
-    }
-  }
-}
-
-// domain/entities/BusTrack.ts
-export class BusTrack extends BaseTrack implements IBusTrackAggregate {
-  private sendSettings: SendSetting[] = [];
-  private returnSettings: ReturnSetting[] = [];
-
-  constructor(
-    trackId: TrackId,
-    name: string,
-    routing: TrackRouting,
-    type: string,
-    plugins: PluginInstanceId[] = [],
-    sendSettings: SendSetting[] = [],
-    returnSettings: ReturnSetting[] = []
-  ) {
-    super(trackId, name, routing, type);
-    plugins.forEach(plugin => this.addPlugin(plugin));
-    this.sendSettings = [...sendSettings];
-    this.returnSettings = [...returnSettings];
-  }
-
-  getSendSettings(): SendSetting[] {
-    return [...this.sendSettings];
-  }
-
-  getReturnSettings(): ReturnSetting[] {
-    return [...this.returnSettings];
-  }
-
-  addSendSetting(setting: SendSetting): void {
-    if (!this.sendSettings.some(s => s.id === setting.id)) {
-      this.sendSettings.push(setting);
-      this.incrementVersion();
-    }
-  }
-
-  removeSendSetting(settingId: string): void {
-    this.sendSettings = this.sendSettings.filter(s => s.id !== settingId);
-    this.incrementVersion();
-  }
-
-  addReturnSetting(setting: ReturnSetting): void {
-    if (!this.returnSettings.some(r => r.id === setting.id)) {
-      this.returnSettings.push(setting);
-      this.incrementVersion();
-    }
-  }
-
-  removeReturnSetting(settingId: string): void {
-    this.returnSettings = this.returnSettings.filter(r => r.id !== settingId);
-    this.incrementVersion();
-  }
-
-  addClip(clipId: ClipId): void {
-    throw new Error('Bus tracks cannot contain clips');
-  }
-
-  removeClip(clipId: ClipId): void {
-    throw new Error('Bus tracks cannot contain clips');
-  }
-}
-
-// domain/events/TrackCreatedEvent.ts
-export class TrackCreatedEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly name: string,
-    public readonly type: 'audio' | 'instrument' | 'bus',
-    public readonly timestamp: Date = new Date()
-  ) {}
-}
-
-// domain/events/ClipAddedToTrackEvent.ts
-export class ClipAddedToTrackEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly type: 'audio' | 'midi',
-    public readonly timestamp: Date = new Date()
-  ) {}
-}
-
-// domain/events/TrackRoutingChangedEvent.ts
-export class TrackRoutingChangedEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly routingParams: RoutingParams,
-    public readonly timestamp: Date = new Date()
-  ) {}
 }
 ```
 
-### 2.2 應用層
+#### 1.2 值對象
+值對象應該是不可變的：
 
 ```typescript
-// application/commands/CreateTrackCommand.ts
-export class CreateTrackCommand {
-  constructor(
-    public readonly name: string,
-    public readonly type: 'audio' | 'instrument' | 'bus'
-  ) {}
-}
-
-// application/commands/AddClipToTrackCommand.ts
-export class AddClipToTrackCommand {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId
-  ) {}
-}
-
-// application/commands/SetTrackRoutingCommand.ts
-export class SetTrackRoutingCommand {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly routingParams: RoutingParams
-  ) {}
-}
-
-// application/services/TrackService.ts
-@injectable()
-export class TrackService {
-  constructor(
-    @inject(TYPES.TrackRepository) private repository: ITrackRepository,
-    @inject(TYPES.EventBus) private eventBus: IEventBus,
-    @inject(TYPES.StateManager) private stateManager: IStateManager
-  ) {}
-
-  async createTrack(command: CreateTrackCommand): Promise<TrackId> {
-    const trackId = TrackId.create();
-    let aggregate: BaseTrackAggregate;
-
-    switch (command.type) {
-      case 'audio':
-        aggregate = new AudioTrackAggregate(trackId, command.name, [], command.type);
-        break;
-      case 'instrument':
-        aggregate = new InstrumentTrackAggregate(trackId, command.name, [], command.type);
-        break;
-      case 'bus':
-        aggregate = new BusTrackAggregate(trackId, command.name, [], command.type);
-        break;
-    }
-
-    await this.repository.save(aggregate);
-
-    const event = new TrackCreatedEvent(trackId, command.name, command.type);
-    await this.eventBus.emit('track:created', event);
-
-    return trackId;
+export class EntityId {
+  private constructor(private readonly value: string) {}
+  
+  static create(): EntityId {
+    return new EntityId(uuidv4());
   }
-
-  async addClipToTrack(command: AddClipToTrackCommand): Promise<void> {
-    const aggregate = await this.repository.findById(command.trackId);
-    if (!aggregate) throw new Error('Track not found');
-
-    aggregate.addClip(command.clipId);
-    await this.repository.save(aggregate);
-
-    const event = new ClipAddedToTrackEvent(
-      command.trackId,
-      command.clipId,
-      aggregate instanceof AudioTrackAggregate ? 'audio' : 'midi'
-    );
-    await this.eventBus.emit('clip:added', event);
+  
+  equals(other: EntityId): boolean {
+    return this.value === other.value;
   }
-
-  async setTrackRouting(command: SetTrackRoutingCommand): Promise<void> {
-    const aggregate = await this.repository.findById(command.trackId);
-    if (!aggregate) throw new Error('Track not found');
-
-    aggregate.updateRouting(command.routingParams);
-    await this.repository.save(aggregate);
-
-    const event = new TrackRoutingChangedEvent(
-      command.trackId,
-      command.routingParams
-    );
-    await this.eventBus.emit('track:routing:changed', event);
+  
+  toString(): string {
+    return this.value;
   }
 }
 ```
 
-### 2.3 基礎設施層
+### 2. 應用層實現
+
+#### 2.1 命令處理器基類
+統一的命令處理模式：
 
 ```typescript
-// infrastructure/services/TrackStateService.ts
 @injectable()
-export class TrackStateService {
+export abstract class BaseCommandHandler<TCommand, TResult = void> {
   constructor(
-    @inject(TYPES.EventBus) private eventBus: IEventBus,
-    @inject(TYPES.StateManager) private stateManager: IStateManager
-  ) {
-    this.setupEventListeners();
+    protected readonly repository: IRepository,
+    protected readonly eventBus: IEventBus
+  ) {}
+  
+  abstract handle(command: TCommand): Promise<TResult>;
+  
+  protected async publishEvent(event: IDomainEvent): Promise<void> {
+    await this.eventBus.publish(event);
   }
+}
+```
 
-  private setupEventListeners(): void {
-    this.eventBus.on('track:created', this.handleTrackCreated);
-    this.eventBus.on('clip:added', this.handleClipAdded);
-    this.eventBus.on('track:routing:changed', this.handleRoutingChanged);
+#### 2.2 驗證器
+標準的驗證結果結構：
+
+```typescript
+export class ValidationResult {
+  constructor(private readonly errors: ValidationError[] = []) {}
+  
+  get isValid(): boolean {
+    return this.errors.length === 0;
   }
+  
+  get errors(): ValidationError[] {
+    return [...this.errors];
+  }
+}
+```
 
-  private handleTrackCreated = async (event: TrackCreatedEvent): Promise<void> => {
-    await this.stateManager.updateState('tracks', {
-      [event.trackId.toString()]: {
-        trackId: event.trackId,
-        name: event.name,
-        type: event.type,
-        plugins: [],
-        routing: {}
-      }
-    });
-  };
+### 3. 基礎設施層實現
 
-  private handleClipAdded = async (event: ClipAddedToTrackEvent): Promise<void> => {
-    const state = this.stateManager.getState<Record<string, any>>('tracks');
-    const track = state[event.trackId.toString()];
-    
-    if (track) {
-      const clips = track.clips || [];
-      clips.push(event.clipId);
+#### 3.1 倉儲基類
+通用的倉儲操作：
+
+```typescript
+@injectable()
+export abstract class BaseRepository<T extends BaseEntity> {
+  protected items: Map<string, T> = new Map();
+  
+  async create(entity: T): Promise<void> {
+    this.items.set(entity.getId(), entity);
+  }
+  
+  async findById(id: string): Promise<T | undefined> {
+    return this.items.get(id);
+  }
+}
+```
+
+#### 3.2 事件適配器
+標準的事件發布接口：
+
+```typescript
+@injectable()
+export abstract class BaseEventPublisher {
+  constructor(protected eventBus: IEventBus) {}
+  
+  protected async publish(event: IDomainEvent): Promise<void> {
+    await this.eventBus.publish(event);
+  }
+}
+```
+
+## 依賴注入配置模板
+
+```typescript
+export class ModuleConfiguration {
+  static configure(container: Container): void {
+    // 1. 倉儲綁定
+    container.bind<IRepository>(TYPES.Repository)
+      .to(RepositoryImpl)
+      .inSingletonScope();
       
-      await this.stateManager.updateState('tracks', {
-        [event.trackId.toString()]: {
-          ...track,
-          clips
-        }
-      });
-    }
-  };
-
-  private handleRoutingChanged = async (event: TrackRoutingChangedEvent): Promise<void> => {
-    const state = this.stateManager.getState<Record<string, any>>('tracks');
-    const track = state[event.trackId.toString()];
-    
-    if (track) {
-      await this.stateManager.updateState('tracks', {
-        [event.trackId.toString()]: {
-          ...track,
-          routing: event.routingParams
-        }
-      });
-    }
-  };
+    // 2. 服務綁定
+    container.bind<IService>(TYPES.Service)
+      .to(ServiceImpl)
+      .inSingletonScope();
+      
+    // 3. 命令處理器綁定
+    container.bind<ICommandHandler>(TYPES.CommandHandler)
+      .to(CommandHandlerImpl)
+      .inSingletonScope();
+  }
 }
 ```
 
-## 3. 事件驅動流程示例
+## 測試規範
 
-### 3.1 創建音軌流程
+### 1. 單元測試結構
 ```typescript
-// 1. 接收命令
-CreateTrack(type='audio', name='New Track')
-
-// 2. TrackService 處理
-- 創建 TrackId
-- 根據類型創建對應的 Aggregate
-- 保存到倉儲
-
-// 3. 產生事件
-TrackCreated(trackId='uuid-123', type='audio', name='New Track')
-
-// 4. TrackStateService 處理
-- 更新狀態
-- 通知其他 Context
+describe('實體名稱', () => {
+  let entity: Entity;
+  let dependencies: MockDependencies;
+  
+  beforeEach(() => {
+    dependencies = createMockDependencies();
+    entity = new Entity(dependencies);
+  });
+  
+  describe('行為名稱', () => {
+    it('應該達到預期結果', () => {
+      // 準備
+      const input = createTestInput();
+      
+      // 執行
+      const result = entity.performAction(input);
+      
+      // 驗證
+      expect(result).toBe(expectedOutput);
+    });
+  });
+});
 ```
 
-### 3.2 添加片段流程
+### 2. 集成測試模式
 ```typescript
-// 1. 接收命令
-AddClipToTrack(trackId='uuid-123', clipId='clip-456')
-
-// 2. TrackService 處理
-- 獲取對應的 Aggregate
-- 添加片段
-- 保存到倉儲
-
-// 3. 產生事件
-ClipAddedToTrack(trackId='uuid-123', clipId='clip-456', type='audio')
-
-// 4. TrackStateService 處理
-- 更新狀態
-- 通知其他 Context
+describe('模組集成', () => {
+  let container: Container;
+  
+  beforeAll(() => {
+    container = new Container();
+    ModuleConfiguration.configure(container);
+  });
+  
+  it('應該正確處理完整流程', async () => {
+    const service = container.get<IService>(TYPES.Service);
+    const result = await service.performOperation();
+    expect(result).toMatchExpectedOutput();
+  });
+});
 ```
 
-### 3.3 設置路由流程
+## 實現示例：音軌模組
+
+### 1. 領域實體
 ```typescript
-// 1. 接收命令
-SetTrackRouting(trackId='uuid-123', routingParams={...})
-
-// 2. TrackService 處理
-- 獲取對應的 Aggregate
-- 更新路由設置
-- 保存到倉儲
-
-// 3. 產生事件
-TrackRoutingChanged(trackId='uuid-123', routingParams={...})
-
-// 4. TrackStateService 處理
-- 更新狀態
-- 通知其他 Context
+export class AudioTrack extends BaseTrack {
+  private clips: AudioClipId[] = [];
+  
+  addClip(clipId: AudioClipId): void {
+    if (!this.clips.some(id => id.equals(clipId))) {
+      this.clips.push(clipId);
+      this.incrementVersion();
+    }
+  }
+}
 ```
 
-## 4. 最佳實踐
+### 2. 命令處理器
+```typescript
+@injectable()
+export class CreateTrackCommandHandler extends BaseCommandHandler<CreateTrackCommand, TrackId> {
+  async handle(command: CreateTrackCommand): Promise<TrackId> {
+    const track = this.factory.createTrack(command.type, command.name);
+    await this.repository.create(track);
+    await this.publishEvent(new TrackCreatedEvent(track));
+    return track.getId();
+  }
+}
+```
 
-1. **聚合根設計**
-   - 使用抽象基類定義通用行為
-   - 子類實現特定類型的功能
-   - 確保業務規則的一致性
+### 3. 事件發布
+```typescript
+@injectable()
+export class TrackEventPublisher extends BaseEventPublisher {
+  async publishTrackCreated(track: BaseTrack): Promise<void> {
+    await this.publish(new TrackCreatedEvent(track));
+  }
+}
+```
 
-2. **事件驅動架構**
-   - 所有狀態變更都通過事件通知
-   - 事件應該包含足夠的上下文信息
-   - 確保事件處理的冪等性
+## 擴展指南
 
-3. **狀態管理**
-   - 使用 TrackStateService 管理本地狀態
-   - 通過事件系統同步狀態變化
-   - 保持狀態的不可變性
+### 1. 新增實體類型
+1. 繼承基礎實體類
+2. 實現特定行為
+3. 添加對應工廠
+4. 更新類型定義
+5. 註冊依賴注入
 
-4. **錯誤處理**
-   - 在聚合根中實現業務規則驗證
-   - 提供清晰的錯誤信息
-   - 確保系統狀態的一致性
+### 2. 添加新功能
+1. 定義命令/查詢
+2. 實現處理器
+3. 添加領域事件
+4. 更新服務接口
+5. 補充單元測試
 
-5. **測試**
-   - 為每個聚合根編寫單元測試
-   - 測試業務規則
-   - 測試事件處理
-   - 測試狀態變化 
+## 注意事項
+
+1. **命名規範**
+   - 實體：`{Name}Entity`
+   - 命令：`{Action}Command`
+   - 事件：`{Event}Event`
+   - 處理器：`{Command}Handler`
+
+2. **版本控制**
+   - 所有狀態變更必須增加版本號
+   - 事件應包含版本信息
+   - 使用樂觀鎖進行並發控制
+
+3. **錯誤處理**
+   - 定義領域特定異常
+   - 統一錯誤返回格式
+   - 適當的錯誤邊界
+
+4. **性能考慮**
+   - 合理使用緩存
+   - 批量操作優化
+   - 避免不必要的對象創建 

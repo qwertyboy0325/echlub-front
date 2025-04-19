@@ -1,242 +1,304 @@
-# 模組間通訊設計
+# 模組間通信指南
 
-## 通訊方式
+## 通信架構概述
 
-### 1. 整合事件（Integration Events）
-
-整合事件是模組間主要的通訊方式，用於處理異步、鬆耦合的跨模組通訊。
-
+### 1. 事件驅動架構
 ```typescript
-// 事件定義
-export class UserRegisteredEvent implements IntegrationEvent {
-  constructor(
-    public readonly userId: string,
-    public readonly username: string,
-    public readonly timestamp: Date
-  ) {}
-
-  static readonly EVENT_NAME = 'user.registered';
+// 1. 定義事件接口
+export interface IDomainEvent {
+  eventType: string;
+  aggregateId: string;
+  timestamp: number;
+  version: number;
+  payload: unknown;
 }
 
-// 事件發布
-@Injectable()
-export class UserEventPublisher {
-  constructor(private readonly eventBus: IEventBus) {}
-
-  async publishUserRegistered(user: User): Promise<void> {
-    await this.eventBus.publish(new UserRegisteredEvent(
-      user.id,
-      user.username,
-      new Date()
-    ));
-  }
-}
-
-// 事件處理
-@Injectable()
-export class UserRegisteredHandler implements IntegrationEventHandler<UserRegisteredEvent> {
-  constructor(private readonly roomService: RoomService) {}
-
-  async handle(event: UserRegisteredEvent): Promise<void> {
-    await this.roomService.initializeUserRoomSettings(event.userId);
-  }
-}
-```
-
-### 2. 模組邊界（Module Boundaries）
-
-每個模組需要明確定義其對外接口：
-
-```typescript
-export interface UserModuleBoundary {
-  // 命令（寫操作）
-  commands: {
-    registerUser(command: RegisterUserCommand): Promise<Result<void>>;
-    updateProfile(command: UpdateProfileCommand): Promise<Result<void>>;
-  };
+// 2. 實現具體事件
+export class TrackCreatedEvent implements IDomainEvent {
+  readonly eventType = 'TRACK_CREATED';
+  readonly timestamp = Date.now();
   
-  // 查詢（讀操作）
-  queries: {
-    getUserProfile(query: GetUserProfileQuery): Promise<Result<UserProfile>>;
-    validateUserCredentials(query: ValidateCredentialsQuery): Promise<Result<boolean>>;
-  };
-  
-  // 可訂閱的事件
-  events: {
-    onUserRegistered: UserRegisteredEvent;
-    onProfileUpdated: ProfileUpdatedEvent;
-  };
+  constructor(
+    public readonly aggregateId: string,
+    public readonly version: number,
+    public readonly payload: {
+      name: string;
+      type: TrackType;
+    }
+  ) {}
 }
 ```
 
-## 事件流程
-
-### 1. 事件發布流程
-
-1. 領域事件觸發
-2. 轉換為整合事件
-3. 通過事件總線發布
-4. 記錄事件日誌
-
+### 2. 事件總線
 ```typescript
-@Injectable()
-export class UserService {
-  constructor(
-    private readonly eventPublisher: UserEventPublisher,
-    private readonly logger: Logger
-  ) {}
+export interface IEventBus {
+  publish<T extends IDomainEvent>(event: T): Promise<void>;
+  subscribe<T extends IDomainEvent>(
+    eventType: string,
+    handler: (event: T) => Promise<void>
+  ): Subscription;
+}
 
-  async registerUser(command: RegisterUserCommand): Promise<Result<void>> {
-    try {
-      // 業務邏輯處理
-      const user = await this.createUser(command);
-      
-      // 發布整合事件
-      await this.eventPublisher.publishUserRegistered(user);
-      
-      // 記錄日誌
-      this.logger.info('User registered successfully', { userId: user.id });
-      
-      return Result.success();
-    } catch (error) {
-      this.logger.error('Failed to register user', { error });
-      return Result.failure(error);
-    }
+@injectable()
+export class EventBus implements IEventBus {
+  private handlers = new Map<string, Set<EventHandler>>();
+  
+  async publish<T extends IDomainEvent>(event: T): Promise<void> {
+    const handlers = this.handlers.get(event.eventType) || new Set();
+    await Promise.all(
+      Array.from(handlers).map(handler => handler(event))
+    );
+  }
+  
+  subscribe<T extends IDomainEvent>(
+    eventType: string,
+    handler: (event: T) => Promise<void>
+  ): Subscription {
+    const handlers = this.handlers.get(eventType) || new Set();
+    handlers.add(handler);
+    this.handlers.set(eventType, handlers);
+    
+    return {
+      unsubscribe: () => {
+        handlers.delete(handler);
+      }
+    };
   }
 }
 ```
 
-### 2. 事件訂閱流程
+## 模組間狀態同步
 
-1. 註冊事件處理器
-2. 接收事件
-3. 處理業務邏輯
-4. 錯誤處理和重試
-
+### 1. 事件發布
 ```typescript
-@Injectable()
-export class RoomEventHandlers {
+@injectable()
+export class TrackEventPublisher {
   constructor(
-    private readonly roomService: RoomService,
-    private readonly logger: Logger
+    @inject(TYPES.EventBus) private eventBus: IEventBus
   ) {}
+  
+  async publishTrackCreated(track: Track): Promise<void> {
+    const event = new TrackCreatedEvent(
+      track.getId(),
+      track.getVersion(),
+      {
+        name: track.getName(),
+        type: track.getType()
+      }
+    );
+    await this.eventBus.publish(event);
+  }
+}
+```
 
-  @EventSubscriber(UserRegisteredEvent)
-  async handleUserRegistered(event: UserRegisteredEvent): Promise<void> {
-    try {
-      await this.roomService.initializeUserRoomSettings(event.userId);
-      this.logger.info('Room settings initialized for user', { userId: event.userId });
-    } catch (error) {
-      this.logger.error('Failed to initialize room settings', { error, userId: event.userId });
-      // 實現重試邏輯
-      await this.retryHandler.retry(() => 
-        this.roomService.initializeUserRoomSettings(event.userId)
-      );
-    }
+### 2. 事件訂閱
+```typescript
+@injectable()
+export class TrackEventHandler {
+  constructor(
+    @inject(TYPES.TrackRepository) private repository: ITrackRepository,
+    @inject(TYPES.MixerService) private mixerService: IMixerService
+  ) {}
+  
+  async handleTrackCreated(event: TrackCreatedEvent): Promise<void> {
+    // 更新混音器狀態
+    await this.mixerService.addTrackToMixer(event.aggregateId);
+  }
+  
+  async handleTrackDeleted(event: TrackDeletedEvent): Promise<void> {
+    // 清理相關資源
+    await this.mixerService.removeTrackFromMixer(event.aggregateId);
+  }
+}
+```
+
+### 3. 事件存儲
+```typescript
+@injectable()
+export class EventStore {
+  private events: IDomainEvent[] = [];
+  
+  async saveEvent(event: IDomainEvent): Promise<void> {
+    this.events.push(event);
+  }
+  
+  async getEvents(aggregateId: string): Promise<IDomainEvent[]> {
+    return this.events.filter(e => e.aggregateId === aggregateId);
+  }
+}
+```
+
+## 跨模組查詢
+
+### 1. 查詢服務
+```typescript
+@injectable()
+export class TrackQueryService {
+  constructor(
+    @inject(TYPES.TrackRepository) private repository: ITrackRepository,
+    @inject(TYPES.PluginRepository) private pluginRepository: IPluginRepository
+  ) {}
+  
+  async getTrackWithPlugins(trackId: string): Promise<TrackWithPlugins> {
+    const track = await this.repository.findById(trackId);
+    const plugins = await Promise.all(
+      track.getPluginIds().map(id => 
+        this.pluginRepository.findById(id)
+      )
+    );
+    
+    return {
+      track,
+      plugins
+    };
+  }
+}
+```
+
+### 2. 視圖模型
+```typescript
+interface TrackViewModel {
+  id: string;
+  name: string;
+  type: TrackType;
+  plugins: PluginViewModel[];
+  routing: RoutingViewModel;
+}
+
+@injectable()
+export class TrackViewModelBuilder {
+  async build(trackId: string): Promise<TrackViewModel> {
+    // 組合來自不同模組的數據
   }
 }
 ```
 
 ## 錯誤處理
 
-### 1. 事件發布錯誤
-
+### 1. 錯誤定義
 ```typescript
 export class EventPublishError extends Error {
   constructor(
-    public readonly eventName: string,
-    public readonly originalError: Error
+    public readonly eventType: string,
+    public readonly cause: Error
   ) {
-    super(`Failed to publish event ${eventName}: ${originalError.message}`);
+    super(`Failed to publish event ${eventType}: ${cause.message}`);
   }
 }
 
-@Injectable()
-export class EventPublisher {
-  async publish<T>(event: IntegrationEvent<T>): Promise<void> {
-    try {
-      await this.eventBus.publish(event);
-    } catch (error) {
-      throw new EventPublishError(event.constructor.name, error);
-    }
-  }
-}
-```
-
-### 2. 事件處理錯誤
-
-```typescript
-@Injectable()
-export class EventHandlerErrorDecorator implements IEventHandler {
+export class EventHandleError extends Error {
   constructor(
-    private readonly handler: IEventHandler,
-    private readonly logger: Logger,
-    private readonly retryPolicy: RetryPolicy
-  ) {}
-
-  async handle<T>(event: IntegrationEvent<T>): Promise<void> {
-    try {
-      await this.retryPolicy.execute(() => this.handler.handle(event));
-    } catch (error) {
-      this.logger.error('Event handler failed', {
-        event: event.constructor.name,
-        error
-      });
-      // 根據錯誤類型決定是否重新排隊
-      await this.handleFailedEvent(event, error);
-    }
+    public readonly eventType: string,
+    public readonly handler: string,
+    public readonly cause: Error
+  ) {
+    super(`Handler ${handler} failed to process event ${eventType}: ${cause.message}`);
   }
 }
 ```
 
-## 版本控制
-
-### 1. 事件版本管理
-
+### 2. 錯誤處理中間件
 ```typescript
-export interface VersionedEvent {
-  version: string;
-  upgradeToLatest(): VersionedEvent;
-}
-
-export class UserRegisteredEventV2 implements IntegrationEvent, VersionedEvent {
-  version = '2.0.0';
+@injectable()
+export class EventErrorHandler {
+  async handleError(error: Error, event: IDomainEvent): Promise<void> {
+    if (error instanceof EventPublishError) {
+      // 記錄失敗的事件
+      await this.logFailedEvent(event);
+      // 重試策略
+      await this.retryEventPublish(event);
+    }
+  }
   
-  constructor(
-    public readonly userId: string,
-    public readonly username: string,
-    public readonly email: string,  // 新增欄位
-    public readonly timestamp: Date
-  ) {}
-
-  static fromV1(v1Event: UserRegisteredEvent): UserRegisteredEventV2 {
-    return new UserRegisteredEventV2(
-      v1Event.userId,
-      v1Event.username,
-      'unknown@example.com', // 提供默認值
-      v1Event.timestamp
-    );
+  private async retryEventPublish(event: IDomainEvent): Promise<void> {
+    // 實現重試邏輯
   }
 }
 ```
 
-### 2. 向後兼容
+## 性能優化
 
+### 1. 事件批處理
 ```typescript
-@Injectable()
-export class VersionedEventHandler {
-  @EventSubscriber(UserRegisteredEvent)
-  async handle(event: UserRegisteredEvent | UserRegisteredEventV2): Promise<void> {
-    // 處理不同版本的事件
-    if (this.isV2Event(event)) {
-      await this.handleV2Event(event);
-    } else {
-      await this.handleV1Event(event);
+@injectable()
+export class BatchEventPublisher {
+  private eventQueue: IDomainEvent[] = [];
+  
+  async queueEvent(event: IDomainEvent): Promise<void> {
+    this.eventQueue.push(event);
+    await this.processQueueIfNeeded();
+  }
+  
+  private async processQueueIfNeeded(): Promise<void> {
+    if (this.eventQueue.length >= BATCH_SIZE) {
+      await this.processQueue();
     }
   }
+}
+```
 
-  private isV2Event(event: any): event is UserRegisteredEventV2 {
-    return 'email' in event;
+### 2. 事件過濾
+```typescript
+@injectable()
+export class EventFilter {
+  shouldProcessEvent(event: IDomainEvent): boolean {
+    // 實現事件過濾邏輯
+    return true;
   }
 }
-``` 
+```
+
+## 測試策略
+
+### 1. 事件發布測試
+```typescript
+describe('TrackEventPublisher', () => {
+  it('應該正確發布事件', async () => {
+    const publisher = new TrackEventPublisher(mockEventBus);
+    const track = createMockTrack();
+    
+    await publisher.publishTrackCreated(track);
+    
+    expect(mockEventBus.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'TRACK_CREATED',
+        aggregateId: track.getId()
+      })
+    );
+  });
+});
+```
+
+### 2. 事件處理測試
+```typescript
+describe('TrackEventHandler', () => {
+  it('應該正確處理事件', async () => {
+    const handler = new TrackEventHandler(
+      mockRepository,
+      mockMixerService
+    );
+    
+    await handler.handleTrackCreated(mockEvent);
+    
+    expect(mockMixerService.addTrackToMixer)
+      .toHaveBeenCalledWith(mockEvent.aggregateId);
+  });
+});
+```
+
+## 最佳實踐
+
+### 1. 事件版本控制
+- 使用版本號追蹤事件變更
+- 實現事件升級策略
+- 處理向後兼容性
+
+### 2. 事件文檔
+- 維護事件目錄
+- 記錄事件結構變更
+- 提供訂閱指南
+
+### 3. 監控和日誌
+- 記錄事件處理時間
+- 追蹤事件處理失敗
+- 監控事件隊列大小 
