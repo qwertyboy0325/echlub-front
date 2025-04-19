@@ -17,6 +17,8 @@ import { RemoveClipFromTrackCommandHandler } from '../application/handlers/Remov
 import { ChangeTrackRoutingCommandHandler } from '../application/handlers/ChangeTrackRoutingCommandHandler';
 import { AddPluginToTrackCommandHandler } from '../application/handlers/AddPluginToTrackCommandHandler';
 import { RemovePluginFromTrackCommandHandler } from '../application/handlers/RemovePluginFromTrackCommandHandler';
+import { AddInputTrackToBusCommandHandler } from '../application/handlers/AddInputTrackToBusCommandHandler';
+import { RemoveInputTrackFromBusCommandHandler } from '../application/handlers/RemoveInputTrackFromBusCommandHandler';
 import { PluginReferenceAdapter } from '../infrastructure/adapters/PluginReferenceAdapter';
 import { TrackEventBusAdapter } from '../infrastructure/adapters/TrackEventBusAdapter';
 import { ITrackEventPublisher } from '../domain/ports/ITrackEventPublisher';
@@ -104,6 +106,14 @@ export class TrackModule {
 
     container.bind(TrackTypes.RemovePluginFromTrackCommandHandler)
       .to(RemovePluginFromTrackCommandHandler)
+      .inSingletonScope();
+
+    container.bind(TrackTypes.AddInputTrackToBusCommandHandler)
+      .to(AddInputTrackToBusCommandHandler)
+      .inSingletonScope();
+
+    container.bind(TrackTypes.RemoveInputTrackFromBusCommandHandler)
+      .to(RemoveInputTrackFromBusCommandHandler)
       .inSingletonScope();
 
     // Event Publisher

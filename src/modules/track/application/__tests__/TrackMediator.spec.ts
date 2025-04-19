@@ -20,6 +20,7 @@ import { RemovePluginFromTrackCommand } from '../commands/RemovePluginFromTrackC
 import { ClipId } from '../../domain/value-objects/ClipId';
 import { TrackRouting } from '../../domain/value-objects/TrackRouting';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
+import { PluginReference } from '../../domain/value-objects/PluginReference';
 
 describe('TrackMediator', () => {
   let container: Container;
@@ -157,8 +158,8 @@ describe('TrackMediator', () => {
       const trackId = TrackId.create();
       const routings = [
         new TrackRouting(null, null),
-        new TrackRouting(null, TrackId.create()),
-        new TrackRouting(null, TrackId.create())
+        new TrackRouting(null, TrackId.create().toString()),
+        new TrackRouting(null, TrackId.create().toString())
       ];
 
       for (const routing of routings) {
@@ -180,8 +181,8 @@ describe('TrackMediator', () => {
   describe('addPluginToTrack', () => {
     it('應該將命令委託給 AddPluginToTrackCommandHandler', async () => {
       const trackId = TrackId.create();
-      const pluginId = PluginInstanceId.create();
-      const command = new AddPluginToTrackCommand(trackId, pluginId);
+      const pluginRef = PluginReference.create(PluginInstanceId.create().toString());
+      const command = new AddPluginToTrackCommand(trackId, pluginRef);
 
       mockAddPluginHandler.handle.mockResolvedValue();
 
@@ -194,8 +195,8 @@ describe('TrackMediator', () => {
   describe('removePluginFromTrack', () => {
     it('應該將命令委託給 RemovePluginFromTrackCommandHandler', async () => {
       const trackId = TrackId.create();
-      const pluginId = PluginInstanceId.create();
-      const command = new RemovePluginFromTrackCommand(trackId, pluginId);
+      const pluginRef = PluginReference.create(PluginInstanceId.create().toString());
+      const command = new RemovePluginFromTrackCommand(trackId, pluginRef);
 
       mockRemovePluginHandler.handle.mockResolvedValue();
 
