@@ -5,7 +5,6 @@ import { TrackId } from '../../../domain/value-objects/TrackId';
 import { TrackType } from '../../../domain/value-objects/TrackType';
 import { TrackRouting } from '../../../domain/value-objects/TrackRouting';
 import { AudioClipId } from '../../../domain/value-objects/AudioClipId';
-import { PluginReference } from '../../../domain/value-objects/PluginReference';
 import { CreateTrackCommand } from '../../commands/CreateTrackCommand';
 import { RenameTrackCommand } from '../../commands/RenameTrackCommand';
 import { AddClipToTrackCommand } from '../../commands/AddClipToTrackCommand';
@@ -63,7 +62,7 @@ describe('TrackMediator', () => {
     container.bind(TrackTypes.AddInputTrackToBusCommandHandler).toConstantValue(addInputTrackHandler);
     container.bind(TrackTypes.RemoveInputTrackFromBusCommandHandler).toConstantValue(removeInputTrackHandler);
 
-    // 創建 mediator 實例
+    // 創建 TrackMediator 實例
     container.bind(TrackMediator).toSelf();
     mediator = container.get(TrackMediator);
   });
@@ -128,10 +127,11 @@ describe('TrackMediator', () => {
 
   describe('addPluginToTrack', () => {
     it('應該將命令委託給 AddPluginToTrackCommandHandler', async () => {
-      const command = new AddPluginToTrackCommand(
-        TrackId.create(),
-        new PluginReference('plugin-1')
-      );
+      const command = new AddPluginToTrackCommand(TrackId.create(), {
+        id: 'plugin-1',
+        equals: jest.fn(),
+        toString: () => 'plugin-1'
+      });
       await mediator.addPluginToTrack(command);
 
       expect(addPluginHandler.handle).toHaveBeenCalledWith(command);
@@ -140,10 +140,11 @@ describe('TrackMediator', () => {
 
   describe('removePluginFromTrack', () => {
     it('應該將命令委託給 RemovePluginFromTrackCommandHandler', async () => {
-      const command = new RemovePluginFromTrackCommand(
-        TrackId.create(),
-        new PluginReference('plugin-1')
-      );
+      const command = new RemovePluginFromTrackCommand(TrackId.create(), {
+        id: 'plugin-1',
+        equals: jest.fn(),
+        toString: () => 'plugin-1'
+      });
       await mediator.removePluginFromTrack(command);
 
       expect(removePluginHandler.handle).toHaveBeenCalledWith(command);
