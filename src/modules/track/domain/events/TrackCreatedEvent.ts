@@ -1,12 +1,13 @@
+import { IDomainEvent } from '../interfaces/IDomainEvent';
 import { TrackId } from '../value-objects/TrackId';
 import { TrackType } from '../value-objects/TrackType';
-import { IDomainEvent } from '../interfaces/IDomainEvent';
 
 export class TrackCreatedEvent implements IDomainEvent {
   readonly eventType = 'track:created';
-  readonly timestamp: Date;
   readonly aggregateId: string;
+  readonly timestamp: Date;
   readonly payload: {
+    trackId: TrackId;
     name: string;
     type: TrackType;
   };
@@ -16,15 +17,12 @@ export class TrackCreatedEvent implements IDomainEvent {
     public readonly name: string,
     public readonly type: TrackType
   ) {
-    this.timestamp = new Date();
     this.aggregateId = trackId.toString();
+    this.timestamp = new Date();
     this.payload = {
+      trackId,
       name,
       type
     };
-  }
-
-  getEventName(): string {
-    return 'track:created';
   }
 } 

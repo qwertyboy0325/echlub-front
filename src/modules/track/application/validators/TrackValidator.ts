@@ -100,4 +100,22 @@ export class TrackValidator {
   validateRemovePluginFromTrack(trackId: TrackId, pluginId: string): ValidationResult {
     return this.validateAddPluginToTrack(trackId, pluginId);
   }
+
+  validateAddInputTrackToBus(busTrackId: TrackId, inputTrackId: TrackId): ValidationResult {
+    const errors: ValidationError[] = [];
+
+    if (!busTrackId) {
+      errors.push(new ValidationError('busTrackId', 'Bus track ID is required'));
+    }
+
+    if (!inputTrackId) {
+      errors.push(new ValidationError('inputTrackId', 'Input track ID is required'));
+    }
+
+    return new ValidationResult(errors);
+  }
+
+  validateRemoveInputTrackFromBus(busTrackId: TrackId, inputTrackId: TrackId): ValidationResult {
+    return this.validateAddInputTrackToBus(busTrackId, inputTrackId);
+  }
 } 

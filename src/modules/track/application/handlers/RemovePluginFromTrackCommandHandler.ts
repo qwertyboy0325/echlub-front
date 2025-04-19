@@ -20,11 +20,11 @@ export class RemovePluginFromTrackCommandHandler {
       throw new Error(`Track with id ${command.trackId} not found`);
     }
 
-    const pluginRef = this.pluginReferenceAdapter.toPluginReference(command.pluginId.toString());
+    const pluginRef = this.pluginReferenceAdapter.toPluginReference(command.pluginRef.toString());
     track.removePlugin(pluginRef);
     await this.repository.save(track);
 
-    const event = new PluginRemovedFromTrackEvent(track.getTrackId(), command.pluginId);
+    const event = new PluginRemovedFromTrackEvent(track.getTrackId(), command.pluginRef);
     await this.eventBus.publish(event);
   }
 } 

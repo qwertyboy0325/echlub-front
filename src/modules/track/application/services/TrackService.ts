@@ -2,7 +2,6 @@ import { injectable, inject } from 'inversify';
 import { TrackTypes } from '../../di/TrackTypes';
 import { TrackId } from '../../domain/value-objects/TrackId';
 import { TrackRouting } from '../../domain/value-objects/TrackRouting';
-import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 import { ClipId } from '../../domain/value-objects/ClipId';
 import { TrackMediator } from '../mediators/TrackMediator';
 import { TrackValidator } from '../validators/TrackValidator';
@@ -14,13 +13,21 @@ import { RemoveClipFromTrackCommand } from '../commands/RemoveClipFromTrackComma
 import { ChangeTrackRoutingCommand } from '../commands/ChangeTrackRoutingCommand';
 import { AddPluginToTrackCommand } from '../commands/AddPluginToTrackCommand';
 import { RemovePluginFromTrackCommand } from '../commands/RemovePluginFromTrackCommand';
+import { AddInputTrackToBusCommand } from '../commands/AddInputTrackToBusCommand';
+import { RemoveInputTrackFromBusCommand } from '../commands/RemoveInputTrackFromBusCommand';
 import { TrackType } from '../../domain/value-objects/TrackType';
+import { IPluginReference } from '../../domain/interfaces/IPluginReference';
+import type { ITrackRepository } from '../../domain/repositories/ITrackRepository';
+import type { IEventBus } from '../../../../core/event-bus/IEventBus';
+import { TrackUpdatedEvent } from '../../domain/events/TrackUpdatedEvent';
 
 @injectable()
 export class TrackService {
   constructor(
     @inject(TrackTypes.TrackMediator) private mediator: TrackMediator,
-    @inject(TrackTypes.TrackValidator) private validator: TrackValidator
+    @inject(TrackTypes.TrackValidator) private validator: TrackValidator,
+    @inject(TrackTypes.TrackRepository) private repository: ITrackRepository,
+    @inject(TrackTypes.EventBus) private eventBus: IEventBus
   ) {}
 
   async createTrack(name: string, type: 'audio' | 'instrument' | 'bus'): Promise<TrackId> {
@@ -109,14 +116,14 @@ export class TrackService {
     }
   }
 
-  async addPluginToTrack(trackId: TrackId, pluginId: PluginInstanceId): Promise<void> {
-    const validationResult = this.validator.validateAddPluginToTrack(trackId, pluginId.toString());
+  async addPluginToTrack(trackId: TrackId, pluginRef: IPluginReference): Promise<void> {
+    const validationResult = this.validator.validateAddPluginToTrack(trackId, pluginRef.toString());
     if (!validationResult.isValid) {
       throw new TrackValidationError(validationResult.errors);
     }
 
     try {
-      const command = new AddPluginToTrackCommand(trackId, pluginId);
+      const command = new AddPluginToTrackCommand(trackId, pluginRef);
       await this.mediator.addPluginToTrack(command);
     } catch (error) {
       if (error instanceof TrackValidationError) {
@@ -126,14 +133,14 @@ export class TrackService {
     }
   }
 
-  async removePluginFromTrack(trackId: TrackId, pluginId: PluginInstanceId): Promise<void> {
-    const validationResult = this.validator.validateRemovePluginFromTrack(trackId, pluginId.toString());
+  async removePluginFromTrack(trackId: TrackId, pluginRef: IPluginReference): Promise<void> {
+    const validationResult = this.validator.validateRemovePluginFromTrack(trackId, pluginRef.toString());
     if (!validationResult.isValid) {
       throw new TrackValidationError(validationResult.errors);
     }
 
     try {
-      const command = new RemovePluginFromTrackCommand(trackId, pluginId);
+      const command = new RemovePluginFromTrackCommand(trackId, pluginRef);
       await this.mediator.removePluginFromTrack(command);
     } catch (error) {
       if (error instanceof TrackValidationError) {
@@ -141,5 +148,61 @@ export class TrackService {
       }
       throw new TrackOperationError('Failed to remove plugin from track', error instanceof Error ? error : new Error(String(error)));
     }
+  }
+
+  async addInputTrackToBus(busTrackId: TrackId, inputTrackId: TrackId): Promise<void> {
+    const validationResult = this.validator.validateAddInputTrackToBus(busTrackId, inputTrackId);
+    if (!validationResult.isValid) {
+      throw new TrackValidationError(validationResult.errors);
+    }
+
+    try {
+      const command = new AddInputTrackToBusCommand(busTrackId, inputTrackId);
+      await this.mediator.addInputTrackToBus(command);
+    } catch (error) {
+      if (error instanceof TrackValidationError) {
+        throw error;
+      }
+      throw new TrackOperationError('Failed to add input track to bus', error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  async removeInputTrackFromBus(busTrackId: TrackId, inputTrackId: TrackId): Promise<void> {
+    const validationResult = this.validator.validateRemoveInputTrackFromBus(busTrackId, inputTrackId);
+    if (!validationResult.isValid) {
+      throw new TrackValidationError(validationResult.errors);
+    }
+
+    try {
+      const command = new RemoveInputTrackFromBusCommand(busTrackId, inputTrackId);
+      await this.mediator.removeInputTrackFromBus(command);
+    } catch (error) {
+      if (error instanceof TrackValidationError) {
+        throw error;
+      }
+      throw new TrackOperationError('Failed to remove input track from bus', error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  async updateTrackVolume(trackId: TrackId, volume: number): Promise<void> {
+    const track = await this.repository.findById(trackId);
+    if (!track) {
+      throw new TrackOperationError('Track not found');
+    }
+
+    track.setVolume(volume);
+    await this.repository.save(track);
+    await this.eventBus.publish(new TrackUpdatedEvent(trackId, track));
+  }
+
+  async toggleMute(trackId: TrackId): Promise<void> {
+    const track = await this.repository.findById(trackId);
+    if (!track) {
+      throw new TrackOperationError('Track not found');
+    }
+
+    track.setMute(!track.isMuted());
+    await this.repository.save(track);
+    await this.eventBus.publish(new TrackUpdatedEvent(trackId, track));
   }
 } 

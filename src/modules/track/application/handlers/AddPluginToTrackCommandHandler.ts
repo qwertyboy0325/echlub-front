@@ -4,6 +4,7 @@ import { AddPluginToTrackCommand } from '../commands/AddPluginToTrackCommand';
 import type { ITrackRepository } from '../../domain/repositories/ITrackRepository';
 import { PluginAddedToTrackEvent } from '../../domain/events/PluginAddedToTrackEvent';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
+import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 
 @injectable()
 export class AddPluginToTrackCommandHandler {
@@ -18,10 +19,11 @@ export class AddPluginToTrackCommandHandler {
       throw new Error(`Track with id ${command.trackId} not found`);
     }
 
-    track.addPlugin(command.pluginId);
+    track.addPlugin(command.pluginRef);
     await this.repository.save(track);
 
-    const event = new PluginAddedToTrackEvent(track.getTrackId(), command.pluginId);
+    const pluginInstanceId = PluginInstanceId.fromString(command.pluginRef.toString());
+    const event = new PluginAddedToTrackEvent(track.getTrackId(), pluginInstanceId);
     await this.eventBus.publish(event);
   }
 } 

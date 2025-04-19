@@ -7,6 +7,8 @@ import { RemoveClipFromTrackCommand } from '../commands/RemoveClipFromTrackComma
 import { ChangeTrackRoutingCommand } from '../commands/ChangeTrackRoutingCommand';
 import { AddPluginToTrackCommand } from '../commands/AddPluginToTrackCommand';
 import { RemovePluginFromTrackCommand } from '../commands/RemovePluginFromTrackCommand';
+import { AddInputTrackToBusCommand } from '../commands/AddInputTrackToBusCommand';
+import { RemoveInputTrackFromBusCommand } from '../commands/RemoveInputTrackFromBusCommand';
 import { CreateTrackCommandHandler } from '../handlers/CreateTrackCommandHandler';
 import { RenameTrackCommandHandler } from '../handlers/RenameTrackCommandHandler';
 import { AddClipToTrackCommandHandler } from '../handlers/AddClipToTrackCommandHandler';
@@ -14,6 +16,8 @@ import { RemoveClipFromTrackCommandHandler } from '../handlers/RemoveClipFromTra
 import { ChangeTrackRoutingCommandHandler } from '../handlers/ChangeTrackRoutingCommandHandler';
 import { AddPluginToTrackCommandHandler } from '../handlers/AddPluginToTrackCommandHandler';
 import { RemovePluginFromTrackCommandHandler } from '../handlers/RemovePluginFromTrackCommandHandler';
+import { AddInputTrackToBusCommandHandler } from '../handlers/AddInputTrackToBusCommandHandler';
+import { RemoveInputTrackFromBusCommandHandler } from '../handlers/RemoveInputTrackFromBusCommandHandler';
 import { TrackId } from '../../domain/value-objects/TrackId';
 
 @injectable()
@@ -25,7 +29,9 @@ export class TrackMediator {
     @inject(TrackTypes.RemoveClipFromTrackCommandHandler) private removeClipHandler: RemoveClipFromTrackCommandHandler,
     @inject(TrackTypes.ChangeTrackRoutingCommandHandler) private changeRoutingHandler: ChangeTrackRoutingCommandHandler,
     @inject(TrackTypes.AddPluginToTrackCommandHandler) private addPluginHandler: AddPluginToTrackCommandHandler,
-    @inject(TrackTypes.RemovePluginFromTrackCommandHandler) private removePluginHandler: RemovePluginFromTrackCommandHandler
+    @inject(TrackTypes.RemovePluginFromTrackCommandHandler) private removePluginHandler: RemovePluginFromTrackCommandHandler,
+    @inject(TrackTypes.AddInputTrackToBusCommandHandler) private addInputTrackHandler: AddInputTrackToBusCommandHandler,
+    @inject(TrackTypes.RemoveInputTrackFromBusCommandHandler) private removeInputTrackHandler: RemoveInputTrackFromBusCommandHandler
   ) {}
 
   async createTrack(command: CreateTrackCommand): Promise<TrackId> {
@@ -54,5 +60,13 @@ export class TrackMediator {
 
   async removePluginFromTrack(command: RemovePluginFromTrackCommand): Promise<void> {
     return this.removePluginHandler.handle(command);
+  }
+
+  async addInputTrackToBus(command: AddInputTrackToBusCommand): Promise<void> {
+    return this.addInputTrackHandler.handle(command);
+  }
+
+  async removeInputTrackFromBus(command: RemoveInputTrackFromBusCommand): Promise<void> {
+    return this.removeInputTrackHandler.handle(command);
   }
 } 

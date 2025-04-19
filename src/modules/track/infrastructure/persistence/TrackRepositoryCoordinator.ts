@@ -17,10 +17,11 @@ export class TrackRepositoryCoordinator implements ITrackRepository {
   async create(track: BaseTrack): Promise<void> {
     try {
       await this.localRepo.create(track);
+      const trackType = track.getType().toString() as 'audio' | 'instrument' | 'bus';
       await this.eventPublisher.publishTrackCreated(
         track.getTrackId(),
         track.getName(),
-        track.getType() as 'audio' | 'instrument' | 'bus'
+        trackType
       );
     } catch (error) {
       throw new Error(`Failed to create track: ${error}`);

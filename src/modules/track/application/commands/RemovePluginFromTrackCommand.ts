@@ -1,9 +1,9 @@
 import { TrackId } from '../../domain/value-objects/TrackId';
-import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
+import { IPluginReference } from '../../domain/interfaces/IPluginReference';
 
 export class RemovePluginFromTrackCommand {
   constructor(
     public readonly trackId: TrackId,
-    public readonly pluginId: PluginInstanceId
+    public readonly pluginRef: IPluginReference
   ) {}
 } 

@@ -1,18 +1,16 @@
-export class MidiClipId {
-  constructor(private readonly value: string) {}
+import { v4 as uuidv4 } from 'uuid';
+import { ClipId } from './ClipId';
 
-  equals(other: MidiClipId): boolean {
-    return this.value === other.value;
-  }
-
-  toString(): string {
-    return this.value;
+export class MidiClipId extends ClipId {
+  private constructor(value: string) {
+    super(value);
   }
 
   static create(): MidiClipId {
-    if (typeof crypto === 'undefined' || !crypto.randomUUID) {
-      return new MidiClipId('test-midi-clip-id-' + Math.random().toString(36).substr(2, 9));
-    }
-    return new MidiClipId(crypto.randomUUID());
+    return new MidiClipId(uuidv4());
+  }
+
+  static fromString(value: string): MidiClipId {
+    return new MidiClipId(value);
   }
 } 

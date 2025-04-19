@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4, validate as validateUUID } from 'uuid';
 
 export class TrackId {
   private constructor(private readonly value: string) {}
@@ -8,6 +8,9 @@ export class TrackId {
   }
 
   static fromString(value: string): TrackId {
+    if (!value || !validateUUID(value)) {
+      throw new Error('Invalid track ID format');
+    }
     return new TrackId(value);
   }
 

@@ -1,5 +1,5 @@
 import { TrackId } from '../value-objects/TrackId';
-import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
+import { IPluginReference } from '../interfaces/IPluginReference';
 import { IDomainEvent } from '../interfaces/IDomainEvent';
 
 export class PluginRemovedFromTrackEvent implements IDomainEvent {
@@ -11,13 +11,13 @@ export class PluginRemovedFromTrackEvent implements IDomainEvent {
   };
 
   constructor(
-    trackId: TrackId,
-    pluginId: PluginInstanceId
+    public readonly trackId: TrackId,
+    public readonly pluginRef: IPluginReference
   ) {
     this.timestamp = new Date();
     this.aggregateId = trackId.toString();
     this.payload = {
-      pluginId: pluginId.toString()
+      pluginId: pluginRef.toString()
     };
   }
 

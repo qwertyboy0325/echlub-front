@@ -1,32 +1,37 @@
-import { TrackId } from './TrackId';
-
 export class TrackRouting {
   constructor(
-    private readonly inputTrackId: TrackId | null,
-    private readonly outputTrackId: TrackId | null
+    private input: string | null = null,
+    private output: string | null = null
   ) {}
 
-  getInputTrackId(): TrackId | null {
-    return this.inputTrackId;
+  getInput(): string | null {
+    return this.input;
   }
 
-  getOutputTrackId(): TrackId | null {
-    return this.outputTrackId;
+  getOutput(): string | null {
+    return this.output;
+  }
+
+  setInput(input: string | null): void {
+    this.input = input;
+  }
+
+  setOutput(output: string | null): void {
+    this.output = output;
   }
 
   equals(other: TrackRouting): boolean {
-    if (this.inputTrackId === null && other.inputTrackId === null) {
-      return this.outputTrackId === null && other.outputTrackId === null;
-    }
-    if (this.outputTrackId === null && other.outputTrackId === null) {
-      return this.inputTrackId === null && other.inputTrackId === null;
-    }
-    if (this.inputTrackId === null || other.inputTrackId === null) {
-      return false;
-    }
-    if (this.outputTrackId === null || other.outputTrackId === null) {
-      return false;
-    }
-    return this.inputTrackId.equals(other.inputTrackId) && this.outputTrackId.equals(other.outputTrackId);
+    return this.input === other.input && this.output === other.output;
+  }
+
+  clone(): TrackRouting {
+    return new TrackRouting(this.input, this.output);
+  }
+
+  toJSON(): object {
+    return {
+      input: this.input,
+      output: this.output
+    };
   }
 } 

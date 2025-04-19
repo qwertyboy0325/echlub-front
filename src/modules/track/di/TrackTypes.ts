@@ -18,6 +18,8 @@ export const TrackTypes = {
   ChangeTrackRoutingCommandHandler: Symbol.for('ChangeTrackRoutingCommandHandler'),
   AddPluginToTrackCommandHandler: Symbol.for('AddPluginToTrackCommandHandler'),
   RemovePluginFromTrackCommandHandler: Symbol.for('RemovePluginFromTrackCommandHandler'),
+  AddInputTrackToBusCommandHandler: Symbol.for('AddInputTrackToBusCommandHandler'),
+  RemoveInputTrackFromBusCommandHandler: Symbol.for('RemoveInputTrackFromBusCommandHandler'),
   
   // Mediators
   TrackMediator: Symbol.for('TrackMediator'),

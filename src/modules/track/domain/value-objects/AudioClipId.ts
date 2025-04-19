@@ -1,5 +1,18 @@
-export class AudioClipId {
-  constructor(private readonly value: string) {}
+import { v4 as uuidv4 } from 'uuid';
+import { ClipId } from './ClipId';
+
+export class AudioClipId extends ClipId {
+  private constructor(value: string) {
+    super(value);
+  }
+
+  static create(): AudioClipId {
+    return new AudioClipId(uuidv4());
+  }
+
+  static fromString(value: string): AudioClipId {
+    return new AudioClipId(value);
+  }
 
   equals(other: AudioClipId): boolean {
     return this.value === other.value;
@@ -7,12 +20,5 @@ export class AudioClipId {
 
   toString(): string {
     return this.value;
-  }
-
-  static create(): AudioClipId {
-    if (typeof crypto === 'undefined' || !crypto.randomUUID) {
-      return new AudioClipId('test-audio-clip-id-' + Math.random().toString(36).substr(2, 9));
-    }
-    return new AudioClipId(crypto.randomUUID());
   }
 } 

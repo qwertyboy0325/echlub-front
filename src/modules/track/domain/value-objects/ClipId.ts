@@ -1,5 +1,7 @@
-export class ClipId {
-  constructor(private readonly value: string) {}
+import { v4 as uuidv4 } from 'uuid';
+
+export abstract class ClipId {
+  protected constructor(protected readonly value: string) {}
 
   equals(other: ClipId): boolean {
     return this.value === other.value;
@@ -10,9 +12,6 @@ export class ClipId {
   }
 
   static create(): ClipId {
-    if (typeof crypto === 'undefined' || !crypto.randomUUID) {
-      return new ClipId('test-clip-id-' + Math.random().toString(36).substr(2, 9));
-    }
-    return new ClipId(crypto.randomUUID());
+    throw new Error('Cannot create abstract ClipId directly');
   }
 } 
