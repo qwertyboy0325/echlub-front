@@ -3,6 +3,7 @@ import { TrackId } from '../../value-objects/TrackId';
 import { TrackRouting } from '../../value-objects/TrackRouting';
 import { ClipId } from '../../value-objects/ClipId';
 import { PluginInstanceId } from '../../../../plugin/domain/value-objects/PluginInstanceId';
+import { AudioClipId } from '../../value-objects/AudioClipId';
 
 describe('BusTrack', () => {
   let track: BusTrack;
@@ -17,12 +18,12 @@ describe('BusTrack', () => {
 
   describe('片段管理限制', () => {
     it('嘗試添加片段應該拋出錯誤', () => {
-      const clipId = new ClipId('clip-1');
+      const clipId = AudioClipId.create();
       expect(() => track.addClip(clipId)).toThrow('Bus tracks cannot have clips');
     });
 
     it('嘗試移除片段應該拋出錯誤', () => {
-      const clipId = new ClipId('clip-1');
+      const clipId = AudioClipId.create();
       expect(() => track.removeClip(clipId)).toThrow('Bus tracks cannot have clips');
     });
   });

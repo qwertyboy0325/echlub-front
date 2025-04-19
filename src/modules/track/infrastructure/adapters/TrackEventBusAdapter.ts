@@ -13,6 +13,8 @@ import { TrackRenamedEvent } from '../../domain/events/TrackRenamedEvent';
 import { TrackRoutingChangedEvent } from '../../domain/events/TrackRoutingChangedEvent';
 import { PluginAddedToTrackEvent } from '../../domain/events/PluginAddedToTrackEvent';
 import { PluginRemovedFromTrackEvent } from '../../domain/events/PluginRemovedFromTrackEvent';
+import { PluginReference } from '../../domain/value-objects/PluginReference';
+import { TrackType } from '../../domain/value-objects/TrackType';
 
 @injectable()
 export class TrackEventBusAdapter implements ITrackEventPublisher {
@@ -21,7 +23,7 @@ export class TrackEventBusAdapter implements ITrackEventPublisher {
   ) {}
 
   async publishTrackCreated(trackId: TrackId, name: string, type: 'audio' | 'instrument' | 'bus'): Promise<void> {
-    await this.eventBus.publish(new TrackCreatedEvent(trackId, name, type));
+    await this.eventBus.publish(new TrackCreatedEvent(trackId, name, TrackType.fromString(type)));
   }
 
   async publishTrackUpdated(trackId: TrackId, track: BaseTrack): Promise<void> {
@@ -45,6 +47,6 @@ export class TrackEventBusAdapter implements ITrackEventPublisher {
   }
 
   async publishPluginRemoved(trackId: TrackId, pluginId: PluginInstanceId): Promise<void> {
-    await this.eventBus.publish(new PluginRemovedFromTrackEvent(trackId, pluginId));
+    await this.eventBus.publish(new PluginRemovedFromTrackEvent(trackId, PluginReference.create(pluginId.toString())));
   }
 } 
