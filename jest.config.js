@@ -1,5 +1,5 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
-export default {
+module.exports = {
     preset: 'ts-jest',
     testEnvironment: 'jsdom',
     roots: ['<rootDir>/src'],
@@ -12,19 +12,29 @@ export default {
     },
     moduleNameMapper: {
         '^(\\.{1,2}/.*)\\.js$': '$1',
+        '^@/(.*)$': '<rootDir>/src/$1',
+        '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     },
     extensionsToTreatAsEsm: ['.ts'],
     collectCoverage: true,
     coverageDirectory: 'coverage',
-    coverageReporters: ['text', 'lcov'],
+    coverageReporters: ['text', 'lcov', 'html'],
     coverageThreshold: {
         global: {
-            branches: 55,
-            functions: 75,
+            branches: 80,
+            functions: 80,
             lines: 80,
             statements: 80
         }
     },
+    collectCoverageFrom: [
+        'src/**/*.{ts,tsx}',
+        '!src/**/*.d.ts',
+        '!src/**/*.stories.{ts,tsx}',
+        '!src/**/*.test.{ts,tsx}',
+        '!src/**/__tests__/**',
+        '!src/**/__mocks__/**',
+    ],
     globals: {
         crypto: {
             randomUUID: () => 'test-uuid'

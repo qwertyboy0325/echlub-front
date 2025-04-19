@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  quality:
+    name: 程式碼品質檢查
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: 設置 Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: 安裝依賴
+      run: npm ci
+    
+    - name: 執行 ESLint
+      run: npm run lint
+      
+    - name: 執行 TypeScript 檢查
+      run: npm run type-check
+
+  test:
+    name: 測試與覆蓋率
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: 設置 Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: 安裝依賴
+      run: npm ci
+    
+    - name: 執行測試與覆蓋率檢查
+      run: npm run test:coverage
+    
+    - name: 檢查覆蓋率門檻
+      run: |
+        COVERAGE=$(npm run test:coverage-summary | grep "總覆蓋率" | awk '{print $2}' | tr -d '%')
+        if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+          echo "覆蓋率 $COVERAGE% 低於要求的 80%"
+          exit 1
+        fi
+    
+    - name: 上傳覆蓋率報告
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: coverage/
+
+  build:
+    name: 建置檢查
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: 設置 Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: 安裝依賴
+      run: npm ci
+    
+    - name: 建置專案
+      run: npm run build 
