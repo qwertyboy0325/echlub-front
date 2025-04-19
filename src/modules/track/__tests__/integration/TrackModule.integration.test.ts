@@ -75,13 +75,13 @@ describe('Track Module Integration Tests', () => {
 
   beforeEach(() => {
     container = new Container();
-    
+
     // 綁定模擬的 EventBus
     container.bind<IEventBus>(TrackTypes.EventBus).toConstantValue(new MockEventBus());
-    
+
     // 配置 TrackModule
     TrackModule.configure(container);
-    
+
     // 獲取服務實例
     trackService = container.get<TrackService>(TrackTypes.TrackService);
     repository = container.get<ITrackRepository>(TrackTypes.TrackRepository);
@@ -153,7 +153,7 @@ describe('Track Module Integration Tests', () => {
     it('應該能夠管理插件', async () => {
       // 1. 創建音軌
       const trackId = await trackService.createTrack('Plugin Test Track', 'audio');
-      
+
       // 2. 添加插件
       const pluginRef = PluginReference.create('test-plugin-1');
       await trackService.addPluginToTrack(trackId, pluginRef);
@@ -196,7 +196,7 @@ describe('Track Module Integration Tests', () => {
       // 創建音軌（會發布 TrackCreatedEvent 兩次）
       const trackId = await trackService.createTrack('Event Test Track', 'audio');
       expect(publishSpy).toHaveBeenCalledTimes(2);
-      
+
       // 更新音軌（會發布 TrackRenamedEvent 和 TrackUpdatedEvent）
       await trackService.renameTrack(trackId, 'Updated Track');
       expect(publishSpy).toHaveBeenCalledTimes(4);

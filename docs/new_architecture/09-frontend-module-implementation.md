@@ -3,6 +3,7 @@
 ## React 組件架構
 
 ### 1. 組件分層
+
 ```typescript
 src/modules/{module-name}/
 ├── components/           # 展示型組件
@@ -15,12 +16,14 @@ src/modules/{module-name}/
 ```
 
 ### 2. 組件設計原則
+
 - 使用函數式組件和 Hooks
 - 實現受控組件模式
 - 保持組件的單一職責
 - 使用 TypeScript 強類型定義
 
 ### 3. 狀態管理
+
 ```typescript
 // 使用 Context + Reducer 模式
 export const ModuleContext = createContext<ModuleState>(initialState);
@@ -42,6 +45,7 @@ export function ModuleProvider({ children }: PropsWithChildren) {
 ## 領域模型整合
 
 ### 1. 視圖模型轉換
+
 ```typescript
 interface TrackViewModel {
   id: string;
@@ -70,6 +74,7 @@ class TrackViewModelAdapter {
 ```
 
 ### 2. 事件處理
+
 ```typescript
 function useTrackEvents() {
   useEffect(() => {
@@ -87,6 +92,7 @@ function useTrackEvents() {
 ## 性能優化
 
 ### 1. 記憶化策略
+
 ```typescript
 // 使用 useMemo 緩存計算結果
 const sortedTracks = useMemo(() => {
@@ -100,6 +106,7 @@ const handleTrackSelect = useCallback((trackId: string) => {
 ```
 
 ### 2. 虛擬化列表
+
 ```typescript
 function TrackList({ tracks }: Props) {
   return (
@@ -122,6 +129,7 @@ function TrackList({ tracks }: Props) {
 ```
 
 ### 3. 懶加載策略
+
 ```typescript
 const TrackEditor = lazy(() => import('./TrackEditor'));
 
@@ -137,6 +145,7 @@ function App() {
 ## 測試策略
 
 ### 1. 組件測試
+
 ```typescript
 describe('TrackComponent', () => {
   it('應該正確渲染音軌信息', () => {
@@ -160,6 +169,7 @@ describe('TrackComponent', () => {
 ```
 
 ### 2. Hook 測試
+
 ```typescript
 describe('useTrackState', () => {
   it('應該正確管理音軌狀態', () => {
@@ -177,6 +187,7 @@ describe('useTrackState', () => {
 ## 最佳實踐
 
 ### 1. 錯誤邊界
+
 ```typescript
 class ModuleErrorBoundary extends React.Component {
   static getDerivedStateFromError(error: Error) {
@@ -193,12 +204,14 @@ class ModuleErrorBoundary extends React.Component {
 ```
 
 ### 2. 可訪問性
+
 - 使用語義化 HTML
 - 實現鍵盤導航
 - 添加 ARIA 標籤
 - 確保足夠的顏色對比度
 
 ### 3. 國際化
+
 ```typescript
 const messages = {
   'zh-TW': {
@@ -223,6 +236,7 @@ function TrackActions() {
 ## 調試工具
 
 ### 1. 開發工具整合
+
 ```typescript
 if (process.env.NODE_ENV === 'development') {
   // 註冊自定義 DevTools
@@ -235,6 +249,7 @@ if (process.env.NODE_ENV === 'development') {
 ```
 
 ### 2. 日誌記錄
+
 ```typescript
 const logger = createLogger('TrackModule');
 
@@ -245,4 +260,4 @@ function TrackContainer() {
   });
   // ...
 }
-``` 
+```

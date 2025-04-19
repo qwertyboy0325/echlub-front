@@ -4,7 +4,7 @@
 
 每個模組都應遵循以下架構原則：
 
-1. **領域驅動設計 (DDD)** 
+1. **領域驅動設計 (DDD)**
    - 清晰的領域邊界
    - 豐富的領域模型
    - 領域事件驅動
@@ -57,6 +57,7 @@ src/modules/{module-name}/
 ### 1. 領域層實現
 
 #### 1.1 實體基類
+
 每個模組應定義自己的實體基類：
 
 ```typescript
@@ -85,6 +86,7 @@ export abstract class BaseEntity implements IAggregate {
 ```
 
 #### 1.2 值對象
+
 值對象應該是不可變的：
 
 ```typescript
@@ -108,6 +110,7 @@ export class EntityId {
 ### 2. 應用層實現
 
 #### 2.1 命令處理器基類
+
 統一的命令處理模式：
 
 ```typescript
@@ -127,6 +130,7 @@ export abstract class BaseCommandHandler<TCommand, TResult = void> {
 ```
 
 #### 2.2 驗證器
+
 標準的驗證結果結構：
 
 ```typescript
@@ -146,6 +150,7 @@ export class ValidationResult {
 ### 3. 基礎設施層實現
 
 #### 3.1 倉儲基類
+
 通用的倉儲操作：
 
 ```typescript
@@ -164,6 +169,7 @@ export abstract class BaseRepository<T extends BaseEntity> {
 ```
 
 #### 3.2 事件適配器
+
 標準的事件發布接口：
 
 ```typescript
@@ -203,6 +209,7 @@ export class ModuleConfiguration {
 ## 測試規範
 
 ### 1. 單元測試結構
+
 ```typescript
 describe('實體名稱', () => {
   let entity: Entity;
@@ -229,6 +236,7 @@ describe('實體名稱', () => {
 ```
 
 ### 2. 集成測試模式
+
 ```typescript
 describe('模組集成', () => {
   let container: Container;
@@ -249,6 +257,7 @@ describe('模組集成', () => {
 ## 實現示例：音軌模組
 
 ### 1. 領域實體
+
 ```typescript
 export class AudioTrack extends BaseTrack {
   private clips: AudioClipId[] = [];
@@ -263,6 +272,7 @@ export class AudioTrack extends BaseTrack {
 ```
 
 ### 2. 命令處理器
+
 ```typescript
 @injectable()
 export class CreateTrackCommandHandler extends BaseCommandHandler<CreateTrackCommand, TrackId> {
@@ -276,6 +286,7 @@ export class CreateTrackCommandHandler extends BaseCommandHandler<CreateTrackCom
 ```
 
 ### 3. 事件發布
+
 ```typescript
 @injectable()
 export class TrackEventPublisher extends BaseEventPublisher {
@@ -288,6 +299,7 @@ export class TrackEventPublisher extends BaseEventPublisher {
 ## 擴展指南
 
 ### 1. 新增實體類型
+
 1. 繼承基礎實體類
 2. 實現特定行為
 3. 添加對應工廠
@@ -295,6 +307,7 @@ export class TrackEventPublisher extends BaseEventPublisher {
 5. 註冊依賴注入
 
 ### 2. 添加新功能
+
 1. 定義命令/查詢
 2. 實現處理器
 3. 添加領域事件
@@ -322,4 +335,4 @@ export class TrackEventPublisher extends BaseEventPublisher {
 4. **性能考慮**
    - 合理使用緩存
    - 批量操作優化
-   - 避免不必要的對象創建 
+   - 避免不必要的對象創建

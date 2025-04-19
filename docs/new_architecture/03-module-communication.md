@@ -3,6 +3,7 @@
 ## 通信架構概述
 
 ### 1. 事件驅動架構
+
 ```typescript
 // 1. 定義事件接口
 export interface IDomainEvent {
@@ -30,6 +31,7 @@ export class TrackCreatedEvent implements IDomainEvent {
 ```
 
 ### 2. 事件總線
+
 ```typescript
 export interface IEventBus {
   publish<T extends IDomainEvent>(event: T): Promise<void>;
@@ -70,6 +72,7 @@ export class EventBus implements IEventBus {
 ## 模組間狀態同步
 
 ### 1. 事件發布
+
 ```typescript
 @injectable()
 export class TrackEventPublisher {
@@ -92,6 +95,7 @@ export class TrackEventPublisher {
 ```
 
 ### 2. 事件訂閱
+
 ```typescript
 @injectable()
 export class TrackEventHandler {
@@ -113,6 +117,7 @@ export class TrackEventHandler {
 ```
 
 ### 3. 事件存儲
+
 ```typescript
 @injectable()
 export class EventStore {
@@ -131,6 +136,7 @@ export class EventStore {
 ## 跨模組查詢
 
 ### 1. 查詢服務
+
 ```typescript
 @injectable()
 export class TrackQueryService {
@@ -156,6 +162,7 @@ export class TrackQueryService {
 ```
 
 ### 2. 視圖模型
+
 ```typescript
 interface TrackViewModel {
   id: string;
@@ -176,6 +183,7 @@ export class TrackViewModelBuilder {
 ## 錯誤處理
 
 ### 1. 錯誤定義
+
 ```typescript
 export class EventPublishError extends Error {
   constructor(
@@ -198,6 +206,7 @@ export class EventHandleError extends Error {
 ```
 
 ### 2. 錯誤處理中間件
+
 ```typescript
 @injectable()
 export class EventErrorHandler {
@@ -219,6 +228,7 @@ export class EventErrorHandler {
 ## 性能優化
 
 ### 1. 事件批處理
+
 ```typescript
 @injectable()
 export class BatchEventPublisher {
@@ -238,6 +248,7 @@ export class BatchEventPublisher {
 ```
 
 ### 2. 事件過濾
+
 ```typescript
 @injectable()
 export class EventFilter {
@@ -251,6 +262,7 @@ export class EventFilter {
 ## 測試策略
 
 ### 1. 事件發布測試
+
 ```typescript
 describe('TrackEventPublisher', () => {
   it('應該正確發布事件', async () => {
@@ -270,6 +282,7 @@ describe('TrackEventPublisher', () => {
 ```
 
 ### 2. 事件處理測試
+
 ```typescript
 describe('TrackEventHandler', () => {
   it('應該正確處理事件', async () => {
@@ -289,16 +302,19 @@ describe('TrackEventHandler', () => {
 ## 最佳實踐
 
 ### 1. 事件版本控制
+
 - 使用版本號追蹤事件變更
 - 實現事件升級策略
 - 處理向後兼容性
 
 ### 2. 事件文檔
+
 - 維護事件目錄
 - 記錄事件結構變更
 - 提供訂閱指南
 
 ### 3. 監控和日誌
+
 - 記錄事件處理時間
 - 追蹤事件處理失敗
-- 監控事件隊列大小 
+- 監控事件隊列大小
