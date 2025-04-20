@@ -1,4 +1,8 @@
+import { randomUUID } from 'crypto';
+
 export class MidiNote {
+  private readonly id: string;
+
   constructor(
     private readonly pitch: number,
     private readonly startTime: number,
@@ -17,6 +21,11 @@ export class MidiNote {
     if (startTime < 0) {
       throw new Error('Start time cannot be negative');
     }
+    this.id = randomUUID();
+  }
+
+  getId(): string {
+    return this.id;
   }
 
   getPitch(): number {
@@ -44,6 +53,7 @@ export class MidiNote {
 
   toJSON(): object {
     return {
+      id: this.id,
       pitch: this.pitch,
       startTime: this.startTime,
       duration: this.duration,

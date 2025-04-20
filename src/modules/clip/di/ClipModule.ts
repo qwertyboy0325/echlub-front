@@ -6,6 +6,8 @@ import { CreateAudioClipCommandHandler } from '../application/handlers/CreateAud
 import { ClipStore } from '../infrastructure/stores/ClipStore';
 import { P2PSyncManager } from '../infrastructure/p2p/P2PSyncManager';
 import { ApiClient } from '../infrastructure/api/ApiClient';
+import { ClipMediator } from '../application/mediators/ClipMediator';
+import { ClipValidator } from '../domain/validators/ClipValidator';
 
 export class ClipModule {
   static configure(container: Container): void {
@@ -21,6 +23,15 @@ export class ClipModule {
     // Command Handlers
     container.bind<CreateAudioClipCommandHandler>(ClipTypes.CreateAudioClipCommandHandler)
       .to(CreateAudioClipCommandHandler)
+      .inSingletonScope();
+
+    // Mediators & Validators
+    container.bind<ClipMediator>(ClipTypes.ClipMediator)
+      .to(ClipMediator)
+      .inSingletonScope();
+
+    container.bind<ClipValidator>(ClipTypes.ClipValidator)
+      .to(ClipValidator)
       .inSingletonScope();
 
     // Infrastructure

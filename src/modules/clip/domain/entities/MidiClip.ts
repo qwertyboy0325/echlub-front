@@ -1,30 +1,6 @@
 import { BaseClip } from './BaseClip';
 import { ClipId } from '../value-objects/ClipId';
-
-export class MidiNote {
-  constructor(
-    public readonly id: string,
-    public readonly pitch: number,
-    public readonly velocity: number,
-    public readonly startTime: number,
-    public readonly duration: number
-  ) {
-    if (pitch < 0 || pitch > 127) throw new Error('Note pitch must be between 0 and 127');
-    if (velocity < 0 || velocity > 127) throw new Error('Note velocity must be between 0 and 127');
-    if (startTime < 0) throw new Error('Note start time cannot be negative');
-    if (duration <= 0) throw new Error('Note duration must be positive');
-  }
-
-  toJSON(): object {
-    return {
-      id: this.id,
-      pitch: this.pitch,
-      velocity: this.velocity,
-      startTime: this.startTime,
-      duration: this.duration
-    };
-  }
-}
+import { MidiNote } from '../value-objects/MidiNote';
 
 export interface TimeSignature {
   numerator: number;
@@ -37,10 +13,17 @@ export interface MidiEvent {
   data: number[];
 }
 
+interface MidiNoteUpdate {
+  pitch?: number;
+  startTime?: number;
+  duration?: number;
+  velocity?: number;
+}
+
 export class MidiClip extends BaseClip {
   private notes: MidiNote[] = [];
   private events: MidiEvent[] = [];
-  private timeSignature: TimeSignature = { numerator: 4, denominator: 4 };
+  private timeSignature?: TimeSignature;
   private velocity: number = 100;
 
   constructor(
@@ -57,11 +40,11 @@ export class MidiClip extends BaseClip {
 
   private validateNotes(notes: MidiNote[]): void {
     for (const note of notes) {
-      if (note.startTime < 0) throw new Error('Note start time cannot be negative');
-      if (note.duration <= 0) throw new Error('Note duration must be positive');
-      if (note.pitch < 0 || note.pitch > 127) throw new Error('Note pitch must be between 0 and 127');
-      if (note.velocity < 0 || note.velocity > 127) throw new Error('Note velocity must be between 0 and 127');
-      if (note.startTime + note.duration > this.getDuration()) {
+      if (note.getStartTime() < 0) throw new Error('Note start time cannot be negative');
+      if (note.getDuration() <= 0) throw new Error('Note duration must be positive');
+      if (note.getPitch() < 0 || note.getPitch() > 127) throw new Error('Note pitch must be between 0 and 127');
+      if (note.getVelocity() < 0 || note.getVelocity() > 127) throw new Error('Note velocity must be between 0 and 127');
+      if (note.getStartTime() + note.getDuration() > this.getDuration()) {
         throw new Error('Note cannot extend beyond clip duration');
       }
     }
@@ -72,27 +55,36 @@ export class MidiClip extends BaseClip {
   }
 
   addNote(note: MidiNote): void {
-    this.validateNotes([note]);
+    if (note.getStartTime() + note.getDuration() > this.getDuration()) {
+      throw new Error('Note cannot extend beyond clip duration');
+    }
     this.notes.push(note);
     this.incrementVersion();
   }
 
   removeNote(noteId: string): void {
-    const index = this.notes.findIndex(n => n.id === noteId);
+    const index = this.notes.findIndex(n => n.getId() === noteId);
     if (index !== -1) {
       this.notes.splice(index, 1);
       this.incrementVersion();
     }
   }
 
-  updateNote(noteId: string, updates: Partial<MidiNote>): void {
-    const note = this.notes.find(n => n.id === noteId);
-    if (!note) return;
+  updateNote(noteId: string, update: Partial<MidiNoteUpdate>): void {
+    const noteIndex = this.notes.findIndex(n => n.getId() === noteId);
+    if (noteIndex === -1) {
+      throw new Error('Note not found');
+    }
 
-    const updatedNote = { ...note, ...updates };
-    this.validateNotes([updatedNote as MidiNote]);
-    
-    Object.assign(note, updates);
+    const existingNote = this.notes[noteIndex];
+    const newNote = new MidiNote(
+      update.pitch ?? existingNote.getPitch(),
+      update.startTime ?? existingNote.getStartTime(),
+      update.duration ?? existingNote.getDuration(),
+      update.velocity ?? existingNote.getVelocity()
+    );
+
+    this.notes[noteIndex] = newNote;
     this.incrementVersion();
   }
 
@@ -119,8 +111,8 @@ export class MidiClip extends BaseClip {
     this.incrementVersion();
   }
 
-  getTimeSignature(): TimeSignature {
-    return { ...this.timeSignature };
+  getTimeSignature(): TimeSignature | undefined {
+    return this.timeSignature;
   }
 
   setVelocity(velocity: number): void {
@@ -136,19 +128,24 @@ export class MidiClip extends BaseClip {
   }
 
   clone(): MidiClip {
-    return new MidiClip(
+    const clonedClip = new MidiClip(
       ClipId.create(),
       this.getStartTime(),
       this.getDuration(),
       this.notes.map(note => new MidiNote(
-        crypto.randomUUID(),
-        note.pitch,
-        note.velocity,
-        note.startTime,
-        note.duration
+        note.getPitch(),
+        note.getStartTime(),
+        note.getDuration(),
+        note.getVelocity()
       )),
       this.getGain()
     );
+    clonedClip.velocity = this.velocity;
+    if (this.timeSignature) {
+      clonedClip.timeSignature = { ...this.timeSignature };
+    }
+    clonedClip.incrementVersion();
+    return clonedClip;
   }
 
   toJSON(): object {
