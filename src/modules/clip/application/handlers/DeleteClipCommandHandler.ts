@@ -1,6 +1,6 @@
 import { injectable, inject } from 'inversify';
 import { ClipTypes } from '../../di/ClipTypes';
-import { DeleteClipCommand } from '../commands/DeleteClipCommand';
+import { DeleteClipCommand } from '../commands/common/DeleteClipCommand';
 import type { IClipRepository } from '../../domain/repositories/IClipRepository';
 import { ClipDeletedEvent } from '../../domain/events/ClipEvents';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';

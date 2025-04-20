@@ -1,6 +1,6 @@
 import { injectable, inject } from 'inversify';
 import { ClipTypes } from '../../di/ClipTypes';
-import { CreateMidiClipCommand } from '../commands/ClipCommands';
+import { CreateMidiClipCommand } from '../commands/midi/CreateMidiClipCommand';
 import type { IClipRepository } from '../../domain/repositories/IClipRepository';
 import { MidiClipCreatedEvent } from '../../domain/events/ClipEvents';
 import { ClipId } from '../../domain/value-objects/ClipId';

@@ -1,7 +1,9 @@
 import { injectable, inject } from 'inversify';
 import { ClipTypes } from '../../di/ClipTypes';
+import { UpdateClipCommand } from '../commands/common/UpdateClipCommand';
 import type { IClipRepository } from '../../domain/repositories/IClipRepository';
-import { UpdateClipCommand } from '../commands';
+import type { IEventBus } from '../../../../core/event-bus/IEventBus';
+import { ClipOperationError } from '../../domain/errors/ClipError';
 
 @injectable()
 export class UpdateClipCommandHandler {

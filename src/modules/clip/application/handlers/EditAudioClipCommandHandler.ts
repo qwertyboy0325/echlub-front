@@ -1,10 +1,11 @@
 import { injectable, inject } from 'inversify';
 import { ClipTypes } from '../../di/ClipTypes';
-import { EditAudioClipCommand } from '../commands/ClipCommands';
+import { EditAudioClipCommand } from '../commands/audio/EditAudioClipCommand';
 import type { IClipRepository } from '../../domain/repositories/IClipRepository';
 import { AudioClipEditedEvent } from '../../domain/events/ClipEvents';
 import { AudioClip } from '../../domain/entities/AudioClip';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
+import { ClipOperationError } from '../../domain/errors/ClipError';
 
 @injectable()
 export class EditAudioClipCommandHandler {

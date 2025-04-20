@@ -1,7 +1,20 @@
 import { injectable } from 'inversify';
 import { ClipId } from '../../domain/value-objects/ClipId';
-import { TimeSignature } from '../commands/CreateMidiClipCommand';
-import { ClipUpdates } from '../commands/UpdateClipCommand';
+import type { TimeSignature } from '../../domain/entities/MidiClip';
+
+export interface ClipUpdates {
+  startTime?: number;
+  duration?: number;
+  gain?: number;
+  offset?: number;
+  notes?: Array<{
+    id: string;
+    startTime: number;
+    duration: number;
+    pitch: number;
+    velocity: number;
+  }>;
+}
 
 export class ValidationError {
   constructor(
