@@ -6,7 +6,6 @@ import { MidiClipEditedEvent } from '../../domain/events/ClipEvents';
 import { MidiClip } from '../../domain/entities/MidiClip';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { ClipOperationError } from '../../domain/errors/ClipError';
-import type { MidiNote } from '../../domain/value-objects/MidiNote';
 
 @injectable()
 export class EditMidiClipCommandHandler {
