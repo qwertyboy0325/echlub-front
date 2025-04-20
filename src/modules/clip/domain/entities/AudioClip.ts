@@ -75,12 +75,23 @@ export class AudioClip extends BaseClip {
   }
 
   clone(): AudioClip {
-    return new AudioClip(
+    const clonedClip = new AudioClip(
       ClipId.create(),
       this.sampleId,
       this.getStartTime(),
       this.getDuration(),
       this.offset
     );
+    clonedClip.setGain(this.getGain());
+    if (this.fadeIn) {
+      clonedClip.setFadeIn({ ...this.fadeIn });
+    }
+    if (this.fadeOut) {
+      clonedClip.setFadeOut({ ...this.fadeOut });
+    }
+    if (this.waveformData) {
+      clonedClip.updateWaveform(this.waveformData);
+    }
+    return clonedClip;
   }
 } 

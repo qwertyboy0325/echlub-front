@@ -1,6 +1,7 @@
 import { MidiClip } from '../../../domain/entities/MidiClip';
 import { ClipId } from '../../../domain/value-objects/ClipId';
 import { MidiNote } from '../../../domain/value-objects/MidiNote';
+import type { MidiEvent } from '../../../domain/entities/MidiClip';
 
 // Mock crypto module
 jest.mock('crypto', () => ({
@@ -123,6 +124,124 @@ describe('MidiClip', () => {
       expect(clonedClip.getNotes()[0].getVelocity()).toBe(note.getVelocity());
       expect(clonedClip.getNotes()[0].getStartTime()).toBe(note.getStartTime());
       expect(clonedClip.getNotes()[0].getDuration()).toBe(note.getDuration());
+    });
+  });
+
+  describe('事件管理', () => {
+    let clip: MidiClip;
+    let event: MidiEvent;
+
+    beforeEach(() => {
+      clip = new MidiClip(clipId, 0, 10);
+      event = {
+        type: 'programChange',
+        time: 1,
+        data: [1, 64]
+      };
+    });
+
+    it('應該能夠添加事件', () => {
+      clip.addEvent(event);
+      expect(clip.getEvents()).toHaveLength(1);
+      expect(clip.getEvents()[0]).toEqual(event);
+    });
+
+    it('應該能夠刪除事件', () => {
+      clip.addEvent(event);
+      expect(clip.getEvents()).toHaveLength(1);
+      clip.removeEvent(event);
+      expect(clip.getEvents()).toHaveLength(0);
+    });
+
+    it('刪除事件時應該正確比較事件內容', () => {
+      clip.addEvent(event);
+      const differentEvent = {
+        type: 'programChange',
+        time: 1,
+        data: [1, 65] // 不同的數據
+      };
+      clip.removeEvent(differentEvent);
+      expect(clip.getEvents()).toHaveLength(1); // 不應該刪除原事件
+    });
+  });
+
+  describe('JSON序列化', () => {
+    it('應該正確序列化所有屬性', () => {
+      const clip = new MidiClip(clipId, 0, 10);
+      const note = new MidiNote(60, 0, 1, 100);
+      const event = {
+        type: 'programChange',
+        time: 1,
+        data: [1, 64]
+      };
+      
+      clip.addNote(note);
+      clip.addEvent(event);
+      clip.setTimeSignature({ numerator: 3, denominator: 4 });
+      clip.setVelocity(80);
+      clip.setGain(0.8);
+
+      const json = clip.toJSON();
+      
+      expect(json).toEqual({
+        clipId: clipId.toString(),
+        startTime: 0,
+        duration: 10,
+        gain: 0.8,
+        notes: [note.toJSON()],
+        events: [event],
+        timeSignature: { numerator: 3, denominator: 4 },
+        velocity: 80,
+        version: expect.any(Number)
+      });
+    });
+  });
+
+  describe('版本控制', () => {
+    let clip: MidiClip;
+
+    beforeEach(() => {
+      clip = new MidiClip(clipId, 0, 10);
+    });
+
+    it('添加音符時應該增加版本號', () => {
+      const initialVersion = clip.getVersion();
+      clip.addNote(new MidiNote(60, 0, 1, 100));
+      expect(clip.getVersion()).toBe(initialVersion + 1);
+    });
+
+    it('刪除音符時應該增加版本號', () => {
+      const note = new MidiNote(60, 0, 1, 100);
+      clip.addNote(note);
+      const versionAfterAdd = clip.getVersion();
+      clip.removeNote(note.getId());
+      expect(clip.getVersion()).toBe(versionAfterAdd + 1);
+    });
+
+    it('更新音符時應該增加版本號', () => {
+      const note = new MidiNote(60, 0, 1, 100);
+      clip.addNote(note);
+      const versionAfterAdd = clip.getVersion();
+      clip.updateNote(note.getId(), { velocity: 80 });
+      expect(clip.getVersion()).toBe(versionAfterAdd + 1);
+    });
+
+    it('添加事件時應該增加版本號', () => {
+      const initialVersion = clip.getVersion();
+      clip.addEvent({ type: 'programChange', time: 1, data: [1, 64] });
+      expect(clip.getVersion()).toBe(initialVersion + 1);
+    });
+
+    it('設置時間標記時應該增加版本號', () => {
+      const initialVersion = clip.getVersion();
+      clip.setTimeSignature({ numerator: 3, denominator: 4 });
+      expect(clip.getVersion()).toBe(initialVersion + 1);
+    });
+
+    it('設置速度時應該增加版本號', () => {
+      const initialVersion = clip.getVersion();
+      clip.setVelocity(80);
+      expect(clip.getVersion()).toBe(initialVersion + 1);
     });
   });
 }); 
