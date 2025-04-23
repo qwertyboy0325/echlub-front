@@ -1,7 +1,7 @@
 import { TrackValidator } from '../TrackValidator';
-import { TrackId } from '../../../domain/value-objects/TrackId';
-import { TrackType } from '../../../domain/value-objects/TrackType';
-import { TrackRouting } from '../../../domain/value-objects/TrackRouting';
+import { TrackId } from '../../../domain/value-objects/track/TrackId';
+import { TrackType } from '../../../domain/value-objects/track/TrackType';
+import { TrackRouting } from '../../../domain/value-objects/track/TrackRouting';
 
 describe('TrackValidator', () => {
   let validator: TrackValidator;

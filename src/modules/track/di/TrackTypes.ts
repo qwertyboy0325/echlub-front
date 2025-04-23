@@ -4,13 +4,17 @@ export const TrackTypes = {
   LocalTrackRepository: Symbol.for('LocalTrackRepository'),
   WebSocketTrackRepository: Symbol.for('WebSocketTrackRepository'),
   WebRTCTrackRepository: Symbol.for('WebRTCTrackRepository'),
+  ClipRepository: Symbol.for('ClipRepository'),
   
   // Services
   TrackService: Symbol.for('TrackService'),
   TrackDomainService: Symbol.for('TrackDomainService'),
+  
+  // Mediators & Validators
+  TrackMediator: Symbol.for('TrackMediator'),
   TrackValidator: Symbol.for('TrackValidator'),
   
-  // Commands
+  // Command Handlers
   CreateTrackCommandHandler: Symbol.for('CreateTrackCommandHandler'),
   RenameTrackCommandHandler: Symbol.for('RenameTrackCommandHandler'),
   AddClipToTrackCommandHandler: Symbol.for('AddClipToTrackCommandHandler'),
@@ -20,12 +24,17 @@ export const TrackTypes = {
   RemovePluginFromTrackCommandHandler: Symbol.for('RemovePluginFromTrackCommandHandler'),
   AddInputTrackToBusCommandHandler: Symbol.for('AddInputTrackToBusCommandHandler'),
   RemoveInputTrackFromBusCommandHandler: Symbol.for('RemoveInputTrackFromBusCommandHandler'),
-  
-  // Mediators
-  TrackMediator: Symbol.for('TrackMediator'),
+  AddNoteToClipCommandHandler: Symbol.for('AddNoteToClipCommandHandler'),
+  UpdateNoteInClipCommandHandler: Symbol.for('UpdateNoteInClipCommandHandler'),
+  RemoveNoteFromClipCommandHandler: Symbol.for('RemoveNoteFromClipCommandHandler'),
+  DeleteTrackCommandHandler: Symbol.for('DeleteTrackCommandHandler'),
+  CopyClipToTrackCommandHandler: Symbol.for('CopyClipToTrackCommandHandler'),
   
   // Factories
   TrackFactory: Symbol.for('TrackFactory'),
+  
+  // Infrastructure
+  TrackStore: Symbol.for('TrackStore'),
   
   // Event Handlers
   TrackEventHandler: Symbol.for('TrackEventHandler'),
@@ -42,10 +51,20 @@ export const TrackTypes = {
 
   // Track Factories
   AudioTrackFactory: Symbol.for('AudioTrackFactory'),
-  InstrumentTrackFactory: Symbol.for('InstrumentTrackFactory'),
+  MidiTrackFactory: Symbol.for('MidiTrackFactory'),
   BusTrackFactory: Symbol.for('BusTrackFactory'),
   TrackFactoryRegistry: Symbol.for('TrackFactoryRegistry'),
 
   // New TrackEventPublisher
   TrackEventPublisher: Symbol.for('TrackEventPublisher'),
+
+  // Query Handlers
+  GetTrackByIdQueryHandler: Symbol.for('GetTrackByIdQueryHandler'),
+  GetTrackPluginsQueryHandler: Symbol.for('GetTrackPluginsQueryHandler'),
+  GetTrackRoutingQueryHandler: Symbol.for('GetTrackRoutingQueryHandler'),
+  GetTrackGainQueryHandler: Symbol.for('GetTrackGainQueryHandler'),
+  GetTrackNameQueryHandler: Symbol.for('GetTrackNameQueryHandler'),
+
+  // Decorators
+  TrackEventDecorator: Symbol.for('TrackEventDecorator'),
 }; 

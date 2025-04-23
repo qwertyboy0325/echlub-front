@@ -1,6 +1,6 @@
-import { TrackId } from '../value-objects/TrackId';
+import { TrackId } from '../value-objects/track/TrackId';
 import { BaseTrack } from '../entities/BaseTrack';
-import { TrackRouting } from '../value-objects/TrackRouting';
+import { TrackRouting } from '../value-objects/track/TrackRouting';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 
 export interface ITrackEventPublisher {

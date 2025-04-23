@@ -1,9 +1,8 @@
 import { BaseTrack } from '../entities/BaseTrack';
-import { TrackId } from '../value-objects/TrackId';
+import { TrackId } from '../value-objects/track/TrackId';
 
 export interface ITrackRepository {
-  create(track: BaseTrack): Promise<void>;
-  findById(id: TrackId): Promise<BaseTrack | undefined>;
+  findById(id: TrackId): Promise<BaseTrack | null>;
   save(track: BaseTrack): Promise<void>;
   delete(id: TrackId): Promise<void>;
 }

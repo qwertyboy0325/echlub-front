@@ -1,26 +1,24 @@
-import { TrackId } from '../value-objects/TrackId';
-import { ClipId } from '../value-objects/ClipId';
 import { IDomainEvent } from '../interfaces/IDomainEvent';
+import { TrackId } from '../value-objects/track/TrackId';
+import { ClipId } from '../value-objects/clips/ClipId';
 
 export class ClipAddedToTrackEvent implements IDomainEvent {
   readonly eventType = 'track:clip:added';
-  readonly timestamp: Date;
+  readonly timestamp = new Date();
   readonly aggregateId: string;
   readonly payload: {
+    trackId: string;
     clipId: string;
-    type: 'audio' | 'midi';
   };
 
   constructor(
     trackId: TrackId,
-    clipId: ClipId,
-    type: 'audio' | 'midi'
+    clipId: ClipId
   ) {
-    this.timestamp = new Date();
     this.aggregateId = trackId.toString();
     this.payload = {
-      clipId: clipId.toString(),
-      type
+      trackId: trackId.toString(),
+      clipId: clipId.toString()
     };
   }
 

@@ -1,26 +1,26 @@
 import { Container } from 'inversify';
 import { TrackMediator } from '../mediators/TrackMediator';
 import { TrackTypes } from '../../di/TrackTypes';
-import { CreateTrackCommandHandler } from '../handlers/CreateTrackCommandHandler';
-import { RenameTrackCommandHandler } from '../handlers/RenameTrackCommandHandler';
-import { AddClipToTrackCommandHandler } from '../handlers/AddClipToTrackCommandHandler';
-import { RemoveClipFromTrackCommandHandler } from '../handlers/RemoveClipFromTrackCommandHandler';
-import { ChangeTrackRoutingCommandHandler } from '../handlers/ChangeTrackRoutingCommandHandler';
-import { AddPluginToTrackCommandHandler } from '../handlers/AddPluginToTrackCommandHandler';
-import { RemovePluginFromTrackCommandHandler } from '../handlers/RemovePluginFromTrackCommandHandler';
-import { TrackId } from '../../domain/value-objects/TrackId';
+import { CreateTrackCommandHandler } from '../commands/handlers/CreateTrackCommandHandler';
+import { RenameTrackCommandHandler } from '../commands/handlers/RenameTrackCommandHandler';
+import { AddClipToTrackCommandHandler } from '../commands/handlers/AddClipToTrackCommandHandler';
+import { RemoveClipFromTrackCommandHandler } from '../commands/handlers/RemoveClipFromTrackCommandHandler';
+import { ChangeTrackRoutingCommandHandler } from '../commands/handlers/ChangeTrackRoutingCommandHandler';
+import { AddPluginToTrackCommandHandler } from '../commands/handlers/AddPluginToTrackCommandHandler';
+import { RemovePluginFromTrackCommandHandler } from '../commands/handlers/RemovePluginFromTrackCommandHandler';
+import { TrackId } from '../../domain/value-objects/track/TrackId';
 import { CreateTrackCommand } from '../commands/CreateTrackCommand';
 import { RenameTrackCommand } from '../commands/RenameTrackCommand';
-import { TrackType } from '../../domain/value-objects/TrackType';
+import { TrackType } from '../../domain/value-objects/track/TrackType';
 import { AddClipToTrackCommand } from '../commands/AddClipToTrackCommand';
 import { RemoveClipFromTrackCommand } from '../commands/RemoveClipFromTrackCommand';
 import { ChangeTrackRoutingCommand } from '../commands/ChangeTrackRoutingCommand';
 import { AddPluginToTrackCommand } from '../commands/AddPluginToTrackCommand';
 import { RemovePluginFromTrackCommand } from '../commands/RemovePluginFromTrackCommand';
 import { ClipId } from '../../domain/value-objects/ClipId';
-import { TrackRouting } from '../../domain/value-objects/TrackRouting';
+import { TrackRouting } from '../../domain/value-objects/track/TrackRouting';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
-import { PluginReference } from '../../domain/value-objects/PluginReference';
+import { PluginReference } from '../../domain/value-objects/plugin/PluginReference';
 
 describe('TrackMediator', () => {
   let container: Container;

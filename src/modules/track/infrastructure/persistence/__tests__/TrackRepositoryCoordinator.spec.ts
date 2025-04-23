@@ -3,11 +3,11 @@ import { TrackTypes } from '../../../di/TrackTypes';
 import { TrackRepositoryCoordinator } from '../TrackRepositoryCoordinator';
 import { ILocalTrackRepository } from '../../../domain/repositories/ITrackRepository';
 import { ITrackEventPublisher } from '../../../domain/ports/ITrackEventPublisher';
-import { TrackId } from '../../../domain/value-objects/TrackId';
+import { TrackId } from '../../../domain/value-objects/track/TrackId';
 import { BaseTrack } from '../../../domain/entities/BaseTrack';
 import { AudioTrack } from '../../../domain/entities/AudioTrack';
-import { TrackRouting } from '../../../domain/value-objects/TrackRouting';
-import { TrackType } from '../../../domain/value-objects/TrackType';
+import { TrackRouting } from '../../../domain/value-objects/track/TrackRouting';
+import { TrackType } from '../../../domain/value-objects/track/TrackType';
 
 describe('TrackRepositoryCoordinator', () => {
   let container: Container;

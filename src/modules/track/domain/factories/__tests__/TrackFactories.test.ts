@@ -1,15 +1,15 @@
-import { AudioTrackFactory, InstrumentTrackFactory, BusTrackFactory, TrackFactoryRegistry } from '../TrackFactories';
-import { TrackId } from '../../value-objects/TrackId';
-import { TrackRouting } from '../../value-objects/TrackRouting';
-import { TrackType } from '../../value-objects/TrackType';
+import { AudioTrackFactory, MidiTrackFactory, BusTrackFactory, TrackFactoryRegistry } from '../TrackFactories';
+import { TrackId } from '../../value-objects/track/TrackId';
+import { TrackRouting } from '../../value-objects/track/TrackRouting';
+import { TrackType } from '../../value-objects/track/TrackType';
 import { AudioTrack } from '../../entities/AudioTrack';
-import { InstrumentTrack } from '../../entities/InstrumentTrack';
+import { MidiTrack } from '../../entities/MidiTrack';
 import { BusTrack } from '../../entities/BusTrack';
-import { PluginReference } from '../../value-objects/PluginReference';
+import { PluginReference } from '../../value-objects/plugin/PluginReference';
 
 describe('音軌工廠', () => {
   let audioFactory: AudioTrackFactory;
-  let instrumentFactory: InstrumentTrackFactory;
+  let midiFactory: MidiTrackFactory;
   let busFactory: BusTrackFactory;
   let registry: TrackFactoryRegistry;
   let trackId: TrackId;
@@ -18,47 +18,53 @@ describe('音軌工廠', () => {
 
   beforeEach(() => {
     audioFactory = new AudioTrackFactory();
-    instrumentFactory = new InstrumentTrackFactory();
+    midiFactory = new MidiTrackFactory();
     busFactory = new BusTrackFactory();
-    registry = new TrackFactoryRegistry(audioFactory, instrumentFactory, busFactory);
+    registry = new TrackFactoryRegistry(audioFactory, midiFactory, busFactory);
     trackId = TrackId.create();
     routing = new TrackRouting('input-1', 'output-1');
-    plugin = PluginReference.create('plugin-1');
+    plugin = new PluginReference('plugin-1');
   });
 
   describe('AudioTrackFactory', () => {
     it('應該創建音頻音軌', () => {
-      const track = audioFactory.create(trackId, 'Test Audio', routing, [plugin]);
+      const track = audioFactory.create(trackId, 'Test Audio', routing);
       
       expect(track).toBeInstanceOf(AudioTrack);
-      expect(track.getTrackId()).toBe(trackId);
+      expect(track.getId()).toBe(trackId.toString());
       expect(track.getName()).toBe('Test Audio');
       expect(track.getRouting()).toBe(routing);
+      expect(track.getVersion()).toBe(1);
+
+      track.addPlugin(plugin);
       expect(track.getPlugins()).toHaveLength(1);
       expect(track.getPlugins()[0]).toBe(plugin);
+      expect(track.getVersion()).toBe(2);
     });
 
     it('應該複製音頻音軌', () => {
-      const sourceTrack = audioFactory.create(trackId, 'Source Audio', routing, [plugin]);
+      const sourceTrack = audioFactory.create(trackId, 'Source Audio', routing);
+      const initialVersion = sourceTrack.getVersion();
       sourceTrack.setVolume(0.5);
-      sourceTrack.setMute(true);
+      sourceTrack.setMuted(true);
       sourceTrack.setSolo(true);
+      expect(sourceTrack.getVersion()).toBe(initialVersion + 3);
 
       const newId = TrackId.create();
       const clonedTrack = audioFactory.clone(sourceTrack, newId);
 
       expect(clonedTrack).toBeInstanceOf(AudioTrack);
-      expect(clonedTrack.getTrackId()).toBe(newId);
+      expect(clonedTrack.getId()).toBe(newId.toString());
       expect(clonedTrack.getName()).toBe('Copy of Source Audio');
       expect(clonedTrack.getRouting()).toEqual(sourceTrack.getRouting());
-      expect(clonedTrack.getPlugins()).toEqual(sourceTrack.getPlugins());
       expect(clonedTrack.getVolume()).toBe(0.5);
       expect(clonedTrack.isMuted()).toBe(true);
       expect(clonedTrack.isSolo()).toBe(true);
+      expect(clonedTrack.getVersion()).toBe(initialVersion + 3);
     });
 
     it('複製時應該拒絕錯誤的音軌類型', () => {
-      const sourceTrack = instrumentFactory.create(trackId, 'Wrong Type');
+      const sourceTrack = midiFactory.create(trackId, 'Wrong Type');
       const newId = TrackId.create();
 
       expect(() => audioFactory.clone(sourceTrack, newId))
@@ -66,75 +72,87 @@ describe('音軌工廠', () => {
     });
   });
 
-  describe('InstrumentTrackFactory', () => {
-    it('應該創建樂器音軌', () => {
-      const track = instrumentFactory.create(trackId, 'Test Instrument', routing, [plugin]);
+  describe('MidiTrackFactory', () => {
+    it('應該創建 MIDI 音軌', () => {
+      const track = midiFactory.create(trackId, 'Test MIDI', routing);
       
-      expect(track).toBeInstanceOf(InstrumentTrack);
-      expect(track.getTrackId()).toBe(trackId);
-      expect(track.getName()).toBe('Test Instrument');
+      expect(track).toBeInstanceOf(MidiTrack);
+      expect(track.getId()).toBe(trackId.toString());
+      expect(track.getName()).toBe('Test MIDI');
       expect(track.getRouting()).toBe(routing);
+      expect(track.getVersion()).toBe(1);
+
+      track.addPlugin(plugin);
       expect(track.getPlugins()).toHaveLength(1);
       expect(track.getPlugins()[0]).toBe(plugin);
+      expect(track.getVersion()).toBe(2);
     });
 
-    it('應該複製樂器音軌', () => {
-      const sourceTrack = instrumentFactory.create(trackId, 'Source Instrument', routing, [plugin]);
+    it('應該複製 MIDI 音軌', () => {
+      const sourceTrack = midiFactory.create(trackId, 'Source MIDI', routing);
+      const initialVersion = sourceTrack.getVersion();
       sourceTrack.setVolume(0.7);
-      sourceTrack.setMute(true);
+      sourceTrack.setMuted(true);
       sourceTrack.setSolo(true);
+      expect(sourceTrack.getVersion()).toBe(initialVersion + 3);
 
       const newId = TrackId.create();
-      const clonedTrack = instrumentFactory.clone(sourceTrack, newId);
+      const clonedTrack = midiFactory.clone(sourceTrack, newId);
 
-      expect(clonedTrack).toBeInstanceOf(InstrumentTrack);
-      expect(clonedTrack.getTrackId()).toBe(newId);
-      expect(clonedTrack.getName()).toBe('Copy of Source Instrument');
+      expect(clonedTrack).toBeInstanceOf(MidiTrack);
+      expect(clonedTrack.getId()).toBe(newId.toString());
+      expect(clonedTrack.getName()).toBe('Copy of Source MIDI');
       expect(clonedTrack.getRouting()).toEqual(sourceTrack.getRouting());
-      expect(clonedTrack.getPlugins()).toEqual(sourceTrack.getPlugins());
       expect(clonedTrack.getVolume()).toBe(0.7);
       expect(clonedTrack.isMuted()).toBe(true);
       expect(clonedTrack.isSolo()).toBe(true);
+      expect(clonedTrack.getVersion()).toBe(initialVersion + 3);
     });
 
     it('複製時應該拒絕錯誤的音軌類型', () => {
       const sourceTrack = audioFactory.create(trackId, 'Wrong Type');
       const newId = TrackId.create();
 
-      expect(() => instrumentFactory.clone(sourceTrack, newId))
-        .toThrow('Source track must be an InstrumentTrack');
+      expect(() => midiFactory.clone(sourceTrack, newId))
+        .toThrow('Source track must be a MidiTrack');
     });
   });
 
   describe('BusTrackFactory', () => {
     it('應該創建總線音軌', () => {
-      const track = busFactory.create(trackId, 'Test Bus', routing, [plugin]);
+      const track = busFactory.create(trackId, 'Test Bus', routing);
       
       expect(track).toBeInstanceOf(BusTrack);
-      expect(track.getTrackId()).toBe(trackId);
+      expect(track.getId()).toBe(trackId.toString());
       expect(track.getName()).toBe('Test Bus');
       expect(track.getRouting()).toBe(routing);
+      expect(track.getVersion()).toBe(1);
+
+      track.addPlugin(plugin);
       expect(track.getPlugins()).toHaveLength(1);
       expect(track.getPlugins()[0]).toBe(plugin);
+      expect(track.getVersion()).toBe(2);
     });
 
     it('應該複製總線音軌', () => {
-      const sourceTrack = busFactory.create(trackId, 'Source Bus', routing, [plugin]);
+      const sourceTrack = busFactory.create(trackId, 'Source Bus', routing);
+      const initialVersion = sourceTrack.getVersion();
       sourceTrack.setVolume(0.3);
-      sourceTrack.setMute(true);
+      sourceTrack.setMuted(true);
       sourceTrack.setSolo(true);
+      expect(sourceTrack.getVersion()).toBe(initialVersion + 3);
 
       const newId = TrackId.create();
       const clonedTrack = busFactory.clone(sourceTrack, newId);
 
       expect(clonedTrack).toBeInstanceOf(BusTrack);
-      expect(clonedTrack.getTrackId()).toBe(newId);
+      expect(clonedTrack.getId()).toBe(newId.toString());
       expect(clonedTrack.getName()).toBe('Copy of Source Bus');
       expect(clonedTrack.getRouting()).toEqual(sourceTrack.getRouting());
-      expect(clonedTrack.getPlugins()).toEqual(sourceTrack.getPlugins());
       expect(clonedTrack.getVolume()).toBe(0.3);
       expect(clonedTrack.isMuted()).toBe(true);
       expect(clonedTrack.isSolo()).toBe(true);
+      expect(clonedTrack.getVersion()).toBe(initialVersion + 3);
     });
 
     it('複製時應該拒絕錯誤的音軌類型', () => {
@@ -149,7 +167,7 @@ describe('音軌工廠', () => {
   describe('TrackFactoryRegistry', () => {
     it('應該返回正確的工廠', () => {
       expect(registry.getFactory(TrackType.AUDIO)).toBe(audioFactory);
-      expect(registry.getFactory(TrackType.INSTRUMENT)).toBe(instrumentFactory);
+      expect(registry.getFactory(TrackType.MIDI)).toBe(midiFactory);
       expect(registry.getFactory(TrackType.BUS)).toBe(busFactory);
     });
 
@@ -160,24 +178,38 @@ describe('音軌工廠', () => {
     });
 
     it('應該使用正確的工廠創建音軌', () => {
-      const audioTrack = registry.createTrack(TrackType.AUDIO, trackId, 'Audio Track', routing, [plugin]);
+      const audioTrack = registry.createTrack(TrackType.AUDIO, trackId, 'Audio Track', routing);
       expect(audioTrack).toBeInstanceOf(AudioTrack);
+      expect(audioTrack.getVersion()).toBe(1);
 
-      const instrumentTrack = registry.createTrack(TrackType.INSTRUMENT, trackId, 'Instrument Track', routing, [plugin]);
-      expect(instrumentTrack).toBeInstanceOf(InstrumentTrack);
+      audioTrack.addPlugin(plugin);
+      expect(audioTrack.getVersion()).toBe(2);
 
-      const busTrack = registry.createTrack(TrackType.BUS, trackId, 'Bus Track', routing, [plugin]);
+      const midiTrack = registry.createTrack(TrackType.MIDI, trackId, 'MIDI Track', routing);
+      expect(midiTrack).toBeInstanceOf(MidiTrack);
+      expect(midiTrack.getVersion()).toBe(1);
+
+      const busTrack = registry.createTrack(TrackType.BUS, trackId, 'Bus Track', routing);
       expect(busTrack).toBeInstanceOf(BusTrack);
+      expect(busTrack.getVersion()).toBe(1);
     });
 
     it('應該使用正確的工廠複製音軌', () => {
       const sourceTrack = audioFactory.create(trackId, 'Source Track');
+      expect(sourceTrack.getVersion()).toBe(1);
+
+      sourceTrack.setVolume(0.5);
+      expect(sourceTrack.getVersion()).toBe(2);
+
       const newId = TrackId.create();
       const clonedTrack = registry.cloneTrack(sourceTrack, newId);
 
       expect(clonedTrack).toBeInstanceOf(AudioTrack);
-      expect(clonedTrack.getTrackId()).toBe(newId);
+      expect(clonedTrack.getId()).toBe(newId.toString());
       expect(clonedTrack.getName()).toBe('Copy of Source Track');
+      expect(clonedTrack.getVolume()).toBe(0.5);
+
+      expect(clonedTrack.getVersion()).toBe(sourceTrack.getVersion());
     });
   });
 }); 

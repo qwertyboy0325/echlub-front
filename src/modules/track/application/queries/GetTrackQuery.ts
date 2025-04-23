@@ -1,4 +1,4 @@
-import { TrackId } from '../../domain/value-objects/TrackId';
+import { TrackId } from '../../domain/value-objects/track/TrackId';
 
 export class GetTrackQuery {
   constructor(

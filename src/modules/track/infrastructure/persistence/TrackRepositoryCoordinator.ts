@@ -1,7 +1,7 @@
 import { injectable, inject } from 'inversify';
 import type { ITrackRepository, ILocalTrackRepository } from '../../domain/repositories/ITrackRepository';
 import { BaseTrack } from '../../domain/entities/BaseTrack';
-import { TrackId } from '../../domain/value-objects/TrackId';
+import { TrackId } from '../../domain/value-objects/track/TrackId';
 import { TrackTypes } from '../../di/TrackTypes';
 import type { ITrackEventPublisher } from '../../domain/ports/ITrackEventPublisher';
 

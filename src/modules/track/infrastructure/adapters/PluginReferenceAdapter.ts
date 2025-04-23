@@ -1,7 +1,7 @@
 import { injectable } from 'inversify';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 import { IPluginReference } from '../../domain/interfaces/IPluginReference';
-import { PluginReference } from '../../domain/value-objects/PluginReference';
+import { PluginReference } from '../../domain/value-objects/plugin/PluginReference';
 
 @injectable()
 export class PluginReferenceAdapter {

@@ -1,10 +1,11 @@
 import { Container } from 'inversify';
 import { TrackMediator } from '../TrackMediator';
 import { TrackTypes } from '../../../di/TrackTypes';
-import { TrackId } from '../../../domain/value-objects/TrackId';
-import { TrackType } from '../../../domain/value-objects/TrackType';
-import { TrackRouting } from '../../../domain/value-objects/TrackRouting';
-import { AudioClipId } from '../../../domain/value-objects/AudioClipId';
+import { TrackId } from '../../../domain/value-objects/track/TrackId';
+import { TrackType } from '../../../domain/value-objects/track/TrackType';
+import { TrackRouting } from '../../../domain/value-objects/track/TrackRouting';
+import { ClipId } from '../../../domain/value-objects/clips/ClipId';
+import { PluginReference } from '../../../domain/value-objects/plugin/PluginReference';
 import { CreateTrackCommand } from '../../commands/CreateTrackCommand';
 import { RenameTrackCommand } from '../../commands/RenameTrackCommand';
 import { AddClipToTrackCommand } from '../../commands/AddClipToTrackCommand';
@@ -14,15 +15,24 @@ import { AddPluginToTrackCommand } from '../../commands/AddPluginToTrackCommand'
 import { RemovePluginFromTrackCommand } from '../../commands/RemovePluginFromTrackCommand';
 import { AddInputTrackToBusCommand } from '../../commands/AddInputTrackToBusCommand';
 import { RemoveInputTrackFromBusCommand } from '../../commands/RemoveInputTrackFromBusCommand';
-import { CreateTrackCommandHandler } from '../../handlers/CreateTrackCommandHandler';
-import { RenameTrackCommandHandler } from '../../handlers/RenameTrackCommandHandler';
-import { AddClipToTrackCommandHandler } from '../../handlers/AddClipToTrackCommandHandler';
-import { RemoveClipFromTrackCommandHandler } from '../../handlers/RemoveClipFromTrackCommandHandler';
-import { ChangeTrackRoutingCommandHandler } from '../../handlers/ChangeTrackRoutingCommandHandler';
-import { AddPluginToTrackCommandHandler } from '../../handlers/AddPluginToTrackCommandHandler';
-import { RemovePluginFromTrackCommandHandler } from '../../handlers/RemovePluginFromTrackCommandHandler';
-import { AddInputTrackToBusCommandHandler } from '../../handlers/AddInputTrackToBusCommandHandler';
-import { RemoveInputTrackFromBusCommandHandler } from '../../handlers/RemoveInputTrackFromBusCommandHandler';
+import { CreateTrackCommandHandler } from '../../commands/handlers/CreateTrackCommandHandler';
+import { RenameTrackCommandHandler } from '../../commands/handlers/RenameTrackCommandHandler';
+import { AddClipToTrackCommandHandler } from '../../commands/handlers/AddClipToTrackCommandHandler';
+import { RemoveClipFromTrackCommandHandler } from '../../commands/handlers/RemoveClipFromTrackCommandHandler';
+import { ChangeTrackRoutingCommandHandler } from '../../commands/handlers/ChangeTrackRoutingCommandHandler';
+import { AddPluginToTrackCommandHandler } from '../../commands/handlers/AddPluginToTrackCommandHandler';
+import { RemovePluginFromTrackCommandHandler } from '../../commands/handlers/RemovePluginFromTrackCommandHandler';
+import { AddInputTrackToBusCommandHandler } from '../../commands/handlers/AddInputTrackToBusCommandHandler';
+import { RemoveInputTrackFromBusCommandHandler } from '../../commands/handlers/RemoveInputTrackFromBusCommandHandler';
+import { AddNoteToClipCommandHandler } from '../../commands/handlers/AddNoteToClipCommandHandler';
+import { UpdateNoteInClipCommandHandler } from '../../commands/handlers/UpdateNoteInClipCommandHandler';
+import { RemoveNoteFromClipCommandHandler } from '../../commands/handlers/RemoveNoteFromClipCommandHandler';
+import { DeleteTrackCommandHandler } from '../../commands/handlers/DeleteTrackCommandHandler';
+import { GetTrackByIdQueryHandler } from '../../queries/handlers/GetTrackByIdQueryHandler';
+import { GetTrackPluginsQueryHandler } from '../../queries/handlers/GetTrackPluginsQueryHandler';
+import { GetTrackRoutingQueryHandler } from '../../queries/handlers/GetTrackRoutingQueryHandler';
+import { GetTrackGainQueryHandler } from '../../queries/handlers/GetTrackGainQueryHandler';
+import { GetTrackNameQueryHandler } from '../../queries/handlers/GetTrackNameQueryHandler';
 
 describe('TrackMediator', () => {
   let container: Container;
@@ -36,11 +46,20 @@ describe('TrackMediator', () => {
   let removePluginHandler: jest.Mocked<RemovePluginFromTrackCommandHandler>;
   let addInputTrackHandler: jest.Mocked<AddInputTrackToBusCommandHandler>;
   let removeInputTrackHandler: jest.Mocked<RemoveInputTrackFromBusCommandHandler>;
+  let addNoteHandler: jest.Mocked<AddNoteToClipCommandHandler>;
+  let updateNoteHandler: jest.Mocked<UpdateNoteInClipCommandHandler>;
+  let removeNoteHandler: jest.Mocked<RemoveNoteFromClipCommandHandler>;
+  let deleteTrackHandler: jest.Mocked<DeleteTrackCommandHandler>;
+  let getTrackByIdHandler: jest.Mocked<GetTrackByIdQueryHandler>;
+  let getTrackPluginsHandler: jest.Mocked<GetTrackPluginsQueryHandler>;
+  let getTrackRoutingHandler: jest.Mocked<GetTrackRoutingQueryHandler>;
+  let getTrackGainHandler: jest.Mocked<GetTrackGainQueryHandler>;
+  let getTrackNameHandler: jest.Mocked<GetTrackNameQueryHandler>;
 
   beforeEach(() => {
     container = new Container();
 
-    // 創建所有處理器的模擬對象
+    // 創建所有模擬處理器
     createTrackHandler = { handle: jest.fn() } as any;
     renameTrackHandler = { handle: jest.fn() } as any;
     addClipHandler = { handle: jest.fn() } as any;
@@ -50,6 +69,15 @@ describe('TrackMediator', () => {
     removePluginHandler = { handle: jest.fn() } as any;
     addInputTrackHandler = { handle: jest.fn() } as any;
     removeInputTrackHandler = { handle: jest.fn() } as any;
+    addNoteHandler = { handle: jest.fn() } as any;
+    updateNoteHandler = { handle: jest.fn() } as any;
+    removeNoteHandler = { handle: jest.fn() } as any;
+    deleteTrackHandler = { handle: jest.fn() } as any;
+    getTrackByIdHandler = { handle: jest.fn() } as any;
+    getTrackPluginsHandler = { handle: jest.fn() } as any;
+    getTrackRoutingHandler = { handle: jest.fn() } as any;
+    getTrackGainHandler = { handle: jest.fn() } as any;
+    getTrackNameHandler = { handle: jest.fn() } as any;
 
     // 註冊所有模擬處理器
     container.bind(TrackTypes.CreateTrackCommandHandler).toConstantValue(createTrackHandler);
@@ -61,10 +89,19 @@ describe('TrackMediator', () => {
     container.bind(TrackTypes.RemovePluginFromTrackCommandHandler).toConstantValue(removePluginHandler);
     container.bind(TrackTypes.AddInputTrackToBusCommandHandler).toConstantValue(addInputTrackHandler);
     container.bind(TrackTypes.RemoveInputTrackFromBusCommandHandler).toConstantValue(removeInputTrackHandler);
+    container.bind(TrackTypes.AddNoteToClipCommandHandler).toConstantValue(addNoteHandler);
+    container.bind(TrackTypes.UpdateNoteInClipCommandHandler).toConstantValue(updateNoteHandler);
+    container.bind(TrackTypes.RemoveNoteFromClipCommandHandler).toConstantValue(removeNoteHandler);
+    container.bind(TrackTypes.DeleteTrackCommandHandler).toConstantValue(deleteTrackHandler);
+    container.bind(TrackTypes.GetTrackByIdQueryHandler).toConstantValue(getTrackByIdHandler);
+    container.bind(TrackTypes.GetTrackPluginsQueryHandler).toConstantValue(getTrackPluginsHandler);
+    container.bind(TrackTypes.GetTrackRoutingQueryHandler).toConstantValue(getTrackRoutingHandler);
+    container.bind(TrackTypes.GetTrackGainQueryHandler).toConstantValue(getTrackGainHandler);
+    container.bind(TrackTypes.GetTrackNameQueryHandler).toConstantValue(getTrackNameHandler);
 
     // 創建 TrackMediator 實例
-    container.bind(TrackMediator).toSelf();
-    mediator = container.get(TrackMediator);
+    container.bind(TrackTypes.TrackMediator).toConstructor(TrackMediator);
+    mediator = container.get<TrackMediator>(TrackTypes.TrackMediator);
   });
 
   describe('createTrack', () => {
@@ -93,7 +130,7 @@ describe('TrackMediator', () => {
     it('應該將命令委託給 AddClipToTrackCommandHandler', async () => {
       const command = new AddClipToTrackCommand(
         TrackId.create(),
-        AudioClipId.fromString('clip-1')
+        ClipId.fromString('clip-1')
       );
       await mediator.addClipToTrack(command);
 
@@ -105,7 +142,7 @@ describe('TrackMediator', () => {
     it('應該將命令委託給 RemoveClipFromTrackCommandHandler', async () => {
       const command = new RemoveClipFromTrackCommand(
         TrackId.create(),
-        AudioClipId.fromString('clip-1')
+        ClipId.fromString('clip-1')
       );
       await mediator.removeClipFromTrack(command);
 
@@ -117,7 +154,7 @@ describe('TrackMediator', () => {
     it('應該將命令委託給 ChangeTrackRoutingCommandHandler', async () => {
       const command = new ChangeTrackRoutingCommand(
         TrackId.create(),
-        new TrackRouting('input-1', 'output-1')
+        new TrackRouting(null, null)
       );
       await mediator.changeTrackRouting(command);
 
@@ -127,11 +164,10 @@ describe('TrackMediator', () => {
 
   describe('addPluginToTrack', () => {
     it('應該將命令委託給 AddPluginToTrackCommandHandler', async () => {
-      const command = new AddPluginToTrackCommand(TrackId.create(), {
-        id: 'plugin-1',
-        equals: jest.fn(),
-        toString: () => 'plugin-1'
-      });
+      const command = new AddPluginToTrackCommand(
+        TrackId.create(),
+        new PluginReference('plugin-1')
+      );
       await mediator.addPluginToTrack(command);
 
       expect(addPluginHandler.handle).toHaveBeenCalledWith(command);
@@ -140,11 +176,10 @@ describe('TrackMediator', () => {
 
   describe('removePluginFromTrack', () => {
     it('應該將命令委託給 RemovePluginFromTrackCommandHandler', async () => {
-      const command = new RemovePluginFromTrackCommand(TrackId.create(), {
-        id: 'plugin-1',
-        equals: jest.fn(),
-        toString: () => 'plugin-1'
-      });
+      const command = new RemovePluginFromTrackCommand(
+        TrackId.create(),
+        new PluginReference('plugin-1')
+      );
       await mediator.removePluginFromTrack(command);
 
       expect(removePluginHandler.handle).toHaveBeenCalledWith(command);

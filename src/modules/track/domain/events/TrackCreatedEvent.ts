@@ -1,6 +1,6 @@
 import { IDomainEvent } from '../interfaces/IDomainEvent';
-import { TrackId } from '../value-objects/TrackId';
-import { TrackType } from '../value-objects/TrackType';
+import { TrackId } from '../value-objects/track/TrackId';
+import { TrackType } from '../value-objects/track/TrackType';
 
 export class TrackCreatedEvent implements IDomainEvent {
   readonly eventType = 'track:created';

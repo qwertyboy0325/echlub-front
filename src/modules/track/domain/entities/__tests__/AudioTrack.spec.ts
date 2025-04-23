@@ -1,6 +1,6 @@
 import { AudioTrack } from '../AudioTrack';
-import { TrackId } from '../../value-objects/TrackId';
-import { TrackRouting } from '../../value-objects/TrackRouting';
+import { TrackId } from '../../value-objects/track/TrackId';
+import { TrackRouting } from '../../value-objects/track/TrackRouting';
 import { AudioClipId } from '../../value-objects/AudioClipId';
 
 describe('AudioTrack', () => {

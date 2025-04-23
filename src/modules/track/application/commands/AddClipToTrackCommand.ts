@@ -1,5 +1,5 @@
-import { TrackId } from '../../domain/value-objects/TrackId';
-import { ClipId } from '../../domain/value-objects/ClipId';
+import { TrackId } from '../../domain/value-objects/track/TrackId';
+import { ClipId } from '../../domain/value-objects/clips/ClipId';
 
 export class AddClipToTrackCommand {
   constructor(

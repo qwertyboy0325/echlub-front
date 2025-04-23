@@ -1,8 +1,8 @@
-import { TrackId } from '../../../domain/value-objects/TrackId';
-import { TrackType } from '../../../domain/value-objects/TrackType';
-import { TrackRouting } from '../../../domain/value-objects/TrackRouting';
-import { AudioClipId } from '../../../domain/value-objects/AudioClipId';
-import { PluginReference } from '../../../domain/value-objects/PluginReference';
+import { TrackId } from '../../../domain/value-objects/track/TrackId';
+import { ClipId } from '../../../domain/value-objects/clips/ClipId';
+import { TrackType } from '../../../domain/value-objects/track/TrackType';
+import { TrackRouting } from '../../../domain/value-objects/track/TrackRouting';
+import { PluginReference } from '../../../domain/value-objects/plugin/PluginReference';
 import { CreateTrackCommand } from '../CreateTrackCommand';
 import { RenameTrackCommand } from '../RenameTrackCommand';
 import { AddClipToTrackCommand } from '../AddClipToTrackCommand';
@@ -16,14 +16,14 @@ import { RemoveInputTrackFromBusCommand } from '../RemoveInputTrackFromBusComman
 describe('音軌命令', () => {
   let trackId: TrackId;
   let routing: TrackRouting;
-  let clipId: AudioClipId;
+  let clipId: ClipId;
   let pluginRef: PluginReference;
 
   beforeEach(() => {
     trackId = TrackId.create();
     routing = new TrackRouting('input-1', 'output-1');
-    clipId = AudioClipId.fromString('audio-clip-1');
-    pluginRef = PluginReference.create('plugin-1');
+    clipId = ClipId.create();
+    pluginRef = new PluginReference('plugin-1');
   });
 
   describe('CreateTrackCommand', () => {

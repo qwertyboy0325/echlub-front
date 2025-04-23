@@ -1,9 +1,9 @@
 import { BaseTrack, TrackState } from '../BaseTrack';
-import { TrackId } from '../../value-objects/TrackId';
-import { TrackRouting } from '../../value-objects/TrackRouting';
-import { TrackType } from '../../value-objects/TrackType';
+import { TrackId } from '../../value-objects/track/TrackId';
+import { TrackRouting } from '../../value-objects/track/TrackRouting';
+import { TrackType } from '../../value-objects/track/TrackType';
 import { ClipId } from '../../value-objects/ClipId';
-import { PluginReference } from '../../value-objects/PluginReference';
+import { PluginReference } from '../../value-objects/plugin/PluginReference';
 
 // 創建一個具體的 BaseTrack 實現用於測試
 class TestTrack extends BaseTrack {

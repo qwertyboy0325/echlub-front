@@ -1,6 +1,6 @@
-import { TrackId } from '../value-objects/TrackId';
-import { TrackRouting } from '../value-objects/TrackRouting';
-import { TrackType } from '../value-objects/TrackType';
+import { TrackId } from '../value-objects/track/TrackId';
+import { TrackRouting } from '../value-objects/track/TrackRouting';
+import { TrackType } from '../value-objects/track/TrackType';
 import { IPluginReference } from '../interfaces/IPluginReference';
 import { BaseTrack } from '../entities/BaseTrack';
 

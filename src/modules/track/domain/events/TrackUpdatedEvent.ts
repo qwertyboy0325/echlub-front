@@ -1,4 +1,4 @@
-import { TrackId } from '../value-objects/TrackId';
+import { TrackId } from '../value-objects/track/TrackId';
 import { IDomainEvent } from '../interfaces/IDomainEvent';
 import { BaseTrack } from '../entities/BaseTrack';
 

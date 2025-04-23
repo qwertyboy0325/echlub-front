@@ -1,7 +1,7 @@
 import { injectable, inject } from 'inversify';
 import { IWebRTCTrackRepository } from '../../domain/repositories/ITrackRepository';
 import { BaseTrack } from '../../domain/entities/BaseTrack';
-import { TrackId } from '../../domain/value-objects/TrackId';
+import { TrackId } from '../../domain/value-objects/track/TrackId';
 import { TYPES } from '../../../../core/di/types';
 import { IWebRTCClient } from '../../../../core/webrtc/IWebRTCClient';
 

@@ -1,35 +1,76 @@
-import { TrackId } from '../value-objects/TrackId';
-import { TrackRouting } from '../value-objects/TrackRouting';
-import { ClipId } from '../value-objects/ClipId';
-import { IAggregate } from '../interfaces/IAggregate';
-import { TrackType } from '../value-objects/TrackType';
+import { TrackId } from '../value-objects/track/TrackId';
+import { TrackRouting } from '../value-objects/track/TrackRouting';
 import { IPluginReference } from '../interfaces/IPluginReference';
+import { ClipId } from '../value-objects/clips/ClipId';
+import { IAggregateRoot } from '../interfaces/IAggregateRoot';
+import { TrackType } from '../value-objects/track/TrackType';
 
 export interface TrackState {
+  id: string;
   name: string;
+  type: TrackType;
   routing: TrackRouting;
-  mute: boolean;
-  solo: boolean;
-  volume: number;
   plugins: IPluginReference[];
+  isMuted: boolean;
+  isSolo: boolean;
+  volume: number;
+  version: number;
 }
 
-export abstract class BaseTrack implements IAggregate {
-  private _version: number = 0;
-  private _plugins: IPluginReference[] = [];
-  protected mute: boolean = false;
-  protected solo: boolean = false;
-  protected volume: number = 1;
+/**
+ * Track 是一個聚合根，它負責：
+ * 1. 管理 Clips 的生命週期和一致性
+ * 2. 維護 Plugin 鏈的順序和狀態
+ * 3. 確保路由設置的有效性
+ * 4. 控制音量、靜音等狀態的一致性
+ */
+export abstract class BaseTrack implements IAggregateRoot {
+  protected _version: number = 1;
+  protected _plugins: IPluginReference[] = [];
+  protected _isMuted: boolean = false;
+  protected _isSolo: boolean = false;
+  protected _volume: number = 1.0;
+  private readonly MAX_PLUGINS = 10;
 
   constructor(
-    protected readonly trackId: TrackId,
-    protected name: string,
-    protected routing: TrackRouting,
-    protected readonly trackType: TrackType
-  ) {}
+    protected readonly _id: TrackId,
+    protected _name: string,
+    protected _routing: TrackRouting,
+    protected readonly _type: TrackType,
+    initialState?: Partial<TrackState>
+  ) {
+    this.validateConstructorParams();
+    if (initialState) {
+      this.initializeState(initialState);
+    }
+  }
+
+  private validateConstructorParams(): void {
+    if (!this._id) throw new Error('Track ID cannot be null');
+    if (!this._name) throw new Error('Track name cannot be empty');
+    if (!this._routing) throw new Error('Track routing cannot be null');
+    if (!this._type) throw new Error('Track type cannot be null');
+  }
+
+  /**
+   * 驗證版本號是否匹配預期
+   * @throws {Error} 當版本號不匹配時
+   */
+  protected validateVersion(expectedVersion: number): void {
+    if (this._version !== expectedVersion) {
+      throw new Error(`Version mismatch. Expected ${expectedVersion}, got ${this._version}`);
+    }
+  }
 
   getId(): string {
-    return this.trackId.toString();
+    return this._id.toString();
+  }
+
+  equals(other: IAggregateRoot): boolean {
+    if (!(other instanceof BaseTrack)) {
+      return false;
+    }
+    return this._id.equals(other._id);
   }
 
   getVersion(): number {
@@ -40,105 +81,160 @@ export abstract class BaseTrack implements IAggregate {
     this._version++;
   }
 
-  protected doIncrementVersion(): void {
+  getName(): string {
+    return this._name;
+  }
+
+  /**
+   * 重命名軌道
+   * @throws {Error} 當名稱為空時
+   */
+  rename(name: string): void {
+    if (!name?.trim()) {
+      throw new Error('Track name cannot be empty or whitespace');
+    }
+    this._name = name.trim();
     this.incrementVersion();
   }
 
-  getTrackId(): TrackId {
-    return this.trackId;
+  getType(): TrackType {
+    return this._type;
   }
 
-  getName(): string {
-    return this.name;
+  getRouting(): TrackRouting {
+    return this._routing;
+  }
+
+  setRouting(routing: TrackRouting): void {
+    if (!routing) {
+      throw new Error('Routing cannot be null');
+    }
+    this._routing = routing;
+    this.incrementVersion();
+  }
+
+  abstract addClip(clipId: ClipId): void;
+  abstract removeClip(clipId: ClipId): void;
+  abstract getClips(): ClipId[];
+  
+  /**
+   * 添加插件到軌道
+   * @throws {Error} 當插件已存在或超出最大數量限制時
+   */
+  addPlugin(pluginRef: IPluginReference): void {
+    if (!pluginRef) {
+      throw new Error('Plugin reference cannot be null');
+    }
+    if (this._plugins.length >= this.MAX_PLUGINS) {
+      throw new Error(`Cannot add more than ${this.MAX_PLUGINS} plugins to a track`);
+    }
+    if (this._plugins.some(ref => ref.equals(pluginRef))) {
+      throw new Error('Plugin already exists in track');
+    }
+    this._plugins.push(pluginRef);
+    this.incrementVersion();
+  }
+
+  /**
+   * 從軌道移除插件
+   * @returns {boolean} 是否成功移除插件
+   */
+  removePlugin(pluginRef: IPluginReference): boolean {
+    if (!pluginRef) {
+      throw new Error('Plugin reference cannot be null');
+    }
+    const index = this._plugins.findIndex(ref => ref.equals(pluginRef));
+    if (index !== -1) {
+      this._plugins.splice(index, 1);
+      this.incrementVersion();
+      return true;
+    }
+    return false;
   }
 
   getPlugins(): IPluginReference[] {
     return [...this._plugins];
   }
 
-  getRouting(): TrackRouting {
-    return this.routing;
-  }
-
-  abstract addClip(clipId: ClipId): void;
-  abstract removeClip(clipId: ClipId): void;
-  
-  addPlugin(pluginRef: IPluginReference): void {
-    if (!this._plugins.some(ref => ref.equals(pluginRef))) {
-      this._plugins.push(pluginRef);
-      this.incrementVersion();
+  setMuted(muted: boolean): void {
+    if (typeof muted !== 'boolean') {
+      throw new Error('Mute value must be a boolean');
     }
-  }
-
-  removePlugin(pluginRef: IPluginReference): void {
-    this._plugins = this._plugins.filter(ref => !ref.equals(pluginRef));
-    this.incrementVersion();
-  }
-
-  updateRouting(routing: TrackRouting): void {
-    this.routing = routing;
-    this.incrementVersion();
-  }
-
-  rename(newName: string): void {
-    this.name = newName;
-    this.incrementVersion();
-  }
-
-  setMute(mute: boolean): void {
-    this.mute = mute;
-    this.incrementVersion();
-  }
-
-  setSolo(solo: boolean): void {
-    this.solo = solo;
+    this._isMuted = muted;
     this.incrementVersion();
   }
 
   isMuted(): boolean {
-    return this.mute;
+    return this._isMuted;
+  }
+
+  setSolo(solo: boolean): void {
+    if (typeof solo !== 'boolean') {
+      throw new Error('Solo value must be a boolean');
+    }
+    this._isSolo = solo;
+    this.incrementVersion();
   }
 
   isSolo(): boolean {
-    return this.solo;
+    return this._isSolo;
   }
 
+  /**
+   * 設置音量
+   * @throws {Error} 當音量值無效時
+   */
   setVolume(volume: number): void {
+    if (typeof volume !== 'number' || isNaN(volume)) {
+      throw new Error('Volume must be a number');
+    }
     if (volume < 0) {
       throw new Error('Volume cannot be negative');
     }
-    this.volume = volume;
+    if (volume > 2) {
+      throw new Error('Volume cannot exceed 2.0 (200%)');
+    }
+    this._volume = volume;
     this.incrementVersion();
   }
 
   getVolume(): number {
-    return this.volume;
+    return this._volume;
   }
 
-  getType(): TrackType {
-    return this.trackType;
-  }
-
-  getState(): TrackState {
-    return {
-      name: this.name,
-      routing: this.routing,
-      mute: this.mute,
-      solo: this.solo,
-      volume: this.volume,
-      plugins: [...this._plugins]
-    };
+  /**
+   * 初始化狀態
+   * 用於創建和複製時設置初始狀態，不會觸發版本號增加
+   */
+  protected initializeState(state: Partial<TrackState>): void {
+    if (state.volume !== undefined) {
+      this._volume = state.volume;
+    }
+    if (state.isMuted !== undefined) {
+      this._isMuted = state.isMuted;
+    }
+    if (state.isSolo !== undefined) {
+      this._isSolo = state.isSolo;
+    }
+    if (state.version !== undefined) {
+      this._version = state.version;
+    }
+    if (state.plugins) {
+      this._plugins = [...state.plugins];
+    }
   }
 
   toJSON(): object {
     return {
-      trackId: this.trackId.toString(),
-      name: this.name,
-      routing: this.routing,
-      type: this.trackType.toString(),
-      version: this.getVersion(),
-      plugins: this._plugins.map(p => p.toString()),
-      state: this.getState()
+      id: this.getId(),
+      name: this._name,
+      type: this._type.toString(),
+      routing: this._routing.toJSON(),
+      plugins: this._plugins.map(p => p.toJSON()),
+      isMuted: this._isMuted,
+      isSolo: this._isSolo,
+      volume: this._volume,
+      version: this._version
     };
   }
 } 

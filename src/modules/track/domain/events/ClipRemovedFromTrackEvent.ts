@@ -1,5 +1,5 @@
-import { TrackId } from '../value-objects/TrackId';
-import { ClipId } from '../value-objects/ClipId';
+import { TrackId } from '../value-objects/track/TrackId';
+import { ClipId } from '../value-objects/clips/ClipId';
 import { IDomainEvent } from '../interfaces/IDomainEvent';
 
 export class ClipRemovedFromTrackEvent implements IDomainEvent {

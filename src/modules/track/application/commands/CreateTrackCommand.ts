@@ -1,4 +1,4 @@
-import { TrackType } from '../../domain/value-objects/TrackType';
+import { TrackType } from '../../domain/value-objects/track/TrackType';
 
 export class CreateTrackCommand {
   constructor(

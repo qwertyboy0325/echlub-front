@@ -1,12 +1,12 @@
 import { injectable, inject } from 'inversify';
-import { TrackId } from '../value-objects/TrackId';
-import { TrackRouting } from '../value-objects/TrackRouting';
+import { TrackId } from '../value-objects/track/TrackId';
+import { TrackRouting } from '../value-objects/track/TrackRouting';
 import { AudioTrack } from '../entities/AudioTrack';
-import { InstrumentTrack } from '../entities/InstrumentTrack';
+import { MidiTrack } from '../entities/MidiTrack';
 import { BusTrack } from '../entities/BusTrack';
 import { IPluginReference } from '../interfaces/IPluginReference';
 import { BaseTrack } from '../entities/BaseTrack';
-import { TrackType } from '../value-objects/TrackType';
+import { TrackType } from '../value-objects/track/TrackType';
 import { ITrackFactory } from './ITrackFactory';
 import { TrackTypes } from '../../di/TrackTypes';
 
@@ -18,7 +18,7 @@ export class AudioTrackFactory implements ITrackFactory {
   create(
     id: TrackId,
     name: string,
-    routing: TrackRouting = new TrackRouting(null, null),
+    routing: TrackRouting = new TrackRouting('', ''),
     plugins: IPluginReference[] = []
   ): AudioTrack {
     const track = new AudioTrack(id, name, routing);
@@ -32,67 +32,75 @@ export class AudioTrackFactory implements ITrackFactory {
     }
 
     const name = newName || `Copy of ${sourceTrack.getName()}`;
-    const track = this.create(
+    const state = {
+      volume: sourceTrack.getVolume(),
+      isMuted: sourceTrack.isMuted(),
+      isSolo: sourceTrack.isSolo(),
+      plugins: sourceTrack.getPlugins(),
+      version: sourceTrack.getVersion()
+    };
+
+    return new AudioTrack(
       newId,
       name,
-      sourceTrack.getRouting(),
-      sourceTrack.getPlugins()
+      sourceTrack.getRouting().clone(),
+      state
     );
-
-    track.setVolume(sourceTrack.getVolume());
-    track.setMute(sourceTrack.isMuted());
-    track.setSolo(sourceTrack.isSolo());
-
-    return track;
   }
 }
 
 /**
- * 樂器音軌工廠
+ * MIDI音軌工廠
  */
 @injectable()
-export class InstrumentTrackFactory implements ITrackFactory {
+export class MidiTrackFactory implements ITrackFactory {
   create(
     id: TrackId,
     name: string,
-    routing: TrackRouting = new TrackRouting(null, null),
+    routing: TrackRouting = new TrackRouting('', ''),
     plugins: IPluginReference[] = []
-  ): InstrumentTrack {
-    const track = new InstrumentTrack(id, name, routing);
+  ): MidiTrack {
+    const track = new MidiTrack(id, name, routing);
     plugins.forEach(plugin => track.addPlugin(plugin));
     return track;
   }
 
-  clone(sourceTrack: BaseTrack, newId: TrackId, newName?: string): InstrumentTrack {
-    if (!(sourceTrack instanceof InstrumentTrack)) {
-      throw new Error('Source track must be an InstrumentTrack');
+  clone(sourceTrack: BaseTrack, newId: TrackId, newName?: string): MidiTrack {
+    if (!(sourceTrack instanceof MidiTrack)) {
+      throw new Error('Source track must be a MidiTrack');
     }
 
     const name = newName || `Copy of ${sourceTrack.getName()}`;
-    const track = this.create(
+    const state = {
+      volume: sourceTrack.getVolume(),
+      isMuted: sourceTrack.isMuted(),
+      isSolo: sourceTrack.isSolo(),
+      plugins: sourceTrack.getPlugins(),
+      version: sourceTrack.getVersion()
+    };
+
+    const midiClips = sourceTrack.getMidiClips().map(clip => clip.toString());
+
+    return new MidiTrack(
       newId,
       name,
-      sourceTrack.getRouting(),
-      sourceTrack.getPlugins()
+      sourceTrack.getRouting().clone(),
+      midiClips,
+      sourceTrack.getPlugins(),
+      state
     );
-
-    track.setVolume(sourceTrack.getVolume());
-    track.setMute(sourceTrack.isMuted());
-    track.setSolo(sourceTrack.isSolo());
-
-    return track;
   }
 }
 
 /**
- * 總線音軌工廠
+ * 匯流排音軌工廠
  */
 @injectable()
 export class BusTrackFactory implements ITrackFactory {
   create(
     id: TrackId,
     name: string,
-    routing: TrackRouting = new TrackRouting(null, null),
+    routing: TrackRouting = new TrackRouting('', ''),
     plugins: IPluginReference[] = []
   ): BusTrack {
     const track = new BusTrack(id, name, routing);
@@ -106,16 +114,30 @@ export class BusTrackFactory implements ITrackFactory {
     }
 
     const name = newName || `Copy of ${sourceTrack.getName()}`;
-    const track = this.create(
+    const state = {
+      volume: sourceTrack.getVolume(),
+      isMuted: sourceTrack.isMuted(),
+      isSolo: sourceTrack.isSolo(),
+      plugins: sourceTrack.getPlugins(),
+      version: sourceTrack.getVersion()
+    };
+
+    const track = new BusTrack(
       newId,
       name,
-      sourceTrack.getRouting(),
-      sourceTrack.getPlugins()
+      sourceTrack.getRouting().clone(),
+      [],  // 空的插件列表，我們會在後面手動添加
+      [],  // 空的 send 設定列表
+      [],  // 空的 return 設定列表
+      state
     );
 
-    track.setVolume(sourceTrack.getVolume());
-    track.setMute(sourceTrack.isMuted());
-    track.setSolo(sourceTrack.isSolo());
+    // 手動添加插件
+    sourceTrack.getPlugins().forEach(plugin => track.addPlugin(plugin));
+
+    // 複製 send 和 return 設定
+    sourceTrack.getSendSettings().forEach(setting => track.addSendSetting(setting));
+    sourceTrack.getReturnSettings().forEach(setting => track.addReturnSetting(setting));
 
     return track;
   }
@@ -130,11 +152,11 @@ export class TrackFactoryRegistry {
 
   constructor(
     @inject(TrackTypes.AudioTrackFactory) audioFactory: AudioTrackFactory,
-    @inject(TrackTypes.InstrumentTrackFactory) instrumentFactory: InstrumentTrackFactory,
+    @inject(TrackTypes.MidiTrackFactory) midiFactory: MidiTrackFactory,
     @inject(TrackTypes.BusTrackFactory) busFactory: BusTrackFactory
   ) {
     this.factories.set(TrackType.AUDIO, audioFactory);
-    this.factories.set(TrackType.INSTRUMENT, instrumentFactory);
+    this.factories.set(TrackType.MIDI, midiFactory);
     this.factories.set(TrackType.BUS, busFactory);
   }
 

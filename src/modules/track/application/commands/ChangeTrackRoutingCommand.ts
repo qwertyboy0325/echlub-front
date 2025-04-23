@@ -1,5 +1,5 @@
-import { TrackId } from '../../domain/value-objects/TrackId';
-import { TrackRouting } from '../../domain/value-objects/TrackRouting';
+import { TrackId } from '../../domain/value-objects/track/TrackId';
+import { TrackRouting } from '../../domain/value-objects/track/TrackRouting';
 
 export class ChangeTrackRoutingCommand {
   constructor(

@@ -1,4 +1,4 @@
-import { TrackId } from '../TrackId';
+import { TrackId } from '../track/TrackId';
 
 describe('TrackId', () => {
   describe('create', () => {

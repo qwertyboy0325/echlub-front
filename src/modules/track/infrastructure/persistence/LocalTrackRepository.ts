@@ -1,7 +1,7 @@
 import { injectable } from 'inversify';
 import { ILocalTrackRepository } from '../../domain/repositories/ITrackRepository';
 import { BaseTrack } from '../../domain/entities/BaseTrack';
-import { TrackId } from '../../domain/value-objects/TrackId';
+import { TrackId } from '../../domain/value-objects/track/TrackId';
 
 @injectable()
 export class LocalTrackRepository implements ILocalTrackRepository {

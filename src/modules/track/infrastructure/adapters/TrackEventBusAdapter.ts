@@ -2,9 +2,9 @@ import { injectable, inject } from 'inversify';
 import { TYPES } from '../../../../core/di/types';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { ITrackEventPublisher } from '../../domain/ports/ITrackEventPublisher';
-import { TrackId } from '../../domain/value-objects/TrackId';
+import { TrackId } from '../../domain/value-objects/track/TrackId';
 import { BaseTrack } from '../../domain/entities/BaseTrack';
-import { TrackRouting } from '../../domain/value-objects/TrackRouting';
+import { TrackRouting } from '../../domain/value-objects/track/TrackRouting';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 import { TrackCreatedEvent } from '../../domain/events/TrackCreatedEvent';
 import { TrackUpdatedEvent } from '../../domain/events/TrackUpdatedEvent';
@@ -13,8 +13,8 @@ import { TrackRenamedEvent } from '../../domain/events/TrackRenamedEvent';
 import { TrackRoutingChangedEvent } from '../../domain/events/TrackRoutingChangedEvent';
 import { PluginAddedToTrackEvent } from '../../domain/events/PluginAddedToTrackEvent';
 import { PluginRemovedFromTrackEvent } from '../../domain/events/PluginRemovedFromTrackEvent';
-import { PluginReference } from '../../domain/value-objects/PluginReference';
-import { TrackType } from '../../domain/value-objects/TrackType';
+import { PluginReference } from '../../domain/value-objects/plugin/PluginReference';
+import { TrackType } from '../../domain/value-objects/track/TrackType';
 
 @injectable()
 export class TrackEventBusAdapter implements ITrackEventPublisher {

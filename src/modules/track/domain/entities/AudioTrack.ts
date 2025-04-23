@@ -1,24 +1,23 @@
-import { BaseTrack } from './BaseTrack';
-import { TrackId } from '../value-objects/TrackId';
-import { TrackRouting } from '../value-objects/TrackRouting';
-import { AudioClipId } from '../value-objects/AudioClipId';
-import { ClipId } from '../value-objects/ClipId';
-import { TrackType } from '../value-objects/TrackType';
+import { BaseTrack, TrackState } from './BaseTrack';
+import { TrackId } from '../value-objects/track/TrackId';
+import { TrackRouting } from '../value-objects/track/TrackRouting';
+import { ClipId } from '../value-objects/clips/ClipId';
+import { TrackType } from '../value-objects/track/TrackType';
 
 export class AudioTrack extends BaseTrack {
-  private audioClipIds: AudioClipId[] = [];
+  private audioClipIds: ClipId[] = [];
 
   constructor(
-    trackId: TrackId,
+    id: TrackId,
     name: string,
     routing: TrackRouting,
-    public readonly audioClips: string[] = []
+    initialState?: Partial<TrackState>
   ) {
-    super(trackId, name, routing, TrackType.AUDIO);
+    super(id, name, routing, TrackType.AUDIO, initialState);
   }
 
   addClip(clipId: ClipId): void {
-    if (clipId instanceof AudioClipId) {
+    if (clipId instanceof ClipId) {
       if (!this.audioClipIds.some(id => id.equals(clipId))) {
         this.audioClipIds.push(clipId);
         this.incrementVersion();
@@ -29,7 +28,7 @@ export class AudioTrack extends BaseTrack {
   }
 
   removeClip(clipId: ClipId): void {
-    if (clipId instanceof AudioClipId) {
+    if (clipId instanceof ClipId) {
       this.audioClipIds = this.audioClipIds.filter(id => !id.equals(clipId));
       this.incrementVersion();
     } else {
@@ -37,7 +36,11 @@ export class AudioTrack extends BaseTrack {
     }
   }
 
-  getAudioClips(): AudioClipId[] {
+  getAudioClips(): ClipId[] {
+    return [...this.audioClipIds];
+  }
+
+  getClips(): ClipId[] {
     return [...this.audioClipIds];
   }
 
@@ -46,5 +49,21 @@ export class AudioTrack extends BaseTrack {
       ...super.toJSON(),
       audioClips: this.audioClipIds.map(id => id.toString())
     };
+  }
+
+  clone(): AudioTrack {
+    const state: Partial<TrackState> = {
+      volume: this._volume,
+      isMuted: this._isMuted,
+      isSolo: this._isSolo,
+      plugins: [...this._plugins],
+      version: 1
+    };
+    return new AudioTrack(
+      TrackId.create(),
+      this._name,
+      this._routing.clone(),
+      state
+    );
   }
 } 

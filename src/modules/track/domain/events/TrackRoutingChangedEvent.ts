@@ -1,23 +1,24 @@
-import { TrackId } from '../value-objects/TrackId';
-import { TrackRouting } from '../value-objects/TrackRouting';
 import { IDomainEvent } from '../interfaces/IDomainEvent';
+import { TrackId } from '../value-objects/track/TrackId';
+import { TrackRouting } from '../value-objects/track/TrackRouting';
 
 export class TrackRoutingChangedEvent implements IDomainEvent {
-  readonly eventType = 'track:routing:changed';
-  readonly timestamp: Date;
-  readonly aggregateId: string;
-  readonly payload: {
-    routing: TrackRouting;
-  };
+  public readonly eventType = 'track:routing:changed';
+  public readonly timestamp: Date;
+  public readonly aggregateId: string;
+  public readonly payload: Record<string, never>;
 
   constructor(
     trackId: TrackId,
-    routing: TrackRouting
+    public readonly oldRouting: TrackRouting,
+    public readonly newRouting: TrackRouting
   ) {
     this.timestamp = new Date();
     this.aggregateId = trackId.toString();
-    this.payload = {
-      routing
-    };
+    this.payload = {};
+  }
+
+  getEventName(): string {
+    return 'track:routing:changed';
   }
 } 

@@ -1,8 +1,9 @@
 import { injectable } from 'inversify';
 import { BaseTrack } from '../entities/BaseTrack';
-import { TrackId } from '../value-objects/TrackId';
+import { TrackId } from '../value-objects/track/TrackId';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
-import { ClipId } from '../value-objects/ClipId';
+import { ClipId } from '../value-objects/clips/ClipId';
+import { PluginReference } from '../value-objects/plugin/PluginReference';
 
 @injectable()
 export class TrackDomainService {
@@ -29,10 +30,12 @@ export class TrackDomainService {
   }
 
   canAddPlugin(track: BaseTrack, pluginId: PluginInstanceId): boolean {
-    return !track.getPlugins().some(id => id.equals(pluginId));
+    const pluginRef = new PluginReference(pluginId.toString());
+    return !track.getPlugins().some(id => id.equals(pluginRef));
   }
 
   canRemovePlugin(track: BaseTrack, pluginId: PluginInstanceId): boolean {
-    return track.getPlugins().some(id => id.equals(pluginId));
+    const pluginRef = new PluginReference(pluginId.toString());
+    return track.getPlugins().some(id => id.equals(pluginRef));
   }
 } 
