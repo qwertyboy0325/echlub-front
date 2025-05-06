@@ -15,7 +15,8 @@ export class MockUserRepository implements IUserRepository {
 
   constructor(
     @inject(IdentityTypes.EventBus)
-    private readonly eventBus: IEventBus
+    // 不存儲 eventBus 參考，因為在測試中不需要使用它
+    _eventBus: IEventBus
   ) {}
 
   // Token operations
