@@ -17,11 +17,11 @@ jobs:
     - name: 設置 Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
     
     - name: 安裝依賴
-      run: npm ci
+      run: npm install
     
     - name: 執行 ESLint
       run: npm run lint
@@ -39,11 +39,11 @@ jobs:
     - name: 設置 Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
     
     - name: 安裝依賴
-      run: npm ci
+      run: npm install
     
     - name: 執行測試與覆蓋率檢查
       run: npm run test:coverage
@@ -72,11 +72,11 @@ jobs:
     - name: 設置 Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
     
     - name: 安裝依賴
-      run: npm ci
+      run: npm install
     
     - name: 建置專案
       run: npm run build 
