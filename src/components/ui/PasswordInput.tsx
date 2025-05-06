@@ -11,7 +11,7 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
     const [showPassword, setShowPassword] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-    
+
     // 處理點擊事件，判斷是否點擊在組件外部
     useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
@@ -19,7 +19,7 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           setIsFocused(false);
         }
       };
-      
+
       document.addEventListener('mousedown', handleClickOutside);
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
@@ -48,19 +48,19 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
     return (
       <div className="form-group" ref={containerRef}>
         <label htmlFor={id}>{label}</label>
-        <div 
+        <div
           className={`password-input-container ${isFocused ? 'focused' : ''}`}
           onClick={handleContainerClick}
         >
-          <input 
-            ref={ref} 
-            id={id} 
-            type={showPassword ? 'text' : 'password'} 
-            className={`form-input password-input ${error ? 'form-input-error' : ''}`} 
+          <input
+            ref={ref}
+            id={id}
+            type={showPassword ? 'text' : 'password'}
+            className={`form-input password-input ${error ? 'form-input-error' : ''}`}
             onFocus={handleFocus}
-            {...props} 
+            {...props}
           />
-          <button 
+          <button
             type="button"
             tabIndex={-1}
             className="password-toggle-button"
