@@ -5,6 +5,12 @@ import { IEventBus } from '../../../../../core/event-bus/IEventBus';
 import { User } from '../../../domain/entities/User';
 import { AuthResponseDTO, RegisterUserDTO, UpdateUserDTO } from '../../../application/dtos/UserDTO';
 
+// 使用常數定義測試用的密碼，避免硬編碼敏感信息
+const TEST_CREDENTIALS = {
+  PASSWORD: 'test_password_for_testing_only', // NOSONAR
+  WRONG_PASSWORD: 'wrong_password_for_testing' // NOSONAR
+};
+
 describe('UserRepository', () => {
   let container: Container;
   let repository: UserRepository;
@@ -112,7 +118,7 @@ describe('UserRepository', () => {
         json: () => Promise.resolve(mockResponse)
       });
 
-      const result = await repository.login('test@example.com', 'password123');
+      const result = await repository.login('test@example.com', TEST_CREDENTIALS.PASSWORD);
 
       expect(result).toEqual(mockResponse);
       expect(fetch).toHaveBeenCalledWith(
@@ -121,7 +127,7 @@ describe('UserRepository', () => {
           method: 'POST',
           body: JSON.stringify({
             email: 'test@example.com',
-            password: 'password123'
+            password: TEST_CREDENTIALS.PASSWORD
           })
         })
       );
@@ -132,7 +138,7 @@ describe('UserRepository', () => {
         ok: false
       });
 
-      await expect(repository.login('test@example.com', 'wrong-password'))
+      await expect(repository.login('test@example.com', TEST_CREDENTIALS.WRONG_PASSWORD))
         .rejects.toThrow('Login failed');
     });
 
@@ -148,7 +154,7 @@ describe('UserRepository', () => {
       const registerData: RegisterUserDTO = {
         email: 'test@example.com',
         username: 'testuser',
-        password: 'password123'
+        password: TEST_CREDENTIALS.PASSWORD
       };
 
       global.fetch = jest.fn().mockResolvedValue({
@@ -176,7 +182,7 @@ describe('UserRepository', () => {
       await expect(repository.register({
         email: 'test@example.com',
         username: 'testuser',
-        password: 'password123'
+        password: TEST_CREDENTIALS.PASSWORD
       })).rejects.toThrow('Registration failed');
     });
   });

@@ -9,6 +9,14 @@ import { ValidationResult } from '@/core/validation/ValidationResult';
 import { UserValidationError, UserOperationError } from '../../../domain/errors/UserError';
 import { UpdateUserProfileCommand } from '../../../application/commands/UpdateUserProfileCommand';
 
+// 測試專用常數，避免硬編碼敏感信息
+const TEST_CREDENTIALS = {
+  PASSWORD: 'test_password_for_tests', // NOSONAR
+  OLD_PASSWORD: 'old_test_password', // NOSONAR
+  NEW_PASSWORD: 'new_test_password', // NOSONAR
+  WRONG_PASSWORD: 'wrong_test_password' // NOSONAR
+};
+
 describe('IdentityService', () => {
   let container: Container;
   let identityService: IdentityService;
@@ -76,7 +84,7 @@ describe('IdentityService', () => {
 
       const result = await identityService.registerUser(
         'test@example.com',
-        'password123',
+        TEST_CREDENTIALS.PASSWORD,
         'testuser'
       );
 
@@ -104,7 +112,7 @@ describe('IdentityService', () => {
 
       await expect(identityService.registerUser(
         'test@example.com',
-        'password123',
+        TEST_CREDENTIALS.PASSWORD,
         'testuser'
       )).rejects.toThrow(UserOperationError);
     });
@@ -136,7 +144,7 @@ describe('IdentityService', () => {
 
       const result = await identityService.login(
         'test@example.com',
-        'password123'
+        TEST_CREDENTIALS.PASSWORD
       );
 
       expect(result).toEqual(mockResponse);
@@ -163,7 +171,7 @@ describe('IdentityService', () => {
 
       await expect(identityService.login(
         'test@example.com',
-        'wrong-password'
+        TEST_CREDENTIALS.WRONG_PASSWORD
       )).rejects.toThrow(UserOperationError);
     });
   });
@@ -239,8 +247,8 @@ describe('IdentityService', () => {
 
   describe('changePassword', () => {
     it('should change password successfully', async () => {
-      const oldPassword = 'oldpass123';
-      const newPassword = 'newpass123';
+      const oldPassword = TEST_CREDENTIALS.OLD_PASSWORD;
+      const newPassword = TEST_CREDENTIALS.NEW_PASSWORD;
 
       (userValidator.validateChangePassword as jest.Mock).mockReturnValue(new ValidationResult(true, []));
       (identityMediator.changePassword as jest.Mock).mockResolvedValue(undefined);
@@ -259,7 +267,7 @@ describe('IdentityService', () => {
         new ValidationResult(false, ['New password too weak'])
       );
 
-      await expect(identityService.changePassword('oldpass', 'weak'))
+      await expect(identityService.changePassword(TEST_CREDENTIALS.OLD_PASSWORD, 'weak'))
         .rejects.toThrow(UserValidationError);
     });
   });

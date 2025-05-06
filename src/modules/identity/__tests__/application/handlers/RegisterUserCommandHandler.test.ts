@@ -5,6 +5,11 @@ import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 import { RegisterUserCommand } from '../../../application/commands/RegisterUserCommand';
 import { User } from '../../../domain/entities/User';
 
+// 測試專用常數，避免硬編碼敏感信息
+const TEST_CREDENTIALS = {
+  PASSWORD: 'test_password_for_testing_only' // NOSONAR
+};
+
 describe('RegisterUserCommandHandler', () => {
   let container: Container;
   let handler: RegisterUserCommandHandler;
@@ -35,7 +40,7 @@ describe('RegisterUserCommandHandler', () => {
 
     const command = new RegisterUserCommand(
       'test@example.com',
-      'password123',
+      TEST_CREDENTIALS.PASSWORD,
       'testuser'
     );
 
@@ -44,7 +49,7 @@ describe('RegisterUserCommandHandler', () => {
     expect(result).toBe(mockUser);
     expect(userRepository.register).toHaveBeenCalledWith({
       email: 'test@example.com',
-      password: 'password123',
+      password: TEST_CREDENTIALS.PASSWORD,
       username: 'testuser'
     });
   });
@@ -54,7 +59,7 @@ describe('RegisterUserCommandHandler', () => {
 
     const command = new RegisterUserCommand(
       'test@example.com',
-      'password123',
+      TEST_CREDENTIALS.PASSWORD,
       'testuser'
     );
 
