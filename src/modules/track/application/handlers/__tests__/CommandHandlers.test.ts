@@ -4,7 +4,6 @@ import { TrackId } from '../../../domain/value-objects/TrackId';
 import { TrackType } from '../../../domain/value-objects/TrackType';
 import { TrackRouting } from '../../../domain/value-objects/TrackRouting';
 import { AudioClipId } from '../../../domain/value-objects/AudioClipId';
-import { PluginReference } from '../../../domain/value-objects/PluginReference';
 import { IPluginReference } from '../../../domain/interfaces/IPluginReference';
 import { AudioTrack } from '../../../domain/entities/AudioTrack';
 import { BusTrack } from '../../../domain/entities/BusTrack';
@@ -75,7 +74,7 @@ describe('命令處理器', () => {
 
     // Mock plugin adapter
     pluginAdapter = {
-      toPluginReference: jest.fn((id) => ({
+      toPluginReference: jest.fn((_id) => ({
         id: 'plugin-1',
         equals: (other: any) => other && other.id === 'plugin-1',
         toString: () => 'plugin-1'

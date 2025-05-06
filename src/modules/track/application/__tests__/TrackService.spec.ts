@@ -4,15 +4,12 @@ import { TrackMediator } from '../mediators/TrackMediator';
 import { TrackValidator, ValidationResult } from '../validators/TrackValidator';
 import { TrackTypes } from '../../di/TrackTypes';
 import { TrackId } from '../../domain/value-objects/TrackId';
-import { IPluginReference } from '../../domain/interfaces/IPluginReference';
 import { PluginReference } from '../../domain/value-objects/PluginReference';
 import { TrackValidationError, TrackOperationError } from '../../domain/errors/TrackError';
 import { ClipId } from '../../domain/value-objects/ClipId';
 import { TrackRouting } from '../../domain/value-objects/TrackRouting';
 import { TrackType } from '../../domain/value-objects/TrackType';
-import { CreateTrackCommand } from '../commands/CreateTrackCommand';
 import { PluginReferenceAdapter } from '../../infrastructure/adapters/PluginReferenceAdapter';
-import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 
 describe('TrackService', () => {
   let container: Container;

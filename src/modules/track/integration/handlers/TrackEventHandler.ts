@@ -31,10 +31,10 @@ export class TrackEventHandler {
 
   private async handleTrackCreated(event: TrackCreatedEvent): Promise<void> {
     const state = this.stateManager.getState<Record<string, any>>('tracks') || {};
-    state[event.trackId.toString()] = {
-      id: event.trackId,
-      name: event.name,
-      type: event.type,
+    state[event.aggregateId] = {
+      id: event.aggregateId,
+      name: event.payload.name,
+      type: event.payload.type,
       plugins: [],
       routing: null
     };
@@ -43,60 +43,60 @@ export class TrackEventHandler {
 
   private async handleTrackRenamed(event: TrackRenamedEvent): Promise<void> {
     const state = this.stateManager.getState<Record<string, any>>('tracks') || {};
-    const track = state[event.trackId.toString()];
+    const track = state[event.aggregateId];
     if (track) {
-      track.name = event.newName;
+      track.name = event.payload.newName;
       await this.stateManager.updateState('tracks', state);
     }
   }
 
   private async handleClipAdded(event: ClipAddedToTrackEvent): Promise<void> {
     const state = this.stateManager.getState<Record<string, any>>('tracks') || {};
-    const track = state[event.trackId.toString()];
+    const track = state[event.aggregateId];
     if (track) {
       if (!track.clips) {
         track.clips = [];
       }
-      track.clips.push(event.clipId);
+      track.clips.push(event.payload.clipId);
       await this.stateManager.updateState('tracks', state);
     }
   }
 
   private async handleClipRemoved(event: ClipRemovedFromTrackEvent): Promise<void> {
     const state = this.stateManager.getState<Record<string, any>>('tracks') || {};
-    const track = state[event.trackId.toString()];
+    const track = state[event.aggregateId];
     if (track && track.clips) {
-      track.clips = track.clips.filter((id: string) => id !== event.clipId.toString());
+      track.clips = track.clips.filter((id: string) => id !== event.payload.clipId);
       await this.stateManager.updateState('tracks', state);
     }
   }
 
   private async handleRoutingChanged(event: TrackRoutingChangedEvent): Promise<void> {
     const state = this.stateManager.getState<Record<string, any>>('tracks') || {};
-    const track = state[event.trackId.toString()];
+    const track = state[event.aggregateId];
     if (track) {
-      track.routing = event.routing;
+      track.routing = event.payload.routing;
       await this.stateManager.updateState('tracks', state);
     }
   }
 
   private async handlePluginAdded(event: PluginAddedToTrackEvent): Promise<void> {
     const state = this.stateManager.getState<Record<string, any>>('tracks') || {};
-    const track = state[event.trackId.toString()];
+    const track = state[event.aggregateId];
     if (track) {
       if (!track.plugins) {
         track.plugins = [];
       }
-      track.plugins.push(event.pluginId);
+      track.plugins.push(event.payload.pluginId);
       await this.stateManager.updateState('tracks', state);
     }
   }
 
   private async handlePluginRemoved(event: PluginRemovedFromTrackEvent): Promise<void> {
     const state = this.stateManager.getState<Record<string, any>>('tracks') || {};
-    const track = state[event.trackId.toString()];
+    const track = state[event.aggregateId];
     if (track && track.plugins) {
-      track.plugins = track.plugins.filter((id: string) => id !== event.pluginId.toString());
+      track.plugins = track.plugins.filter((id: string) => id !== event.payload.pluginId);
       await this.stateManager.updateState('tracks', state);
     }
   }

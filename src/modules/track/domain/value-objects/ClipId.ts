@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
-
 export abstract class ClipId {
   protected constructor(protected readonly value: string) {}
 

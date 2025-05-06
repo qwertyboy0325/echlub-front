@@ -9,7 +9,7 @@ eventMonitor.enableMonitoring();
 
 // 初始化 DAW
 const dawManager = container.get<DAWManager>(TYPES.DAWManager);
-dawManager.initialize().catch(error => {
+dawManager.initialize().catch((error: Error) => {
   console.error('[App] Failed to initialize DAW:', error);
 });
 

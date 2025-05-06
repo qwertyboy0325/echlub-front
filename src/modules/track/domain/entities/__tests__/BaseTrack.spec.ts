@@ -1,4 +1,4 @@
-import { BaseTrack, TrackState } from '../BaseTrack';
+import { BaseTrack } from '../BaseTrack';
 import { TrackId } from '../../value-objects/TrackId';
 import { TrackRouting } from '../../value-objects/TrackRouting';
 import { TrackType } from '../../value-objects/TrackType';
@@ -7,11 +7,11 @@ import { PluginReference } from '../../value-objects/PluginReference';
 
 // 創建一個具體的 BaseTrack 實現用於測試
 class TestTrack extends BaseTrack {
-  addClip(clipId: ClipId): void {
+  addClip(_clipId: ClipId): void {
     this.incrementVersion();
   }
 
-  removeClip(clipId: ClipId): void {
+  removeClip(_clipId: ClipId): void {
     this.incrementVersion();
   }
 }

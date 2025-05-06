@@ -5,7 +5,6 @@ import type { ITrackRepository } from '../../domain/repositories/ITrackRepositor
 import { ClipRemovedFromTrackEvent } from '../../domain/events/ClipRemovedFromTrackEvent';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { AudioClipId } from '../../domain/value-objects/AudioClipId';
-import { MidiClipId } from '../../domain/value-objects/MidiClipId';
 
 @injectable()
 export class RemoveClipFromTrackCommandHandler {

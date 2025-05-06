@@ -13,5 +13,11 @@ export const TYPES = {
   // 核心服務
   EventBus: Symbol.for('EventBus'),
   StateManager: Symbol.for('StateManager'),
-  Logger: Symbol.for('Logger')
+  Logger: Symbol.for('Logger'),
+  EventMonitor: Symbol.for('EventMonitor'),
+  DAWManager: Symbol.for('DAWManager'),
+
+  // 客戶端
+  WebSocketClient: Symbol.for('WebSocketClient'),
+  WebRTCClient: Symbol.for('WebRTCClient')
 } as const; 

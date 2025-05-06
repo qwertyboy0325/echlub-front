@@ -3,7 +3,7 @@ import { IWebSocketTrackRepository } from '../../domain/repositories/ITrackRepos
 import { BaseTrack } from '../../domain/entities/BaseTrack';
 import { TrackId } from '../../domain/value-objects/TrackId';
 import { TYPES } from '../../../../core/di/types';
-import { IWebSocketClient } from '../../../../core/websocket/IWebSocketClient';
+import type { IWebSocketClient } from '../../../../core/websocket/IWebSocketClient';
 
 @injectable()
 export class WebSocketTrackRepository implements IWebSocketTrackRepository {
@@ -48,7 +48,7 @@ export class WebSocketTrackRepository implements IWebSocketTrackRepository {
     await this.wsClient.disconnect();
   }
 
-  private deserializeTrack(data: any): BaseTrack | undefined {
+  private deserializeTrack(_data: any): BaseTrack | undefined {
     // 需要實現反序列化邏輯
     // 這裡需要根據實際的 Track 類型來實現
     return undefined;

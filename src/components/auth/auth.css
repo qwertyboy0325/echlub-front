@@ -1,0 +1,42 @@
+/* Auth Components Styling */
+
+.auth-form {
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-action {
+  margin-top: 32px;
+}
+
+.auth-links {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.auth-links p {
+  margin: 8px 0;
+}
+
+.auth-links a {
+  color: #4a90e2;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.auth-links a:hover {
+  color: #2a70c2;
+  text-decoration: underline;
+} 

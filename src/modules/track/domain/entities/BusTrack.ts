@@ -39,11 +39,11 @@ export class BusTrack extends BaseTrack {
     this._returnSettings = [...returnSettings];
   }
 
-  addClip(clipId: ClipId): void {
+  addClip(_clipId: ClipId): void {
     throw new Error('Bus tracks cannot have clips');
   }
 
-  removeClip(clipId: ClipId): void {
+  removeClip(_clipId: ClipId): void {
     throw new Error('Bus tracks cannot have clips');
   }
 

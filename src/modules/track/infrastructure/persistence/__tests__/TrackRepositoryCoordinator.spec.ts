@@ -4,7 +4,6 @@ import { TrackRepositoryCoordinator } from '../TrackRepositoryCoordinator';
 import { ILocalTrackRepository } from '../../../domain/repositories/ITrackRepository';
 import { ITrackEventPublisher } from '../../../domain/ports/ITrackEventPublisher';
 import { TrackId } from '../../../domain/value-objects/TrackId';
-import { BaseTrack } from '../../../domain/entities/BaseTrack';
 import { AudioTrack } from '../../../domain/entities/AudioTrack';
 import { TrackRouting } from '../../../domain/value-objects/TrackRouting';
 import { TrackType } from '../../../domain/value-objects/TrackType';

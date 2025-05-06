@@ -69,10 +69,24 @@ cd echlub_front
 
 # 安裝依賴
 npm install
-
-# 配置環境變量
-cp .env.example .env
 ```
+
+### 環境變量設置
+
+專案使用環境變量來配置API連接等設置。請創建下列環境文件：
+
+#### 開發環境 (.env.development 或 .env)
+```
+VITE_API_BASE_URL=http://localhost:3000/api
+```
+
+#### 生產環境 (.env.production)
+```
+VITE_API_BASE_URL=https://api.example.com/api
+```
+
+環境變量說明：
+- `VITE_API_BASE_URL`: API服務的基礎URL
 
 ### 開發
 
@@ -83,8 +97,14 @@ npm run dev
 # 運行測試
 npm test
 
-# 構建專案
+# 構建專案（默認生產環境）
 npm run build
+
+# 構建開發環境版本
+npm run build:dev
+
+# 構建生產環境版本
+npm run build:prod
 ```
 
 ## 專案結構
