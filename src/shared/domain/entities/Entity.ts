@@ -33,7 +33,7 @@ export abstract class Entity {
     return this._createdAt.getTime() === other._createdAt.getTime();
   }
 
-  protected addDomainEvent(event: DomainEvent): void {
+  public addDomainEvent(event: DomainEvent): void {
     this.domainEvents.push(event);
   }
 
