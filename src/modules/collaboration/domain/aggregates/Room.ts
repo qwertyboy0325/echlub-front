@@ -1,4 +1,4 @@
-import { Entity, IAggregateRoot, DomainEvent } from '../../../../shared/domain';
+import { AggregateRoot, DomainEvent } from '../../../../shared/domain';
 import { RoomId } from '../value-objects/RoomId';
 import { PeerId } from '../value-objects/PeerId';
 import { RoomRuleVO } from '../value-objects/RoomRuleVO';
@@ -22,7 +22,7 @@ export enum RoomStatus {
  * Room aggregate root
  * Manages room lifecycle and player management
  */
-export class Room extends Entity implements IAggregateRoot {
+export class Room extends AggregateRoot {
   private readonly _roomId: RoomId;
   private readonly _ownerId: PeerId;
   private readonly _name: string;
@@ -31,7 +31,6 @@ export class Room extends Entity implements IAggregateRoot {
   private _players: Map<string, Peer>;
   private _closedAt: Date | null;
   private _version: number = 0;
-  private _domainEvents: DomainEvent[] = [];
 
   private constructor(
     roomId: RoomId,
@@ -70,30 +69,9 @@ export class Room extends Entity implements IAggregateRoot {
 
     // Publish room creation event
     room.addDomainEvent(new RoomCreatedEvent(roomId, ownerId, name, rules));
+    room.incrementVersion();
 
     return room;
-  }
-
-  /**
-   * Add domain event
-   */
-  public addDomainEvent(event: DomainEvent): void {
-    this._domainEvents.push(event);
-    this.incrementVersion();
-  }
-
-  /**
-   * Get all domain events
-   */
-  public getDomainEvents(): DomainEvent[] {
-    return [...this._domainEvents];
-  }
-
-  /**
-   * Clear all domain events
-   */
-  public clearDomainEvents(): void {
-    this._domainEvents = [];
   }
 
   /**
@@ -108,6 +86,14 @@ export class Room extends Entity implements IAggregateRoot {
    */
   public incrementVersion(): void {
     this._version += 1;
+  }
+
+  /**
+   * Override addDomainEvent to also increment version
+   */
+  public override addDomainEvent(event: DomainEvent): void {
+    super.addDomainEvent(event);
+    this.incrementVersion();
   }
 
   /**
@@ -141,7 +127,6 @@ export class Room extends Entity implements IAggregateRoot {
 
     // Publish player joined event
     this.addDomainEvent(new PlayerJoinedEvent(this._roomId, peerId, username, now));
-
     this.updateTimestamp();
   }
 
