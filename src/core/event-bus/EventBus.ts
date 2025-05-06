@@ -39,4 +39,13 @@ export class EventBus implements IEventBus {
     };
     this.on(eventName, onceHandler);
   }
+
+  async publish(event: any): Promise<void> {
+    // Assuming the event has an eventType property to determine which handlers to call
+    if (event && event.eventType) {
+      return this.emit(event.eventType, event);
+    } else {
+      console.error('Invalid event format: missing eventType property', event);
+    }
+  }
 } 

@@ -3,21 +3,17 @@ import { TrackModule } from '../../di/TrackModule';
 import { TrackService } from '../../application/services/TrackService';
 import { TrackTypes } from '../../di/TrackTypes';
 import { TrackId } from '../../domain/value-objects/TrackId';
-import { TrackType } from '../../domain/value-objects/TrackType';
 import { TrackRouting } from '../../domain/value-objects/TrackRouting';
 import { AudioClipId } from '../../domain/value-objects/AudioClipId';
 import { ITrackRepository } from '../../domain/repositories/ITrackRepository';
 import { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { AudioTrack } from '../../domain/entities/AudioTrack';
 import { BusTrack } from '../../domain/entities/BusTrack';
-import { InstrumentTrack } from '../../domain/entities/InstrumentTrack';
 import { PluginReference } from '../../domain/value-objects/PluginReference';
-import { BaseTrack } from '../../domain/entities/BaseTrack';
 import { IDomainEvent } from '../../domain/interfaces/IDomainEvent';
 
 // 定義事件處理函數類型
 type EventHandler = (event: IDomainEvent) => Promise<void> | void;
-type PayloadHandler = (payload: unknown) => Promise<void> | void;
 
 // 創建模擬的 EventBus 實現
 class MockEventBus implements IEventBus {

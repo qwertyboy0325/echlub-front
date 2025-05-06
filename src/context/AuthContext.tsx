@@ -53,10 +53,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, diContaine
         }
         
         setIsAuthenticated(isUserAuthenticated);
-      } catch (error) {
-        console.error('認證初始化錯誤:', error);
-        setIsAuthenticated(false);
-        setUser(null);
       } finally {
         setLoading(false);
       }
