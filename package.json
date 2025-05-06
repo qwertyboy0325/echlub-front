@@ -8,15 +8,15 @@
     "build": "tsc && vite build",
     "build:dev": "tsc && vite build --mode development",
     "build:prod": "tsc && vite build --mode production",
-    "lint": "eslint 'src/**/*.{ts,tsx}'",
-    "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "type-check": "tsc --noEmit",
     "preview": "vite preview",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:coverage-summary": "jest --coverage --coverageReporters='text-summary'",
-    "test:ci": "jest --ci --coverage --reporters='default' --reporters='jest-junit'",
+    "test:coverage-summary": "jest --coverage --coverageReporters=\"text-summary\"",
+    "test:ci": "jest --ci --coverage --reporters=\"default\" --reporters=\"jest-junit\"",
     "ci": "npm run type-check && npm run lint && npm run test:coverage && npm run build"
   },
   "dependencies": {
@@ -49,6 +49,7 @@
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.2.1",
     "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5"
   }
