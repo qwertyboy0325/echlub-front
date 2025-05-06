@@ -45,12 +45,24 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
       }
     };
 
+    const handleContainerKeyDown = (e: React.KeyboardEvent) => {
+      // 當用戶按下 Enter 或空格鍵時，也執行點擊功能
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleContainerClick();
+      }
+    };
+
     return (
       <div className="form-group" ref={containerRef}>
         <label htmlFor={id}>{label}</label>
         <div
           className={`password-input-container ${isFocused ? 'focused' : ''}`}
           onClick={handleContainerClick}
+          onKeyDown={handleContainerKeyDown}
+          tabIndex={0}
+          role="button"
+          aria-label="密碼輸入欄位容器"
         >
           <input
             ref={ref}
