@@ -50,11 +50,12 @@ jobs:
     
     - name: 檢查覆蓋率門檻
       run: |
-        COVERAGE=$(npm run test:coverage-summary | grep "總覆蓋率" | awk '{print $2}' | tr -d '%')
+        COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')
         if (( $(echo "$COVERAGE < 80" | bc -l) )); then
           echo "覆蓋率 $COVERAGE% 低於要求的 80%"
           exit 1
         fi
+        echo "覆蓋率檢查通過: $COVERAGE%"
     
     - name: 上傳覆蓋率報告
       uses: actions/upload-artifact@v4
