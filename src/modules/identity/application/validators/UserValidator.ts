@@ -39,14 +39,14 @@ export class UserValidator {
     return new ValidationResult(true, []);
   }
   
-  validateChangePassword(oldPassword: string, newPassword: string): ValidationResult {
+  validateChangePassword(data: { oldPassword: string, newPassword: string }): ValidationResult {
     const errors: string[] = [];
     
-    if (!oldPassword) {
+    if (!data.oldPassword) {
       errors.push('請輸入舊密碼');
     }
     
-    if (!newPassword || newPassword.length < 6) {
+    if (!data.newPassword || data.newPassword.length < 6) {
       errors.push('新密碼必須至少6個字符');
     }
     

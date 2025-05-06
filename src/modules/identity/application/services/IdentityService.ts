@@ -91,7 +91,7 @@ export class IdentityService {
   }
 
   async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-    const validationResult = this.validator.validateChangePassword(oldPassword, newPassword);
+    const validationResult = this.validator.validateChangePassword({ oldPassword, newPassword });
     if (!validationResult.isValid) {
       throw new UserValidationError(validationResult.errors);
     }
