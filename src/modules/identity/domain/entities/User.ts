@@ -1,5 +1,4 @@
-import { Entity } from './Entity';
-import { AggregateRoot } from './IAggregateRoot';
+import { Entity, AggregateRoot } from '../../../../shared/domain';
 import { UserRegisteredEvent } from '../events/UserRegisteredEvent';
 import { UserLoggedInEvent } from '../events/UserLoggedInEvent';
 import { UserLoggedOutEvent } from '../events/UserLoggedOutEvent';
@@ -22,6 +21,7 @@ export class User extends Entity implements AggregateRoot {
   private _firstName?: string;
   private _lastName?: string;
   private _avatar?: string;
+  private _version: number = 0;
 
   constructor(
     id: string,
@@ -82,6 +82,7 @@ export class User extends Entity implements AggregateRoot {
     if (updateData.avatar) this._avatar = updateData.avatar;
 
     this.updateTimestamp();
+    this.incrementVersion();
     this.addDomainEvent(new UserProfileUpdatedEvent(this._id, this._email));
   }
 
@@ -97,6 +98,7 @@ export class User extends Entity implements AggregateRoot {
 
   public changePassword(): void {
     this.updateTimestamp();
+    this.incrementVersion();
     this.addDomainEvent(new PasswordChangedEvent());
   }
 
@@ -110,8 +112,26 @@ export class User extends Entity implements AggregateRoot {
     return this._id === (other as User).id;
   }
   
-  /* 
-   * AggregateRoot介面不需要再實現這些方法，因為已經在Entity基類中存在
-   * 如果您需要自定義行為，可以覆蓋這些方法
-   */
+  // 實現 AggregateRoot 接口
+  getVersion(): number {
+    return this._version;
+  }
+
+  incrementVersion(): void {
+    this._version++;
+  }
+
+  toJSON(): object {
+    return {
+      id: this._id,
+      email: this._email,
+      username: this._username,
+      firstName: this._firstName,
+      lastName: this._lastName,
+      avatar: this._avatar,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      version: this._version
+    };
+  }
 } 

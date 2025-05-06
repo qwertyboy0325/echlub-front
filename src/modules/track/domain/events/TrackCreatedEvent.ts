@@ -1,12 +1,9 @@
-import { IDomainEvent } from '../interfaces/IDomainEvent';
+import { DomainEvent } from '../../../../shared/domain';
 import { TrackId } from '../value-objects/TrackId';
 import { TrackType } from '../value-objects/TrackType';
 
-export class TrackCreatedEvent implements IDomainEvent {
-  readonly eventType = 'track:created';
-  readonly aggregateId: string;
-  readonly timestamp: Date;
-  readonly payload: {
+export class TrackCreatedEvent extends DomainEvent {
+  public readonly payload: {
     trackId: TrackId;
     name: string;
     type: TrackType;
@@ -17,8 +14,7 @@ export class TrackCreatedEvent implements IDomainEvent {
     public readonly name: string,
     public readonly type: TrackType
   ) {
-    this.aggregateId = trackId.toString();
-    this.timestamp = new Date();
+    super('track:created', trackId.toString());
     this.payload = {
       trackId,
       name,
