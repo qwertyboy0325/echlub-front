@@ -1,21 +1,21 @@
+import { DomainEvent } from '../../../../shared/domain';
 import { TrackId } from '../value-objects/TrackId';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
-import { IDomainEvent } from '../interfaces/IDomainEvent';
 
-export class PluginAddedToTrackEvent implements IDomainEvent {
-  readonly eventType = 'track:plugin:added';
-  readonly timestamp: Date;
-  readonly aggregateId: string;
-  readonly payload: {
+export class PluginAddedToTrackEvent extends DomainEvent {
+  public get eventType(): string {
+    return 'track:plugin:added';
+  }
+  
+  public readonly payload: {
     pluginId: string;
   };
 
   constructor(
-    trackId: TrackId,
-    pluginId: PluginInstanceId
+    public readonly trackId: TrackId,
+    public readonly pluginId: PluginInstanceId
   ) {
-    this.timestamp = new Date();
-    this.aggregateId = trackId.toString();
+    super('plugin:added', trackId.toString());
     this.payload = {
       pluginId: pluginId.toString()
     };

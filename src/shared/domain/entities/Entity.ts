@@ -1,5 +1,9 @@
-import { DomainEvent } from '../../../../core/domain/DomainEvent';
+import { DomainEvent } from '../events/DomainEvent';
 
+/**
+ * 實體基類
+ * 所有領域實體都應繼承此類
+ */
 export abstract class Entity {
   protected readonly _createdAt: Date;
   protected _updatedAt: Date;

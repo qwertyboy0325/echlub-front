@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../../../core/domain/DomainEvent';
+import { DomainEvent } from '../../../../shared/domain';
 
 export class PasswordChangedEvent extends DomainEvent {
   constructor() {

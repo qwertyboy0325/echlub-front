@@ -1,30 +1,26 @@
+import { DomainEvent } from '../../../../shared/domain';
 import { TrackId } from '../value-objects/TrackId';
 import { ClipId } from '../value-objects/ClipId';
-import { IDomainEvent } from '../interfaces/IDomainEvent';
 
-export class ClipRemovedFromTrackEvent implements IDomainEvent {
-  readonly eventType = 'track:clip:removed';
-  readonly timestamp: Date;
-  readonly aggregateId: string;
-  readonly payload: {
+export class ClipRemovedFromTrackEvent extends DomainEvent {
+  public get eventType(): string {
+    return 'track:clip:removed';
+  }
+  
+  public readonly payload: {
     clipId: string;
     clipType: 'audio' | 'midi';
   };
 
   constructor(
-    trackId: TrackId,
-    clipId: ClipId,
-    clipType: 'audio' | 'midi'
+    public readonly trackId: TrackId,
+    public readonly clipId: ClipId,
+    public readonly clipType: 'audio' | 'midi'
   ) {
-    this.timestamp = new Date();
-    this.aggregateId = trackId.toString();
+    super('clip:removed', trackId.toString());
     this.payload = {
       clipId: clipId.toString(),
       clipType
     };
-  }
-
-  getEventName(): string {
-    return 'clip:removed';
   }
 } 

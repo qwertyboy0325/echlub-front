@@ -1,20 +1,20 @@
+import { DomainEvent } from '../../../../shared/domain';
 import { TrackId } from '../value-objects/TrackId';
-import { IDomainEvent } from '../interfaces/IDomainEvent';
 
-export class TrackRenamedEvent implements IDomainEvent {
-  readonly eventType = 'track:renamed';
-  readonly timestamp: Date;
-  readonly aggregateId: string;
-  readonly payload: {
+export class TrackRenamedEvent extends DomainEvent {
+  public get eventType(): string {
+    return 'track:renamed';
+  }
+  
+  public readonly payload: {
     newName: string;
   };
 
   constructor(
-    trackId: TrackId,
-    newName: string
+    public readonly trackId: TrackId,
+    public readonly newName: string
   ) {
-    this.timestamp = new Date();
-    this.aggregateId = trackId.toString();
+    super('track:renamed', trackId.toString());
     this.payload = {
       newName
     };
