@@ -25,7 +25,7 @@ export class IdentityService {
 
   // Commands
   async registerUser(email: string, password: string, username: string): Promise<UserDTO> {
-    const validationResult = this.validator.validateRegister({ email, password, username });
+    const validationResult = this.validator.validateRegister(email, password, username);
     if (!validationResult.isValid) {
       throw new UserValidationError(validationResult.errors);
     }
@@ -43,7 +43,7 @@ export class IdentityService {
   }
 
   async login(email: string, password: string): Promise<AuthResponseDTO> {
-    const validationResult = this.validator.validateLogin({ email, password });
+    const validationResult = this.validator.validateLogin(email, password);
     if (!validationResult.isValid) {
       throw new UserValidationError(validationResult.errors);
     }
@@ -91,7 +91,7 @@ export class IdentityService {
   }
 
   async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-    const validationResult = this.validator.validateChangePassword({ oldPassword, newPassword });
+    const validationResult = this.validator.validateChangePassword(oldPassword, newPassword);
     if (!validationResult.isValid) {
       throw new UserValidationError(validationResult.errors);
     }

@@ -10,13 +10,21 @@ import { ChangePasswordCommandHandler } from '../application/handlers/ChangePass
 import { GetUserProfileQueryHandler } from '../application/handlers/GetUserProfileQueryHandler';
 import { IdentityMediator } from '../application/mediators/IdentityMediator';
 import { IdentityService } from '../application/services/IdentityService';
+import { IEventBus } from '../../../core/event-bus/IEventBus';
+import { MockEventBus } from '../mock/MockEventBus';
+import { UserValidator } from '../application/validators/UserValidator';
 
 export const IdentityModule = new ContainerModule((bind) => {
+  // Event Bus
+  bind<IEventBus>(IdentityTypes.EventBus).to(MockEventBus).inSingletonScope();
+
+  // Validators
+  bind(IdentityTypes.UserValidator).to(UserValidator).inSingletonScope();
+
   // Repositories
   bind<IUserRepository>(IdentityTypes.UserRepository)
     .to(UserRepository)
     .inSingletonScope();
-
 
   // Command Handlers
   bind(IdentityTypes.RegisterUserCommandHandler)

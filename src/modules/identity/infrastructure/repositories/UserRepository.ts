@@ -4,10 +4,11 @@ import type { IUserRepository } from '../../domain/repositories/IUserRepository'
 import { User } from '../../domain/entities/User';
 import { RegisterUserDTO, UpdateUserDTO, AuthResponseDTO } from '../../application/dtos/UserDTO';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
+import { ApiConfig } from '../../../../core/api/ApiConfig';
 
 @injectable()
 export class UserRepository implements IUserRepository {
-  private readonly API_BASE_URL = '/api/auth';
+  private readonly API_BASE_URL = ApiConfig.baseUrl;
   private readonly TOKEN_KEY = 'auth_token';
 
   constructor(
@@ -30,7 +31,7 @@ export class UserRepository implements IUserRepository {
 
   async validateToken(token: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.API_BASE_URL}/validate-token`, {
+      const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.validateToken}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -39,65 +40,81 @@ export class UserRepository implements IUserRepository {
       });
       return response.ok;
     } catch (error) {
+      console.error('Token驗證錯誤:', error);
       return false;
     }
   }
 
   async login(email: string, password: string): Promise<AuthResponseDTO> {
-    const response = await fetch(`${this.API_BASE_URL}/login`, {
+    const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.login}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
 
     if (!response.ok) {
-      throw new Error('Login failed');
+      const errorData = await response.json().catch(() => ({ message: '登入失敗' }));
+      throw new Error(errorData.message || '登入失敗');
     }
 
-    return response.json();
+    const data = await response.json();
+    this.setToken(data.token);
+    return data;
   }
 
   async register(userData: RegisterUserDTO): Promise<User> {
-    const response = await fetch(`${this.API_BASE_URL}/register`, {
+    const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.register}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData),
     });
 
     if (!response.ok) {
-      throw new Error('Registration failed');
+      const errorData = await response.json().catch(() => ({ message: '註冊失敗' }));
+      throw new Error(errorData.message || '註冊失敗');
     }
 
-    return response.json();
+    const data = await response.json();
+    return new User(
+      data.id,
+      data.email,
+      data.username,
+      new Date(data.createdAt),
+      new Date(data.updatedAt),
+      data.firstName,
+      data.lastName
+    );
   }
 
   async logout(): Promise<void> {
-    try {
-      const user = await this.getCurrentUser();
-      if (user) {
-        user.logout();
-        
-        // 發布 User 實體中的所有領域事件
-        const events = user.getDomainEvents();
-        for (const event of events) {
-          await this.eventBus.publish(event);
-        }
-        user.clearDomainEvents();
+    const token = this.getToken();
+    
+    if (token) {
+      try {
+        // 如果後端需要處理登出，則發送請求
+        await fetch(`${this.API_BASE_URL}${ApiConfig.auth.logout}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+      } catch (error) {
+        console.error('登出請求錯誤:', error);
+        // 即使API調用失敗，依然移除token
       }
-      
-      this.removeToken();
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Logout failed');
     }
+
+    this.removeToken();
   }
 
   async getUserProfile(): Promise<User> {
     const token = this.getToken();
     if (!token) {
-      throw new Error('No token available');
+      throw new Error('未授權訪問');
     }
 
-    const response = await fetch(`${this.API_BASE_URL}/profile`, {
+    const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.profile}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -105,41 +122,72 @@ export class UserRepository implements IUserRepository {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to get user profile');
+      const errorData = await response.json().catch(() => ({ message: '獲取用戶資料失敗' }));
+      throw new Error(errorData.message || '獲取用戶資料失敗');
     }
 
-    return response.json();
+    const data = await response.json();
+    return new User(
+      data.id,
+      data.email,
+      data.username,
+      new Date(data.createdAt),
+      new Date(data.updatedAt),
+      data.firstName,
+      data.lastName
+    );
   }
 
   async updateUserProfile(userData: UpdateUserDTO): Promise<User> {
-    const response = await fetch(`${this.API_BASE_URL}/profile`, {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('未授權訪問');
+    }
+
+    const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.updateProfile}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.getToken()}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(userData),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to update user profile');
+      const errorData = await response.json().catch(() => ({ message: '更新用戶資料失敗' }));
+      throw new Error(errorData.message || '更新用戶資料失敗');
     }
 
-    return response.json();
+    const data = await response.json();
+    return new User(
+      data.id,
+      data.email,
+      data.username,
+      new Date(data.createdAt),
+      new Date(data.updatedAt),
+      data.firstName,
+      data.lastName
+    );
   }
 
   async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-    const response = await fetch(`${this.API_BASE_URL}/change-password`, {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('未授權訪問');
+    }
+
+    const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.changePassword}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.getToken()}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ oldPassword, newPassword }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to change password');
+      const errorData = await response.json().catch(() => ({ message: '修改密碼失敗' }));
+      throw new Error(errorData.message || '修改密碼失敗');
     }
   }
 
@@ -150,7 +198,7 @@ export class UserRepository implements IUserRepository {
     }
 
     try {
-      const response = await fetch(`${this.API_BASE_URL}/profile`, {
+      const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.profile}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -161,23 +209,19 @@ export class UserRepository implements IUserRepository {
         return null;
       }
 
-      const userData = await response.json();
+      const data = await response.json();
       
-      // 檢查必要的字段是否存在
-      if (!userData || !userData.id || !userData.email || !userData.username || !userData.createdAt || !userData.updatedAt) {
-        return null;
-      }
-
       return new User(
-        userData.id,
-        userData.email,
-        userData.username,
-        new Date(userData.createdAt),
-        new Date(userData.updatedAt),
-        userData.firstName,
-        userData.lastName
+        data.id,
+        data.email,
+        data.username,
+        new Date(data.createdAt),
+        new Date(data.updatedAt),
+        data.firstName,
+        data.lastName
       );
     } catch (error) {
+      console.error('獲取當前用戶錯誤:', error);
       return null;
     }
   }

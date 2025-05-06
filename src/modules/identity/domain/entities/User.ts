@@ -5,6 +5,7 @@ import { UserLoggedInEvent } from '../events/UserLoggedInEvent';
 import { UserLoggedOutEvent } from '../events/UserLoggedOutEvent';
 import { UserProfileUpdatedEvent } from '../events/UserProfileUpdatedEvent';
 import { PasswordChangedEvent } from '../events/PasswordChangedEvent';
+import { UpdateUserDTO } from '../../application/dtos/UserDTO';
 
 export interface UserProps {
   id: string;
@@ -68,16 +69,6 @@ export class User extends Entity implements AggregateRoot {
     return this._avatar;
   }
 
-  public login(): void {
-    this.updateTimestamp();
-    this.addDomainEvent(new UserLoggedInEvent(this._id, this._email));
-  }
-
-  public logout(): void {
-    this.updateTimestamp();
-    this.addDomainEvent(new UserLoggedOutEvent());
-  }
-
   public updateProfile(updateData: {
     email?: string;
     username?: string;
@@ -95,15 +86,33 @@ export class User extends Entity implements AggregateRoot {
     this.addDomainEvent(new UserProfileUpdatedEvent(this._id, this._email));
   }
 
+  public login(): void {
+    this.updateTimestamp();
+    this.addDomainEvent(new UserLoggedInEvent(this._id, this._email));
+  }
+
+  public logout(): void {
+    this.updateTimestamp();
+    this.addDomainEvent(new UserLoggedOutEvent());
+  }
+
   public changePassword(): void {
     this.updateTimestamp();
     this.addDomainEvent(new PasswordChangedEvent());
   }
 
-  public equals(other: User): boolean {
+  public equals(other: Entity): boolean {
     if (other === null || other === undefined) {
       return false;
     }
-    return this._id === other.id;
+    if (!(other instanceof User)) {
+      return false;
+    }
+    return this._id === (other as User).id;
   }
+  
+  /* 
+   * AggregateRoot介面不需要再實現這些方法，因為已經在Entity基類中存在
+   * 如果您需要自定義行為，可以覆蓋這些方法
+   */
 } 
