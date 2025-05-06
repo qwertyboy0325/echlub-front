@@ -13,7 +13,7 @@ export class UserRepository implements IUserRepository {
 
   constructor(
     @inject(IdentityTypes.EventBus)
-    private readonly eventBus: IEventBus
+    _eventBus: IEventBus
   ) {}
 
   // Token operations

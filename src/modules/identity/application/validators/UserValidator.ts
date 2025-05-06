@@ -35,7 +35,7 @@ export class UserValidator {
     return new ValidationResult(errors.length === 0, errors);
   }
   
-  validateUpdateProfile(data: any): ValidationResult {
+  validateUpdateProfile(_data: any): ValidationResult {
     return new ValidationResult(true, []);
   }
   

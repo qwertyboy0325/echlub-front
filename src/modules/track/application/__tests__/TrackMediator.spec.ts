@@ -208,7 +208,6 @@ describe('TrackMediator', () => {
 
   describe('錯誤處理', () => {
     it('應該正確傳播來自 handler 的錯誤', async () => {
-      const trackId = TrackId.create();
       const command = new CreateTrackCommand('Test Track', TrackType.AUDIO);
       const error = new Error('Handler error');
       

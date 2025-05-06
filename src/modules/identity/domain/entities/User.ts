@@ -5,7 +5,6 @@ import { UserLoggedInEvent } from '../events/UserLoggedInEvent';
 import { UserLoggedOutEvent } from '../events/UserLoggedOutEvent';
 import { UserProfileUpdatedEvent } from '../events/UserProfileUpdatedEvent';
 import { PasswordChangedEvent } from '../events/PasswordChangedEvent';
-import { UpdateUserDTO } from '../../application/dtos/UserDTO';
 
 export interface UserProps {
   id: string;

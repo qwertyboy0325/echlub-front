@@ -7,15 +7,15 @@ export class MockEventBus implements IEventBus {
     console.log(`事件發送: ${eventName}`, payload);
   }
 
-  on(eventName: string, handler: (payload: any) => void): void {
+  on(eventName: string, _handler: (payload: any) => void): void {
     console.log(`監聽事件: ${eventName}`);
   }
 
-  off(eventName: string, handler: (payload: any) => void): void {
+  off(eventName: string, _handler: (payload: any) => void): void {
     console.log(`取消監聽事件: ${eventName}`);
   }
 
-  once(eventName: string, handler: (payload: any) => void): void {
+  once(eventName: string, _handler: (payload: any) => void): void {
     console.log(`一次性監聽事件: ${eventName}`);
   }
 

@@ -3,7 +3,7 @@ import { IWebRTCTrackRepository } from '../../domain/repositories/ITrackReposito
 import { BaseTrack } from '../../domain/entities/BaseTrack';
 import { TrackId } from '../../domain/value-objects/TrackId';
 import { TYPES } from '../../../../core/di/types';
-import { IWebRTCClient } from '../../../../core/webrtc/IWebRTCClient';
+import type { IWebRTCClient } from '../../../../core/webrtc/IWebRTCClient';
 
 @injectable()
 export class WebRTCTrackRepository implements IWebRTCTrackRepository {
@@ -48,7 +48,7 @@ export class WebRTCTrackRepository implements IWebRTCTrackRepository {
     await this.rtcClient.close();
   }
 
-  private deserializeTrack(data: any): BaseTrack | undefined {
+  private deserializeTrack(_data: any): BaseTrack | undefined {
     // 需要實現反序列化邏輯
     // 這裡需要根據實際的 Track 類型來實現
     return undefined;

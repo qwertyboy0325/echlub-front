@@ -35,7 +35,7 @@ describe('IdentityService', () => {
       removeItem: (key: string) => { delete localStorageMock[key]; },
       clear: () => { localStorageMock = {}; },
       length: 0,
-      key: (index: number) => '',
+      key: () => '',
     };
 
     identityMediator = {

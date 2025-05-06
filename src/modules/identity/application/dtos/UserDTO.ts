@@ -1,5 +1,3 @@
-import { User } from '../../domain/entities/User';
-
 // 用於註冊的 DTO
 export interface RegisterUserDTO {
   email: string;

@@ -3,7 +3,7 @@ import { IdentityTypes } from '../../../di/IdentityTypes';
 import { UserRepository } from '../../../infrastructure/repositories/UserRepository';
 import { IEventBus } from '../../../../../core/event-bus/IEventBus';
 import { User } from '../../../domain/entities/User';
-import { AuthResponseDTO, RegisterUserDTO, UpdateUserDTO } from '../../../application/dtos/UserDTO';
+import { AuthResponseDTO, RegisterUserDTO } from '../../../application/dtos/UserDTO';
 
 // 使用常數定義測試用的密碼，避免硬編碼敏感信息
 const TEST_CREDENTIALS = {
@@ -36,7 +36,7 @@ describe('UserRepository', () => {
       removeItem: (key: string) => { delete localStorageMock[key]; },
       clear: () => { localStorageMock = {}; },
       length: 0,
-      key: (index: number) => '',
+      key: () => '',
     };
 
     // Assign the implementation to global.localStorage

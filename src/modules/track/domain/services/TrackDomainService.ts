@@ -1,6 +1,5 @@
 import { injectable } from 'inversify';
 import { BaseTrack } from '../entities/BaseTrack';
-import { TrackId } from '../value-objects/TrackId';
 import { PluginInstanceId } from '../../../plugin/domain/value-objects/PluginInstanceId';
 import { ClipId } from '../value-objects/ClipId';
 

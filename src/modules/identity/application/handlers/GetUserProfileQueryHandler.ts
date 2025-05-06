@@ -11,7 +11,7 @@ export class GetUserProfileQueryHandler {
     private readonly userRepository: IUserRepository
   ) {}
 
-  async handle(query: GetUserProfileQuery): Promise<User> {
+  async handle(_query: GetUserProfileQuery): Promise<User> {
     try {
       return await this.userRepository.getUserProfile();
     } catch (error) {

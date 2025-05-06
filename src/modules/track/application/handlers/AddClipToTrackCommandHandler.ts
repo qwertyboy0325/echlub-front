@@ -5,7 +5,6 @@ import type { ITrackRepository } from '../../domain/repositories/ITrackRepositor
 import { ClipAddedToTrackEvent } from '../../domain/events/ClipAddedToTrackEvent';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { AudioClipId } from '../../domain/value-objects/AudioClipId';
-import { MidiClipId } from '../../domain/value-objects/MidiClipId';
 
 @injectable()
 export class AddClipToTrackCommandHandler {

@@ -7,11 +7,11 @@ import { ClipId } from '../../value-objects/ClipId';
 
 // 創建一個測試用的具體 Track 類
 class TestTrack extends BaseTrack {
-  addClip(clipId: ClipId): void {
+  addClip(_clipId: ClipId): void {
     this.incrementVersion();
   }
 
-  removeClip(clipId: ClipId): void {
+  removeClip(_clipId: ClipId): void {
     this.incrementVersion();
   }
 }

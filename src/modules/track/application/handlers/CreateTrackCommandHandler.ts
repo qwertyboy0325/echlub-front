@@ -6,7 +6,6 @@ import { TrackCreatedEvent } from '../../domain/events/TrackCreatedEvent';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { TrackId } from '../../domain/value-objects/TrackId';
 import { TrackFactoryRegistry } from '../../domain/factories/TrackFactories';
-import { TrackType } from '../../domain/value-objects/TrackType';
 
 @injectable()
 export class CreateTrackCommandHandler {

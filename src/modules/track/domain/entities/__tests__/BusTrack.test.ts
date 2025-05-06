@@ -2,7 +2,6 @@ import { BusTrack } from '../BusTrack';
 import { TrackId } from '../../value-objects/TrackId';
 import { TrackRouting } from '../../value-objects/TrackRouting';
 import { AudioClipId } from '../../value-objects/AudioClipId';
-import { PluginInstanceId } from '../../../../plugin/domain/value-objects/PluginInstanceId';
 import { TrackType } from '../../value-objects/TrackType';
 
 describe('BusTrack', () => {

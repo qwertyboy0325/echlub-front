@@ -10,7 +10,7 @@ export class LogoutCommandHandler {
     private readonly userRepository: IUserRepository
   ) {}
 
-  async handle(command: LogoutCommand): Promise<void> {
+  async handle(_command: LogoutCommand): Promise<void> {
     try {
       await this.userRepository.logout();
     } catch (error) {
