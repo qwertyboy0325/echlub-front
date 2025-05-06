@@ -5,28 +5,17 @@ import { User } from '../../domain/entities/User';
 import { RegisterUserDTO, UpdateUserDTO, AuthResponseDTO } from '../../application/dtos/UserDTO';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { ApiConfig } from '../../../../core/api/ApiConfig';
+import { BaseUserRepository } from './BaseUserRepository';
 
 @injectable()
-export class UserRepository implements IUserRepository {
+export class UserRepository extends BaseUserRepository implements IUserRepository {
   private readonly API_BASE_URL = ApiConfig.baseUrl;
-  private readonly TOKEN_KEY = 'auth_token';
 
   constructor(
     @inject(IdentityTypes.EventBus)
     _eventBus: IEventBus
-  ) {}
-
-  // Token operations
-  setToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
-  }
-
-  getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
-  }
-
-  removeToken(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
+  ) {
+    super(_eventBus);
   }
 
   async validateToken(token: string): Promise<boolean> {
@@ -46,44 +35,50 @@ export class UserRepository implements IUserRepository {
   }
 
   async login(email: string, password: string): Promise<AuthResponseDTO> {
-    const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.login}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.login}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: '登入失敗' }));
-      throw new Error(errorData.message || '登入失敗');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: '登入失敗' }));
+        throw new Error(errorData.message || '登入失敗');
+      }
+
+      const data = await response.json();
+      this.setToken(data.token);
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('登入失敗');
     }
-
-    const data = await response.json();
-    this.setToken(data.token);
-    return data;
   }
 
   async register(userData: RegisterUserDTO): Promise<User> {
-    const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.register}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData),
-    });
+    try {
+      const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.register}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: '註冊失敗' }));
-      throw new Error(errorData.message || '註冊失敗');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: '註冊失敗' }));
+        throw new Error(errorData.message || '註冊失敗');
+      }
+
+      const data = await response.json();
+      return this.createUserFromResponse(data);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('註冊失敗');
     }
-
-    const data = await response.json();
-    return new User(
-      data.id,
-      data.email,
-      data.username,
-      new Date(data.createdAt),
-      new Date(data.updatedAt),
-      data.firstName,
-      data.lastName
-    );
   }
 
   async logout(): Promise<void> {
@@ -114,28 +109,24 @@ export class UserRepository implements IUserRepository {
       throw new Error('未授權訪問');
     }
 
-    const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.profile}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
+    try {
+      const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.profile}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: '獲取用戶資料失敗' }));
-      throw new Error(errorData.message || '獲取用戶資料失敗');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: '獲取用戶資料失敗' }));
+        throw new Error(errorData.message || '獲取用戶資料失敗');
+      }
+
+      const data = await response.json();
+      return this.createUserFromResponse(data);
+    } catch (error) {
+      this.handleApiError(error, '獲取用戶資料失敗');
     }
-
-    const data = await response.json();
-    return new User(
-      data.id,
-      data.email,
-      data.username,
-      new Date(data.createdAt),
-      new Date(data.updatedAt),
-      data.firstName,
-      data.lastName
-    );
   }
 
   async updateUserProfile(userData: UpdateUserDTO): Promise<User> {
@@ -144,30 +135,26 @@ export class UserRepository implements IUserRepository {
       throw new Error('未授權訪問');
     }
 
-    const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.updateProfile}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(userData),
-    });
+    try {
+      const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.updateProfile}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(userData),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: '更新用戶資料失敗' }));
-      throw new Error(errorData.message || '更新用戶資料失敗');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: '更新用戶資料失敗' }));
+        throw new Error(errorData.message || '更新用戶資料失敗');
+      }
+
+      const data = await response.json();
+      return this.createUserFromResponse(data);
+    } catch (error) {
+      this.handleApiError(error, '更新用戶資料失敗');
     }
-
-    const data = await response.json();
-    return new User(
-      data.id,
-      data.email,
-      data.username,
-      new Date(data.createdAt),
-      new Date(data.updatedAt),
-      data.firstName,
-      data.lastName
-    );
   }
 
   async changePassword(oldPassword: string, newPassword: string): Promise<void> {
@@ -176,18 +163,22 @@ export class UserRepository implements IUserRepository {
       throw new Error('未授權訪問');
     }
 
-    const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.changePassword}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ oldPassword, newPassword }),
-    });
+    try {
+      const response = await fetch(`${this.API_BASE_URL}${ApiConfig.auth.changePassword}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ oldPassword, newPassword }),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: '修改密碼失敗' }));
-      throw new Error(errorData.message || '修改密碼失敗');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: '修改密碼失敗' }));
+        throw new Error(errorData.message || '修改密碼失敗');
+      }
+    } catch (error) {
+      this.handleApiError(error, '修改密碼失敗');
     }
   }
 
@@ -210,16 +201,7 @@ export class UserRepository implements IUserRepository {
       }
 
       const data = await response.json();
-      
-      return new User(
-        data.id,
-        data.email,
-        data.username,
-        new Date(data.createdAt),
-        new Date(data.updatedAt),
-        data.firstName,
-        data.lastName
-      );
+      return this.createUserFromResponse(data);
     } catch (error) {
       console.error('獲取當前用戶錯誤:', error);
       return null;
