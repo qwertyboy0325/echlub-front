@@ -127,8 +127,34 @@ export class ProductId extends ID {
 // 2. 創建 ID 實例
 const productId = new ProductId('123');
 
-// 3. 使用 UUID 生成全局唯一 ID
-const uuid = UUID.generate();
+// 3. 使用 UUID 
+// 3.1 在瀏覽器環境中
+try {
+  const uuid = UUID.generate();
+  console.log(uuid.toString());
+} catch (e) {
+  console.error('不支持直接生成 UUID');
+}
+
+// 3.2 使用 UUIDFactory (推薦方式，跨環境)
+// 首先在應用程序啟動時初始化
+import { initUUIDFactory, UUIDFactory } from '../../../shared/domain';
+
+// 在應用程序入口點初始化
+initUUIDFactory();
+
+// 然後在任何需要的地方使用
+const uuid = UUIDFactory.create();
+console.log(uuid.toString());
+
+// 3.3 自定義 UUID 生成器
+import { v4 as uuidv4 } from 'uuid'; // 需要安裝 uuid 包
+
+// 設置自定義生成器
+UUIDFactory.setGenerator(uuidv4);
+
+// 使用自定義生成器創建 UUID
+const customUuid = UUIDFactory.create();
 ```
 
 ## 最佳實踐

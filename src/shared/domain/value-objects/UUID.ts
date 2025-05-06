@@ -31,25 +31,29 @@ export class UUID extends ID {
 
   /**
    * 生成一個新的 UUID
-   * 使用瀏覽器的 crypto.randomUUID 或 node.js 的 crypto.randomUUID
+   * 使用瀏覽器的 crypto.randomUUID
    * @throws Error 如果環境不支持 UUID 生成
    */
   public static generate(): UUID {
-    let uuid: string;
-
+    // 僅支持瀏覽器環境
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      // 瀏覽器環境
-      uuid = crypto.randomUUID();
-    } else {
-      try {
-        // Node.js 環境
-        const nodeCrypto = require('crypto');
-        uuid = nodeCrypto.randomUUID();
-      } catch (e) {
-        throw new Error('當前環境不支持 UUID 生成');
-      }
+      return new UUID(crypto.randomUUID());
     }
+    
+    // 如果需要在 Node.js 環境中運行，請使用 UUIDFactory 並注入實際的實現
+    throw new Error('當前環境不支持 UUID 生成，請使用 UUIDFactory');
+  }
 
+  /**
+   * 使用指定的 UUID 生成函數創建 UUID
+   * 這樣可以在 Node.js 環境中通過依賴注入提供實現
+   * @param generateFn UUID 生成函數
+   */
+  public static createFromGenerator(generateFn: () => string): UUID {
+    const uuid = generateFn();
+    if (!UUID.isValidID(uuid)) {
+      throw new Error('生成的 UUID 格式無效');
+    }
     return new UUID(uuid);
   }
 } 
