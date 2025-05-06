@@ -15,9 +15,13 @@ import { PluginReference } from '../../domain/value-objects/PluginReference';
 import { BaseTrack } from '../../domain/entities/BaseTrack';
 import { IDomainEvent } from '../../domain/interfaces/IDomainEvent';
 
+// 定義事件處理函數類型
+type EventHandler = (event: IDomainEvent) => Promise<void> | void;
+type PayloadHandler = (payload: unknown) => Promise<void> | void;
+
 // 創建模擬的 EventBus 實現
 class MockEventBus implements IEventBus {
-  private handlers: Map<string, Function[]> = new Map();
+  private handlers: Map<string, EventHandler[]> = new Map();
 
   async publish(event: IDomainEvent): Promise<void> {
     const handlers = this.handlers.get(event.eventType) || [];
@@ -29,18 +33,18 @@ class MockEventBus implements IEventBus {
   async emit(eventName: string, payload: any): Promise<void> {
     const handlers = this.handlers.get(eventName) || [];
     for (const handler of handlers) {
-      await handler(payload);
+      await handler(payload as IDomainEvent);
     }
   }
 
-  on(eventName: string, listener: Function): this {
+  on(eventName: string, listener: EventHandler): this {
     const handlers = this.handlers.get(eventName) || [];
     handlers.push(listener);
     this.handlers.set(eventName, handlers);
     return this;
   }
 
-  off(eventName: string, listener: Function): this {
+  off(eventName: string, listener: EventHandler): this {
     const handlers = this.handlers.get(eventName) || [];
     const index = handlers.indexOf(listener);
     if (index > -1) {
@@ -50,19 +54,19 @@ class MockEventBus implements IEventBus {
     return this;
   }
 
-  once(eventName: string, listener: Function): this {
-    const onceWrapper = (...args: any[]) => {
+  once(eventName: string, listener: EventHandler): this {
+    const onceWrapper = (event: IDomainEvent) => {
       this.off(eventName, onceWrapper);
-      listener.apply(this, args);
+      return listener(event);
     };
     return this.on(eventName, onceWrapper);
   }
 
-  subscribe(eventType: string, handler: Function): void {
+  subscribe(eventType: string, handler: EventHandler): void {
     this.on(eventType, handler);
   }
 
-  unsubscribe(eventType: string, handler: Function): void {
+  unsubscribe(eventType: string, handler: EventHandler): void {
     this.off(eventType, handler);
   }
 }

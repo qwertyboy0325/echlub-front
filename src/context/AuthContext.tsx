@@ -67,8 +67,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, diContaine
 
   // 登入處理器
   const login = useCallback(async (email: string, password: string) => {
+    setLoading(true);
     try {
-      setLoading(true);
       const result = await identityService.login(email, password);
       setIsAuthenticated(true);
       
@@ -81,8 +81,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, diContaine
       }
       
       return result;
-    } catch (error) {
-      throw error;
     } finally {
       setLoading(false);
     }
@@ -90,16 +88,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, diContaine
 
   // 註冊處理器
   const register = useCallback(async (email: string, password: string, username: string) => {
+    setLoading(true);
     try {
-      setLoading(true);
       const result = await identityService.registerUser(email, password, username);
       
       // 註冊成功後自動登入
       await login(email, password);
       
       return result;
-    } catch (error) {
-      throw error;
     } finally {
       setLoading(false);
     }
