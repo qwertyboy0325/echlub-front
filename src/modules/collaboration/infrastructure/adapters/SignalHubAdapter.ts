@@ -5,6 +5,15 @@ import { PeerId } from '../../domain/value-objects/PeerId';
 import { TYPES } from '../../../../core/di/types';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 
+// WebRTC 備援相關事件常量
+const WEBRTC_EVENTS = {
+  FALLBACK_SUGGESTED: 'webrtc-fallback-suggested',
+  FALLBACK_NEEDED: 'webrtc-fallback-needed',
+  FALLBACK_ACTIVATE: 'webrtc-fallback-activate',
+  FALLBACK_ACTIVATED: 'webrtc-fallback-activated',
+  RELAY_DATA: 'relay-data'
+};
+
 /**
  * SignalHub 適配器實現
  * 使用 WebSocket 實現信令交換和房間事件廣播
@@ -104,7 +113,8 @@ export class SignalHubAdapter implements ISignalHubAdapter {
         console.log('Successfully reconnected to SignalHub');
         
         // 通知重新連接成功
-        this.eventBus.publish('signalhub.reconnected', {
+        this.eventBus.publish({
+          type: 'signalhub.reconnected',
           roomId: this.currentRoomId,
           peerId: this.currentPeerId
         });
@@ -118,7 +128,8 @@ export class SignalHubAdapter implements ISignalHubAdapter {
         } else {
           console.error('Max reconnection attempts reached');
           // 通知重連失敗
-          this.eventBus.publish('signalhub.reconnect-failed', {
+          this.eventBus.publish({
+            type: 'signalhub.reconnect-failed',
             roomId: this.currentRoomId,
             peerId: this.currentPeerId
           });
@@ -196,7 +207,10 @@ export class SignalHubAdapter implements ISignalHubAdapter {
       }
       
       // 同時通過 EventBus 發佈事件
-      this.eventBus.publish(`collab.${type}`, payload);
+      this.eventBus.publish({
+        type: `collab.${type}`,
+        ...payload
+      });
     } catch (error) {
       console.error('Error processing WebSocket message:', error);
     }
@@ -233,5 +247,72 @@ export class SignalHubAdapter implements ISignalHubAdapter {
    */
   isConnected(): boolean {
     return this.connectionStatus && !!this.socket && this.socket.readyState === WebSocket.OPEN;
+  }
+
+  /**
+   * 啟用 WebRTC 備援模式
+   * 當 P2P 連接失敗時，通過伺服器中繼數據
+   */
+  async activateWebRTCFallback(peerId: string): Promise<void> {
+    console.log(`Activating WebRTC fallback for peer: ${peerId}`);
+    
+    // 發送啟用備援模式的請求
+    await this.send(WEBRTC_EVENTS.FALLBACK_ACTIVATE, {
+      targetPeerId: peerId,
+      reason: 'p2p-connection-failed'
+    });
+    
+    // 將事件通過 EventBus 通知應用程式其他部分
+    this.eventBus.publish({
+      type: 'collab.webrtc-fallback-requested',
+      peerId: peerId
+    });
+  }
+  
+  /**
+   * 通過伺服器中繼發送數據
+   * 當 WebRTC 連接失敗時使用
+   */
+  async relayData(targetPeerId: string, data: any): Promise<void> {
+    if (!this.isConnected()) {
+      throw new Error('SignalHub not connected, cannot relay data');
+    }
+    
+    // 發送中繼數據
+    await this.send(WEBRTC_EVENTS.RELAY_DATA, {
+      targetPeerId: targetPeerId,
+      payload: data
+    });
+    
+    // 記錄中繼傳輸
+    console.log(`Data relayed to peer: ${targetPeerId}`);
+  }
+  
+  /**
+   * 訂閱 WebRTC 備援模式建議事件
+   */
+  onWebRTCFallbackSuggested(callback: (data: { peerId: string, reason: string }) => void): void {
+    this.subscribe(WEBRTC_EVENTS.FALLBACK_SUGGESTED, callback);
+  }
+  
+  /**
+   * 訂閱 WebRTC 備援模式需求事件
+   */
+  onWebRTCFallbackNeeded(callback: (data: { peerId: string }) => void): void {
+    this.subscribe(WEBRTC_EVENTS.FALLBACK_NEEDED, callback);
+  }
+  
+  /**
+   * 訂閱 WebRTC 備援模式啟用成功事件
+   */
+  onWebRTCFallbackActivated(callback: (data: { peerId: string }) => void): void {
+    this.subscribe(WEBRTC_EVENTS.FALLBACK_ACTIVATED, callback);
+  }
+  
+  /**
+   * 訂閱通過伺服器中繼接收的數據
+   */
+  onRelayData(callback: (data: { from: string, payload: any }) => void): void {
+    this.subscribe(WEBRTC_EVENTS.RELAY_DATA, callback);
   }
 } 
