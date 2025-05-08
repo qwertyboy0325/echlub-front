@@ -3,7 +3,7 @@ import { IWebRTCAdapter, SignalData, SignalType } from './IWebRTCAdapter';
 import { PeerId } from '../../domain/value-objects/PeerId';
 import { ConnectionState } from '../../domain/value-objects/ConnectionState';
 import { CollaborationTypes } from '../../di/CollaborationTypes';
-import { ISignalHubAdapter } from './ISignalHubAdapter';
+import type { ISignalHubAdapter } from './ISignalHubAdapter';
 
 /**
  * WebRTC 對等連接選項
