@@ -23,6 +23,7 @@ export const CollaborationTypes = {
   SignalHubAdapter: Symbol.for('SignalHubAdapter'),
   WebRTCAdapter: Symbol.for('WebRTCAdapter'),
   LocalCacheAdapter: Symbol.for('LocalCacheAdapter'),
+  CollaborationApiAdapter: Symbol.for('CollaborationApiAdapter'),
   
   // Event Bus
   EventBus: Symbol.for('EventBus'),
