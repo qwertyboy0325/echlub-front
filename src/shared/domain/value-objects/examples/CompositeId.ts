@@ -18,8 +18,16 @@ export class CompositeId extends UniqueId<CompositeIdProps> {
   
   /**
    * 創建新的 CompositeId
+   * 遵循基類實現方式，但允許使用自訂參數
    */
-  public static create(namespace: string, version: number = 1): CompositeId {
+  public static override create(...args: any[]): CompositeId {
+    if (args.length === 0) {
+      throw new Error('CompositeId creation requires at least a namespace');
+    }
+    
+    const namespace = args[0] as string;
+    const version = args.length > 1 ? args[1] as number : 1;
+    
     return new CompositeId({
       namespace,
       localId: ++CompositeId.sequenceCounter,

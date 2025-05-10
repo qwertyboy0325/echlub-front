@@ -38,7 +38,7 @@ export class LocalCacheAdapter implements ILocalCacheAdapter {
         resolve();
       };
       
-      request.onupgradeneeded = (event) => {
+      request.onupgradeneeded = () => {
         const db = request.result;
         
         // 如果存儲對象不存在，創建一個新的

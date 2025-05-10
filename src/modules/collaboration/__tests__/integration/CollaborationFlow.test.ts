@@ -7,14 +7,10 @@ import { WebRTCAdapter } from '../../infrastructure/adapters/WebRTCAdapter';
 import { CollaborationService } from '../../application/services/CollaborationService';
 import { InMemoryRoomRepository } from '../../infrastructure/repositories/InMemoryRoomRepository';
 import { TYPES } from '../../../../core/di/types';
-import { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { RoomId } from '../../domain/value-objects/RoomId';
 import { PeerId } from '../../domain/value-objects/PeerId';
-import { RoomRuleVO } from '../../domain/value-objects/RoomRuleVO';
 import { ConnectionState } from '../../domain/value-objects/ConnectionState';
 import { v4 as uuidv4 } from 'uuid';
-import { ICollaborationApiAdapter } from '../../infrastructure/adapters/ICollaborationApiAdapter';
-import { ISignalHubAdapter } from '../../infrastructure/adapters/ISignalHubAdapter';
 import { ILocalCacheAdapter } from '../../infrastructure/adapters/ILocalCacheAdapter';
 import { IWebRTCAdapter } from '../../infrastructure/adapters/IWebRTCAdapter';
 
@@ -85,8 +81,6 @@ describe('Collaboration Flow Integration', () => {
   let container: Container;
   let collaborationService: CollaborationService;
   let mockEventBus: any;
-  let mockSignalHub: ISignalHubAdapter;
-  let mockApiAdapter: ICollaborationApiAdapter;
   let eventHandlers: Record<string, Function[]>;
   
   beforeEach(() => {
@@ -123,10 +117,6 @@ describe('Collaboration Flow Integration', () => {
     
     // Get service instance
     collaborationService = container.get<CollaborationService>(CollaborationTypes.CollaborationService);
-    
-    // Get adaptors for testing
-    mockApiAdapter = container.get<ICollaborationApiAdapter>(CollaborationTypes.CollaborationApiAdapter);
-    mockSignalHub = container.get<ISignalHubAdapter>(CollaborationTypes.SignalHubAdapter);
   });
   
   test('full collaboration flow', async () => {

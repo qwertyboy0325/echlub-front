@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { InMemoryRoomRepository } from '../../infrastructure/repositories/InMemoryRoomRepository';
-import { Room, RoomStatus } from '../../domain/aggregates/Room';
+import { Room } from '../../domain/aggregates/Room';
 import { RoomId } from '../../domain/value-objects/RoomId';
 import { PeerId } from '../../domain/value-objects/PeerId';
 import { RoomRuleVO } from '../../domain/value-objects/RoomRuleVO';

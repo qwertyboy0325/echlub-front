@@ -1,4 +1,4 @@
-import { injectable, inject, optional } from 'inversify';
+import { injectable, inject } from 'inversify';
 import { ISignalHubAdapter } from './ISignalHubAdapter';
 import { TYPES } from '../../../../core/di/types';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
@@ -50,18 +50,14 @@ export class SignalHubAdapter implements ISignalHubAdapter {
   private currentPeerId: string | null = null;
   
   // Get API URL from environment or use default
-  private readonly apiBaseUrl: string;
+  private apiBaseUrl: string;
   
   constructor(
     @inject(TYPES.EventBus)
     private readonly eventBus: IEventBus,
-    
-    // Optional API URL for testing
-    @inject(TYPES.ENV_CONFIG) @optional()
-    private readonly envConfig?: { API_URL?: string }
   ) {
-    // Use provided API URL from config, or default
-    this.apiBaseUrl = (envConfig?.API_URL || process.env.VITE_API_URL || 'wss://api.echlub.com');
+    // 直接使用環境變數
+    this.apiBaseUrl = process.env.VITE_API_URL || 'wss://api.echlub.com';
   }
   
   /**

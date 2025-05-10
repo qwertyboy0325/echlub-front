@@ -1,7 +1,5 @@
 import { ISignalHubAdapter } from "../../infrastructure/adapters/ISignalHubAdapter";
-import { SignalType } from "../../infrastructure/adapters/IWebRTCAdapter";
 import { injectable } from "inversify";
-import { ConnectionState } from "../../domain/value-objects/ConnectionState";
 
 /**
  * Mock signal hub adapter implementation for testing
@@ -31,7 +29,7 @@ export class MockSignalHubAdapter implements ISignalHubAdapter {
   /**
    * Connect to signaling server
    */
-  async connect(roomId: string, peerId: string): Promise<void> {
+  async connect(_roomId: string, _peerId: string): Promise<void> {
     // Simulate connection to signaling server
     this.connected = true;
   }
@@ -47,7 +45,7 @@ export class MockSignalHubAdapter implements ISignalHubAdapter {
   /**
    * Send message to signaling hub
    */
-  async send(channel: string, data: any): Promise<void> {
+  async send(_channel: string, _data: any): Promise<void> {
     // Simulate sending message
   }
   
@@ -133,7 +131,7 @@ export class MockSignalHubAdapter implements ISignalHubAdapter {
   /**
    * Send ICE candidate
    */
-  async sendIceCandidate(recipient: string, candidate: RTCIceCandidateInit): Promise<void> {
+  async sendIceCandidate(_recipient: string, candidate: RTCIceCandidateInit): Promise<void> {
     // Simulate sending ICE candidate
     if (this.onIceCandidateHandler) {
       this.onIceCandidateHandler({
@@ -146,7 +144,7 @@ export class MockSignalHubAdapter implements ISignalHubAdapter {
   /**
    * Send offer
    */
-  async sendOffer(recipient: string, sdp: RTCSessionDescriptionInit): Promise<void> {
+  async sendOffer(_recipient: string, sdp: RTCSessionDescriptionInit): Promise<void> {
     // Simulate sending offer
     if (this.onOfferHandler) {
       this.onOfferHandler({
@@ -159,7 +157,7 @@ export class MockSignalHubAdapter implements ISignalHubAdapter {
   /**
    * Send answer
    */
-  async sendAnswer(recipient: string, sdp: RTCSessionDescriptionInit): Promise<void> {
+  async sendAnswer(_recipient: string, sdp: RTCSessionDescriptionInit): Promise<void> {
     // Simulate sending answer
     if (this.onAnswerHandler) {
       this.onAnswerHandler({
@@ -268,10 +266,10 @@ export class MockSignalHubAdapter implements ISignalHubAdapter {
   }
   
   /**
-   * Relay data through server
+   * Relay data to other peers
    */
-  async relayData(peerId: string, data: any): Promise<void> {
-    // Simulate relaying data
+  async relayData(_peerId: string, data: any): Promise<void> {
+    // Simulate data relay
     this.relayDataHandlers.forEach(handler => handler({
       from: 'local-peer-id',
       payload: data

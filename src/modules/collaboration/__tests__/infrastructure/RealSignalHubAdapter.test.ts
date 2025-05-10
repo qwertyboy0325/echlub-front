@@ -2,8 +2,6 @@ import 'reflect-metadata';
 import { SignalHubAdapter } from '../../infrastructure/adapters/SignalHubAdapter';
 import { Container } from 'inversify';
 import { TYPES } from '../../../../core/di/types';
-import { IEventBus } from '../../../../core/event-bus/IEventBus';
-import { ISignalHubAdapter } from '../../infrastructure/adapters/ISignalHubAdapter';
 import { CollaborationTypes } from '../../di/CollaborationTypes';
 
 // Mock import.meta.env
@@ -132,7 +130,7 @@ describe('RealSignalHubAdapter', () => {
       mockSocket = adapter['socket'] as MockWebSocket;
       
       // Setup send function implementation
-      mockSocket.send.mockImplementation((message) => {
+      mockSocket.send.mockImplementation((_message) => {
         // Handle any send operation
         return Promise.resolve();
       });
@@ -193,21 +191,14 @@ describe('RealSignalHubAdapter', () => {
       mockSocket = adapter['socket'] as MockWebSocket;
       
       // Ensure mock resolves properly
-      mockSocket.send.mockImplementation(() => Promise.resolve());
+      mockSocket.send.mockImplementation((_message) => {
+        // Handle any message send operation
+        return Promise.resolve();
+      });
       
       // Simulate socket onclose to ensure disconnect completes properly
-      const originalOnclose = mockSocket.onclose;
       mockSocket.onclose = () => {
-        // Simulate the behavior of onclose handler in SignalHubAdapter
-        mockSocket.readyState = WebSocket.CLOSED;
-        // @ts-ignore - We're manually triggering the adapter's behavior
-        adapter['connectionStatus'] = false;
-        // @ts-ignore
-        adapter['currentRoomId'] = null;
-        // @ts-ignore
-        adapter['currentPeerId'] = null;
-        // @ts-ignore
-        adapter['socket'] = null;
+        // Handle onclose
       };
       
       mockSocket.simulateOpen();
@@ -223,9 +214,6 @@ describe('RealSignalHubAdapter', () => {
       
       // Verify connection status
       expect(adapter.isConnected()).toBe(false);
-      
-      // Restore original onclose
-      mockSocket.onclose = originalOnclose;
     });
   });
   
@@ -241,7 +229,6 @@ describe('RealSignalHubAdapter', () => {
       mockSocket = adapter['socket'] as MockWebSocket;
       
       // Ensure the send method is properly mocked
-      const originalMockSend = mockSocket.send;
       mockSocket.send = jest.fn().mockImplementation(() => Promise.resolve());
       
       mockSocket.simulateOpen();
@@ -402,7 +389,8 @@ describe('RealSignalHubAdapter', () => {
       mockSocket = adapter['socket'] as MockWebSocket;
       
       // Ensure the send method is properly mocked
-      mockSocket.send.mockImplementation((message) => {
+      mockSocket.send.mockImplementation((_message) => {
+        // Handle any message send operation
         return Promise.resolve();
       });
       

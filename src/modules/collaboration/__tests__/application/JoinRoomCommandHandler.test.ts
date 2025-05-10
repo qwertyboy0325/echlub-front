@@ -29,23 +29,23 @@ class MockEventBus implements IEventBus {
     this.publishedEvents.push({ eventName, payload });
   }
   
-  on(eventName: string, handler: (payload: any) => void): void {
+  on(_eventName: string, _handler: (payload: any) => void): void {
     // Not needed for tests
   }
   
-  off(eventName: string, handler: (payload: any) => void): void {
+  off(_eventName: string, _handler: (payload: any) => void): void {
     // Not needed for tests
   }
   
-  once(eventName: string, handler: (payload: any) => void): void {
+  once(_eventName: string, _handler: (payload: any) => void): void {
     // Not needed for tests
   }
   
-  async subscribe(eventName: string, callback: (payload: any) => Promise<void>): Promise<void> {
+  async subscribe(_eventName: string, _callback: (payload: any) => Promise<void>): Promise<void> {
     // Not needed for tests
   }
   
-  async unsubscribe(eventName: string): Promise<void> {
+  async unsubscribe(_eventName: string): Promise<void> {
     // Not needed for tests
   }
 }

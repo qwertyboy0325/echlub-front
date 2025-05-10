@@ -59,7 +59,7 @@ export class UniqueId<T = string> extends ValueObject<UniqueIdProps<T>> {
    */
   // Implementation details placed in both instance methods and static methods
   // TypeScript has limited support for generics in static methods
-  public static create(...args: any[]): any {
+  public static create(_args?: any[]): any {
     if (!this.generator && this === UniqueId) {
       // Try using built-in method
       if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {

@@ -8,7 +8,6 @@ import { v4 as uuidv4 } from 'uuid';
  */
 @injectable()
 export class MockCollaborationApiAdapter implements ICollaborationApiAdapter {
-  private readonly API_BASE_URL: string = 'https://test-api.echlub.com';
   private roomStore: Map<string, { ownerId: string }> = new Map();
   
   /**
@@ -51,7 +50,7 @@ export class MockCollaborationApiAdapter implements ICollaborationApiAdapter {
   /**
    * Update room rules
    */
-  async updateRoomRules(roomId: RoomId, request: UpdateRoomRulesRequest): Promise<ApiResponse<void>> {
+  async updateRoomRules(_roomId: RoomId, _request: UpdateRoomRulesRequest): Promise<ApiResponse<void>> {
     return {
       message: 'Room rules updated successfully'
     };
@@ -60,7 +59,7 @@ export class MockCollaborationApiAdapter implements ICollaborationApiAdapter {
   /**
    * Close room
    */
-  async closeRoom(roomId: RoomId, request: CloseRoomRequest): Promise<ApiResponse<void>> {
+  async closeRoom(_roomId: RoomId, _request: CloseRoomRequest): Promise<ApiResponse<void>> {
     return {
       message: 'Room closed successfully'
     };

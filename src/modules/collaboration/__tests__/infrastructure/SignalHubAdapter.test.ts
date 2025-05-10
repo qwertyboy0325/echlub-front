@@ -3,7 +3,6 @@ import { SignalHubAdapter } from '../../infrastructure/adapters/SignalHubAdapter
 import { Container } from 'inversify';
 import { TYPES } from '../../../../core/di/types';
 import { IEventBus } from '../../../../core/event-bus/IEventBus';
-import { ISignalHubAdapter } from '../../infrastructure/adapters/ISignalHubAdapter';
 import { CollaborationTypes } from '../../di/CollaborationTypes';
 
 // Mock WebSocket
