@@ -56,10 +56,9 @@ export class SignalHubAdapter implements ISignalHubAdapter {
     @inject(TYPES.EventBus)
     private readonly eventBus: IEventBus,
     @inject(TYPES.ENV_CONFIG)
-    private readonly envConfig: { API_URL: string }
+    env: { API_URL: string }
   ) {
-    // 使用注入的配置而不是直接訪問環境變數
-    this.apiBaseUrl = envConfig.API_URL || 'wss://api.echlub.com';
+    this.apiBaseUrl = env.API_URL || 'wss://api.echlub.com';
   }
   
   /**
