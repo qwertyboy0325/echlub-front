@@ -298,10 +298,94 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   async initialize(localPeerId: PeerId): Promise<void> {
     this.localPeerId = localPeerId;
     
-    // 訂閱信號服務器的信令消息
-    this.signalHub.subscribe('webrtc-signal', this.handleIncomingSignal.bind(this));
+    // 使用新的訂閱方式
+    this.signalHub.onIceCandidate(this.handleIceCandidate.bind(this));
+    this.signalHub.onOffer(this.handleOffer.bind(this));
+    this.signalHub.onAnswer(this.handleAnswer.bind(this));
+    this.signalHub.onReconnectNeeded(this.handleReconnectNeeded.bind(this));
+    this.signalHub.onPeerConnectionState(this.handlePeerConnectionState.bind(this));
+    this.signalHub.onWebRTCFallbackNeeded(this.handleFallbackNeeded.bind(this));
     
     console.log(`WebRTC adapter initialized with local peer ID: ${localPeerId.toString()}`);
+  }
+  
+  /**
+   * 處理收到的 ICE 候選者
+   */
+  private async handleIceCandidate(data: { from: string, candidate: RTCIceCandidateInit }): Promise<void> {
+    const { from, candidate } = data;
+    const signal: SignalData = {
+      type: SignalType.ICE_CANDIDATE,
+      sender: from,
+      recipient: this.localPeerId!.toString(),
+      payload: { candidate }
+    };
+    await this.processSignal(signal);
+  }
+  
+  /**
+   * 處理收到的提議
+   */
+  private async handleOffer(data: { from: string, offer: RTCSessionDescriptionInit }): Promise<void> {
+    const { from, offer } = data;
+    const signal: SignalData = {
+      type: SignalType.OFFER,
+      sender: from,
+      recipient: this.localPeerId!.toString(),
+      payload: { sdp: offer }
+    };
+    await this.processSignal(signal);
+  }
+  
+  /**
+   * 處理收到的應答
+   */
+  private async handleAnswer(data: { from: string, answer: RTCSessionDescriptionInit }): Promise<void> {
+    const { from, answer } = data;
+    const signal: SignalData = {
+      type: SignalType.ANSWER,
+      sender: from,
+      recipient: this.localPeerId!.toString(),
+      payload: { sdp: answer }
+    };
+    await this.processSignal(signal);
+  }
+  
+  /**
+   * 處理需要重新連接的請求
+   */
+  private async handleReconnectNeeded(data: { from: string }): Promise<void> {
+    const { from } = data;
+    const remotePeerId = PeerId.fromString(from);
+    
+    console.log(`Reconnection needed with peer: ${from}`);
+    
+    // 關閉現有連接並創建新連接
+    await this.closeConnection(remotePeerId);
+    await this.createConnection(remotePeerId, true);
+  }
+  
+  /**
+   * 處理對等方連接狀態變更
+   */
+  private async handlePeerConnectionState(data: { peerId: string, state: string }): Promise<void> {
+    const { peerId, state } = data;
+    console.log(`Peer ${peerId} connection state changed to ${state}`);
+    
+    // 可以在這裡添加額外的處理邏輯
+  }
+  
+  /**
+   * 處理需要啟用備援模式的請求
+   */
+  private async handleFallbackNeeded(data: { peerId: string }): Promise<void> {
+    const { peerId } = data;
+    const remotePeerId = PeerId.fromString(peerId);
+    
+    console.log(`WebRTC fallback needed for peer: ${peerId}`);
+    
+    // 通知應用程序 WebRTC 需要使用備援模式
+    this.notifyConnectionStateChange(remotePeerId, ConnectionState.FALLBACK);
   }
   
   /**
@@ -331,16 +415,17 @@ export class WebRTCAdapter implements IWebRTCAdapter {
     // 監聽連接狀態變更
     peerConnection.onStateChange((state) => {
       this.notifyConnectionStateChange(remotePeerId, state);
+      
+      // 通知伺服器連接狀態變更
+      this.signalHub.updateConnectionState(remotePeerId.toString(), state.toString())
+        .catch(error => console.error('Error updating connection state:', error));
     });
     
     // 監聽 ICE 候選者
     peerConnection.onIceCandidate((candidate) => {
       if (candidate) {
-        this.sendSignal(
-          remotePeerId,
-          SignalType.ICE_CANDIDATE,
-          { candidate: candidate.toJSON() }
-        );
+        this.signalHub.sendIceCandidate(remotePeerId.toString(), candidate.toJSON())
+          .catch(error => console.error('Error sending ICE candidate:', error));
       }
     });
     
@@ -351,7 +436,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
     if (initiator) {
       try {
         const offer = await peerConnection.createOffer();
-        await this.sendSignal(remotePeerId, SignalType.OFFER, { sdp: offer });
+        await this.signalHub.sendOffer(remotePeerId.toString(), offer);
       } catch (error) {
         console.error('Error creating offer:', error);
         this.closeConnection(remotePeerId);
@@ -415,7 +500,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
       switch (type) {
         case SignalType.OFFER:
           const answer = await connection.createAnswer(payload.sdp);
-          await this.sendSignal(remotePeerId, SignalType.ANSWER, { sdp: answer });
+          await this.signalHub.sendAnswer(remotePeerId.toString(), answer);
           break;
           
         case SignalType.ANSWER:
@@ -444,14 +529,44 @@ export class WebRTCAdapter implements IWebRTCAdapter {
       throw new Error('WebRTC adapter not initialized');
     }
     
-    const signal: SignalData = {
-      type: signalType,
-      sender: this.localPeerId.toString(),
-      recipient: recipientId.toString(),
-      payload
-    };
-    
-    await this.signalHub.send('webrtc-signal', signal);
+    switch (signalType) {
+      case SignalType.OFFER:
+        await this.signalHub.sendOffer(recipientId.toString(), payload.sdp);
+        break;
+      case SignalType.ANSWER:
+        await this.signalHub.sendAnswer(recipientId.toString(), payload.sdp);
+        break;
+      case SignalType.ICE_CANDIDATE:
+        await this.signalHub.sendIceCandidate(recipientId.toString(), payload.candidate);
+        break;
+      default:
+        console.warn(`Unknown signal type: ${signalType}`);
+    }
+  }
+  
+  /**
+   * 啟用與對等方的備援模式
+   */
+  async activateFallback(peerId: PeerId): Promise<void> {
+    await this.signalHub.activateWebRTCFallback(peerId.toString());
+    this.notifyConnectionStateChange(peerId, ConnectionState.FALLBACK);
+  }
+  
+  /**
+   * 通過備援模式發送數據
+   */
+  async sendFallbackData(peerId: PeerId, channel: string, data: any): Promise<void> {
+    await this.signalHub.relayData(peerId.toString(), {
+      channel,
+      data
+    });
+  }
+  
+  /**
+   * 請求與對等方重新連接
+   */
+  async requestReconnect(peerId: PeerId): Promise<void> {
+    await this.signalHub.requestReconnect(peerId.toString());
   }
   
   /**
@@ -468,10 +583,25 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   async sendData(peerId: PeerId, channel: string, data: any): Promise<void> {
     const connection = this.connections.get(peerId.toString());
     if (!connection) {
+      // 檢查是否使用備援模式
+      if (this.getConnectionState(peerId) === ConnectionState.FALLBACK) {
+        await this.sendFallbackData(peerId, channel, data);
+        return;
+      }
+      
       throw new Error(`No connection found for peer ${peerId.toString()}`);
     }
     
-    await connection.sendData(channel, data);
+    try {
+      await connection.sendData(channel, data);
+    } catch (error) {
+      console.error(`Error sending data to peer ${peerId.toString()}:`, error);
+      
+      // 如果發送失敗，嘗試使用備援模式
+      console.log(`Trying fallback mode for peer ${peerId.toString()}`);
+      await this.activateFallback(peerId);
+      await this.sendFallbackData(peerId, channel, data);
+    }
   }
   
   /**
@@ -547,19 +677,5 @@ export class WebRTCAdapter implements IWebRTCAdapter {
     }
     
     return connectedPeers;
-  }
-  
-  /**
-   * 處理接收到的信令
-   */
-  private async handleIncomingSignal(signal: SignalData): Promise<void> {
-    if (!this.localPeerId) {
-      return;
-    }
-    
-    // 確認信令是發送給本地對等方的
-    if (signal.recipient === this.localPeerId.toString()) {
-      await this.processSignal(signal);
-    }
   }
 } 

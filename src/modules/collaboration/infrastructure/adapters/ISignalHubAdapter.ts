@@ -79,4 +79,86 @@ export interface ISignalHubAdapter {
    * @param callback 接收中繼數據的回調
    */
   onRelayData(callback: (data: { from: string, payload: any }) => void): void;
+
+  /**
+   * 更新連接狀態
+   * @param peerId 對等方ID
+   * @param state 連接狀態
+   */
+  updateConnectionState(peerId: string, state: string): Promise<void>;
+  
+  /**
+   * 請求與對等方重新連接
+   * @param targetPeerId 目標對等方ID
+   */
+  requestReconnect(targetPeerId: string): Promise<void>;
+  
+  /**
+   * 發送 ICE 候選者
+   * @param targetPeerId 目標對等方ID
+   * @param candidate ICE 候選者數據
+   */
+  sendIceCandidate(targetPeerId: string, candidate: RTCIceCandidateInit): Promise<void>;
+  
+  /**
+   * 發送 WebRTC 提議
+   * @param targetPeerId 目標對等方ID
+   * @param offer 提議數據
+   */
+  sendOffer(targetPeerId: string, offer: RTCSessionDescriptionInit): Promise<void>;
+  
+  /**
+   * 發送 WebRTC 應答
+   * @param targetPeerId 目標對等方ID
+   * @param answer 應答數據
+   */
+  sendAnswer(targetPeerId: string, answer: RTCSessionDescriptionInit): Promise<void>;
+  
+  /**
+   * 訂閱房間狀態事件
+   * @param callback 接收房間狀態的回調
+   */
+  onRoomState(callback: (data: any) => void): void;
+  
+  /**
+   * 訂閱玩家加入事件
+   * @param callback 當玩家加入時的回調
+   */
+  onPlayerJoined(callback: (data: { peerId: string, roomId: string, totalPlayers: number, isRoomOwner: boolean }) => void): void;
+  
+  /**
+   * 訂閱玩家離開事件
+   * @param callback 當玩家離開時的回調
+   */
+  onPlayerLeft(callback: (data: { peerId: string, roomId: string }) => void): void;
+  
+  /**
+   * 訂閱 ICE 候選者事件
+   * @param callback 當收到 ICE 候選者時的回調
+   */
+  onIceCandidate(callback: (data: { from: string, candidate: RTCIceCandidateInit }) => void): void;
+  
+  /**
+   * 訂閱提議事件
+   * @param callback 當收到提議時的回調
+   */
+  onOffer(callback: (data: { from: string, offer: RTCSessionDescriptionInit }) => void): void;
+  
+  /**
+   * 訂閱應答事件
+   * @param callback 當收到應答時的回調
+   */
+  onAnswer(callback: (data: { from: string, answer: RTCSessionDescriptionInit }) => void): void;
+  
+  /**
+   * 訂閱需要重新連接事件
+   * @param callback 當需要重新連接時的回調
+   */
+  onReconnectNeeded(callback: (data: { from: string }) => void): void;
+  
+  /**
+   * 訂閱對等方連接狀態事件
+   * @param callback 當對等方連接狀態變化時的回調
+   */
+  onPeerConnectionState(callback: (data: { peerId: string, state: string }) => void): void;
 } 

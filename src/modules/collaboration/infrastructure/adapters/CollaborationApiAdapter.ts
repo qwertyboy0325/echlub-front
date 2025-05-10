@@ -83,7 +83,7 @@ export class CollaborationApiAdapter implements ICollaborationApiAdapter {
   async updateRoomRules(roomId: RoomId, request: UpdateRoomRulesRequest): Promise<ApiResponse<void>> {
     try {
       const response = await fetch(`${this.API_BASE_URL}/api/collaboration/rooms/${roomId.toString()}/rules`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -114,8 +114,8 @@ export class CollaborationApiAdapter implements ICollaborationApiAdapter {
    */
   async closeRoom(roomId: RoomId, request: CloseRoomRequest): Promise<ApiResponse<void>> {
     try {
-      const response = await fetch(`${this.API_BASE_URL}/api/collaboration/rooms/${roomId.toString()}/close`, {
-        method: 'POST',
+      const response = await fetch(`${this.API_BASE_URL}/api/collaboration/rooms/${roomId.toString()}`, {
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },

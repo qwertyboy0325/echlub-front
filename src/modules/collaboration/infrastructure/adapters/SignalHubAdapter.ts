@@ -14,6 +14,26 @@ const WEBRTC_EVENTS = {
   RELAY_DATA: 'relay-data'
 };
 
+// 房間事件常量
+const ROOM_EVENTS = {
+  JOIN: 'join',
+  LEAVE: 'leave',
+  ROOM_STATE: 'room-state',
+  PLAYER_JOINED: 'player-joined',
+  PLAYER_LEFT: 'player-left'
+};
+
+// WebRTC 信令事件常量
+const SIGNAL_EVENTS = {
+  ICE_CANDIDATE: 'ice-candidate',
+  OFFER: 'offer',
+  ANSWER: 'answer',
+  CONNECTION_STATE: 'connection-state',
+  RECONNECT_REQUEST: 'reconnect-request',
+  RECONNECT_NEEDED: 'reconnect-needed',
+  PEER_CONNECTION_STATE: 'peer-connection-state'
+};
+
 /**
  * SignalHub 適配器實現
  * 使用 WebSocket 實現信令交換和房間事件廣播
@@ -55,7 +75,8 @@ export class SignalHubAdapter implements ISignalHubAdapter {
     
     return new Promise<void>((resolve, reject) => {
       try {
-        const wsUrl = `${this.apiBaseUrl}/ws?roomId=${roomId}&peerId=${peerId}`;
+        // 使用符合後端規格的 WebSocket 連接 URL
+        const wsUrl = `${this.apiBaseUrl}/collaboration?roomId=${roomId}&peerId=${peerId}`;
         this.socket = new WebSocket(wsUrl);
         this.currentRoomId = roomId;
         this.currentPeerId = peerId;
@@ -64,6 +85,12 @@ export class SignalHubAdapter implements ISignalHubAdapter {
           console.log(`SignalHub connected to ${roomId} as ${peerId}`);
           this.connectionStatus = true;
           this.reconnectAttempts = 0;
+          
+          // 連接後立即發送 join 事件
+          this.joinRoom(roomId, peerId).catch(error => {
+            console.error('Error joining room:', error);
+          });
+          
           resolve();
         };
         
@@ -89,6 +116,16 @@ export class SignalHubAdapter implements ISignalHubAdapter {
         console.error('Error connecting to SignalHub:', error);
         reject(error);
       }
+    });
+  }
+  
+  /**
+   * 加入房間
+   */
+  private async joinRoom(roomId: string, peerId: string): Promise<void> {
+    await this.send(ROOM_EVENTS.JOIN, {
+      roomId,
+      peerId
     });
   }
   
@@ -149,6 +186,16 @@ export class SignalHubAdapter implements ISignalHubAdapter {
         this.currentPeerId = null;
         resolve();
         return;
+      }
+      
+      // 如果有房間 ID 和對等方 ID，發送離開事件
+      if (this.currentRoomId && this.currentPeerId && this.socket.readyState === WebSocket.OPEN) {
+        this.send(ROOM_EVENTS.LEAVE, {
+          roomId: this.currentRoomId,
+          peerId: this.currentPeerId
+        }).catch(error => {
+          console.error('Error sending leave event:', error);
+        });
       }
       
       this.socket.onclose = () => {
@@ -217,6 +264,36 @@ export class SignalHubAdapter implements ISignalHubAdapter {
   }
   
   /**
+   * 更新連接狀態
+   */
+  async updateConnectionState(peerId: string, state: string): Promise<void> {
+    if (!this.currentRoomId) {
+      throw new Error('Not connected to a room');
+    }
+    
+    await this.send(SIGNAL_EVENTS.CONNECTION_STATE, {
+      roomId: this.currentRoomId,
+      peerId,
+      state
+    });
+  }
+  
+  /**
+   * 請求與對等方重新連接
+   */
+  async requestReconnect(targetPeerId: string): Promise<void> {
+    if (!this.currentRoomId || !this.currentPeerId) {
+      throw new Error('Not connected to a room');
+    }
+    
+    await this.send(SIGNAL_EVENTS.RECONNECT_REQUEST, {
+      roomId: this.currentRoomId,
+      from: this.currentPeerId,
+      to: targetPeerId
+    });
+  }
+  
+  /**
    * 訂閱特定通道的消息
    */
   subscribe(channel: string, callback: (data: any) => void): void {
@@ -256,10 +333,15 @@ export class SignalHubAdapter implements ISignalHubAdapter {
   async activateWebRTCFallback(peerId: string): Promise<void> {
     console.log(`Activating WebRTC fallback for peer: ${peerId}`);
     
+    if (!this.currentRoomId || !this.currentPeerId) {
+      throw new Error('Not connected to a room');
+    }
+    
     // 發送啟用備援模式的請求
     await this.send(WEBRTC_EVENTS.FALLBACK_ACTIVATE, {
-      targetPeerId: peerId,
-      reason: 'p2p-connection-failed'
+      roomId: this.currentRoomId,
+      from: this.currentPeerId,
+      to: peerId
     });
     
     // 將事件通過 EventBus 通知應用程式其他部分
@@ -278,14 +360,68 @@ export class SignalHubAdapter implements ISignalHubAdapter {
       throw new Error('SignalHub not connected, cannot relay data');
     }
     
+    if (!this.currentRoomId || !this.currentPeerId) {
+      throw new Error('Not connected to a room');
+    }
+    
     // 發送中繼數據
     await this.send(WEBRTC_EVENTS.RELAY_DATA, {
-      targetPeerId: targetPeerId,
+      roomId: this.currentRoomId,
+      from: this.currentPeerId,
+      to: targetPeerId,
       payload: data
     });
     
     // 記錄中繼傳輸
     console.log(`Data relayed to peer: ${targetPeerId}`);
+  }
+  
+  /**
+   * 發送 ICE 候選者
+   */
+  async sendIceCandidate(targetPeerId: string, candidate: RTCIceCandidateInit): Promise<void> {
+    if (!this.currentRoomId || !this.currentPeerId) {
+      throw new Error('Not connected to a room');
+    }
+    
+    await this.send(SIGNAL_EVENTS.ICE_CANDIDATE, {
+      roomId: this.currentRoomId,
+      from: this.currentPeerId,
+      to: targetPeerId,
+      candidate
+    });
+  }
+  
+  /**
+   * 發送 WebRTC 提議
+   */
+  async sendOffer(targetPeerId: string, offer: RTCSessionDescriptionInit): Promise<void> {
+    if (!this.currentRoomId || !this.currentPeerId) {
+      throw new Error('Not connected to a room');
+    }
+    
+    await this.send(SIGNAL_EVENTS.OFFER, {
+      roomId: this.currentRoomId,
+      from: this.currentPeerId,
+      to: targetPeerId,
+      offer
+    });
+  }
+  
+  /**
+   * 發送 WebRTC 應答
+   */
+  async sendAnswer(targetPeerId: string, answer: RTCSessionDescriptionInit): Promise<void> {
+    if (!this.currentRoomId || !this.currentPeerId) {
+      throw new Error('Not connected to a room');
+    }
+    
+    await this.send(SIGNAL_EVENTS.ANSWER, {
+      roomId: this.currentRoomId,
+      from: this.currentPeerId,
+      to: targetPeerId,
+      answer
+    });
   }
   
   /**
@@ -314,5 +450,61 @@ export class SignalHubAdapter implements ISignalHubAdapter {
    */
   onRelayData(callback: (data: { from: string, payload: any }) => void): void {
     this.subscribe(WEBRTC_EVENTS.RELAY_DATA, callback);
+  }
+  
+  /**
+   * 訂閱房間狀態事件
+   */
+  onRoomState(callback: (data: any) => void): void {
+    this.subscribe(ROOM_EVENTS.ROOM_STATE, callback);
+  }
+  
+  /**
+   * 訂閱玩家加入事件
+   */
+  onPlayerJoined(callback: (data: { peerId: string, roomId: string, totalPlayers: number, isRoomOwner: boolean }) => void): void {
+    this.subscribe(ROOM_EVENTS.PLAYER_JOINED, callback);
+  }
+  
+  /**
+   * 訂閱玩家離開事件
+   */
+  onPlayerLeft(callback: (data: { peerId: string, roomId: string }) => void): void {
+    this.subscribe(ROOM_EVENTS.PLAYER_LEFT, callback);
+  }
+  
+  /**
+   * 訂閱 ICE 候選者事件
+   */
+  onIceCandidate(callback: (data: { from: string, candidate: RTCIceCandidateInit }) => void): void {
+    this.subscribe(SIGNAL_EVENTS.ICE_CANDIDATE, callback);
+  }
+  
+  /**
+   * 訂閱提議事件
+   */
+  onOffer(callback: (data: { from: string, offer: RTCSessionDescriptionInit }) => void): void {
+    this.subscribe(SIGNAL_EVENTS.OFFER, callback);
+  }
+  
+  /**
+   * 訂閱應答事件
+   */
+  onAnswer(callback: (data: { from: string, answer: RTCSessionDescriptionInit }) => void): void {
+    this.subscribe(SIGNAL_EVENTS.ANSWER, callback);
+  }
+  
+  /**
+   * 訂閱需要重新連接事件
+   */
+  onReconnectNeeded(callback: (data: { from: string }) => void): void {
+    this.subscribe(SIGNAL_EVENTS.RECONNECT_NEEDED, callback);
+  }
+  
+  /**
+   * 訂閱對等方連接狀態事件
+   */
+  onPeerConnectionState(callback: (data: { peerId: string, state: string }) => void): void {
+    this.subscribe(SIGNAL_EVENTS.PEER_CONNECTION_STATE, callback);
   }
 } 
