@@ -1,8 +1,7 @@
 import { RoomId } from '../../domain/value-objects/RoomId';
 
-
 /**
- * 房間資訊回應介面
+ * Room information response interface
  */
 export interface RoomResponse {
   id: string;
@@ -19,7 +18,7 @@ export interface RoomResponse {
 }
 
 /**
- * 創建房間請求
+ * Create room request
  */
 export interface CreateRoomRequest {
   ownerId: string;
@@ -30,7 +29,7 @@ export interface CreateRoomRequest {
 }
 
 /**
- * 更新房間規則請求
+ * Update room rules request
  */
 export interface UpdateRoomRulesRequest {
   ownerId: string;
@@ -41,14 +40,14 @@ export interface UpdateRoomRulesRequest {
 }
 
 /**
- * 關閉房間請求
+ * Close room request
  */
 export interface CloseRoomRequest {
   ownerId: string;
 }
 
 /**
- * API 回應結果
+ * API response result
  */
 export interface ApiResponse<T> {
   data?: T;
@@ -57,33 +56,33 @@ export interface ApiResponse<T> {
 }
 
 /**
- * 協作 API 適配器介面
- * 用於與後端協作 API 通信
+ * Collaboration API Adapter Interface
+ * Used for communication with the backend collaboration API
  */
 export interface ICollaborationApiAdapter {
   /**
-   * 創建新房間
-   * @param request 創建房間請求
+   * Create a new room
+   * @param request Create room request
    */
   createRoom(request: CreateRoomRequest): Promise<ApiResponse<{ roomId: string }>>;
   
   /**
-   * 取得房間狀態
-   * @param roomId 房間 ID
+   * Get room status
+   * @param roomId Room ID
    */
   getRoom(roomId: RoomId): Promise<ApiResponse<RoomResponse>>;
   
   /**
-   * 更新房間規則
-   * @param roomId 房間 ID
-   * @param request 更新規則請求
+   * Update room rules
+   * @param roomId Room ID
+   * @param request Update rules request
    */
   updateRoomRules(roomId: RoomId, request: UpdateRoomRulesRequest): Promise<ApiResponse<void>>;
   
   /**
-   * 關閉房間
-   * @param roomId 房間 ID
-   * @param request 關閉房間請求
+   * Close room
+   * @param roomId Room ID
+   * @param request Close room request
    */
   closeRoom(roomId: RoomId, request: CloseRoomRequest): Promise<ApiResponse<void>>;
 } 

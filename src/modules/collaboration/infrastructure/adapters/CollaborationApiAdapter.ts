@@ -10,14 +10,14 @@ import {
 import { RoomId } from '../../domain/value-objects/RoomId';
 
 /**
- * 協作 API 適配器實現
+ * Collaboration API Adapter Implementation
  */
 @injectable()
 export class CollaborationApiAdapter implements ICollaborationApiAdapter {
   private readonly API_BASE_URL: string = import.meta.env.VITE_API_URL || 'https://api.echlub.com';
   
   /**
-   * 創建新房間
+   * Create a new room
    */
   async createRoom(request: CreateRoomRequest): Promise<ApiResponse<{ roomId: string }>> {
     try {
@@ -25,20 +25,32 @@ export class CollaborationApiAdapter implements ICollaborationApiAdapter {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify(request)
+        body: JSON.stringify({
+          owner_id: request.ownerId,
+          max_players: request.maxPlayers,
+          allow_relay: request.allowRelay,
+          latency_target_ms: request.latencyTargetMs,
+          opus_bitrate: request.opusBitrate
+        })
       });
       
       const data = await response.json();
       
       if (!response.ok) {
         return {
-          error: data.message || `Failed to create room: ${response.statusText}`
+          error: data.error || `Failed to create room: ${response.statusText}`
         };
       }
       
-      return { data };
+      return { 
+        data: { 
+          roomId: data.room_id 
+        },
+        message: data.message
+      };
     } catch (error) {
       console.error('Error creating room:', error);
       return {
@@ -48,7 +60,7 @@ export class CollaborationApiAdapter implements ICollaborationApiAdapter {
   }
   
   /**
-   * 取得房間狀態
+   * Get room status
    */
   async getRoom(roomId: RoomId): Promise<ApiResponse<RoomResponse>> {
     try {
@@ -56,6 +68,7 @@ export class CollaborationApiAdapter implements ICollaborationApiAdapter {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         credentials: 'include'
       });
@@ -64,11 +77,25 @@ export class CollaborationApiAdapter implements ICollaborationApiAdapter {
       
       if (!response.ok) {
         return {
-          error: data.message || `Failed to get room: ${response.statusText}`
+          error: data.error || `Failed to get room: ${response.statusText}`
         };
       }
       
-      return { data: data.room };
+      return { 
+        data: {
+          id: data.room_id,
+          ownerId: data.owner_id,
+          active: data.active,
+          maxPlayers: data.max_players,
+          currentPlayers: data.current_players,
+          rules: {
+            maxPlayers: data.rules.max_players,
+            allowRelay: data.rules.allow_relay,
+            latencyTargetMs: data.rules.latency_target_ms,
+            opusBitrate: data.rules.opus_bitrate
+          }
+        }
+      };
     } catch (error) {
       console.error('Error getting room:', error);
       return {
@@ -78,7 +105,7 @@ export class CollaborationApiAdapter implements ICollaborationApiAdapter {
   }
   
   /**
-   * 更新房間規則
+   * Update room rules
    */
   async updateRoomRules(roomId: RoomId, request: UpdateRoomRulesRequest): Promise<ApiResponse<void>> {
     try {
@@ -86,15 +113,22 @@ export class CollaborationApiAdapter implements ICollaborationApiAdapter {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify(request)
+        body: JSON.stringify({
+          owner_id: request.ownerId,
+          max_players: request.maxPlayers,
+          allow_relay: request.allowRelay,
+          latency_target_ms: request.latencyTargetMs,
+          opus_bitrate: request.opusBitrate
+        })
       });
       
       if (!response.ok) {
         const data = await response.json();
         return {
-          error: data.message || `Failed to update room rules: ${response.statusText}`
+          error: data.error || `Failed to update room rules: ${response.statusText}`
         };
       }
       
@@ -110,7 +144,7 @@ export class CollaborationApiAdapter implements ICollaborationApiAdapter {
   }
   
   /**
-   * 關閉房間
+   * Close room
    */
   async closeRoom(roomId: RoomId, request: CloseRoomRequest): Promise<ApiResponse<void>> {
     try {
@@ -118,15 +152,18 @@ export class CollaborationApiAdapter implements ICollaborationApiAdapter {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify(request)
+        body: JSON.stringify({
+          owner_id: request.ownerId
+        })
       });
       
       if (!response.ok) {
         const data = await response.json();
         return {
-          error: data.message || `Failed to close room: ${response.statusText}`
+          error: data.error || `Failed to close room: ${response.statusText}`
         };
       }
       
