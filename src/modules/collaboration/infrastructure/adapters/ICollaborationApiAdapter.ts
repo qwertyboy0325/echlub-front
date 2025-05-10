@@ -1,6 +1,5 @@
 import { RoomId } from '../../domain/value-objects/RoomId';
-import { PeerId } from '../../domain/value-objects/PeerId';
-import { RoomRuleVO } from '../../domain/value-objects/RoomRuleVO';
+
 
 /**
  * 房間資訊回應介面

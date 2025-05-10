@@ -26,7 +26,7 @@ class PeerConnection {
   
   constructor(
     private readonly remotePeerId: PeerId,
-    private readonly options: RTCPeerOptions
+    options: RTCPeerOptions
   ) {
     this.connection = new RTCPeerConnection(options);
     
@@ -610,7 +610,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   async broadcastData(channel: string, data: any): Promise<void> {
     const promises: Promise<void>[] = [];
     
-    for (const [peerIdStr, connection] of this.connections.entries()) {
+    for (const [_peerIdStr, connection] of this.connections.entries()) {
       if (connection.getConnectionState() === ConnectionState.CONNECTED) {
         promises.push(connection.sendData(channel, data));
       }

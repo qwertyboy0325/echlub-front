@@ -1,7 +1,5 @@
 import { injectable, inject } from 'inversify';
 import { ISignalHubAdapter } from './ISignalHubAdapter';
-import { CollaborationTypes } from '../../di/CollaborationTypes';
-import { PeerId } from '../../domain/value-objects/PeerId';
 import { TYPES } from '../../../../core/di/types';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 
