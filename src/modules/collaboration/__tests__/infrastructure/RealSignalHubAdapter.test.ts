@@ -5,7 +5,7 @@ import { TYPES } from '../../../../core/di/types';
 import { CollaborationTypes } from '../../di/CollaborationTypes';
 
 // Mock import.meta.env
-// @ts-ignore
+// @ts-expect-error - Mocking global import.meta
 global.import = { meta: { env: { VITE_API_URL: 'wss://test-api.echlub.com' } } };
 
 // Mock WebSocket
@@ -77,9 +77,7 @@ class MockWebSocket {
 global.WebSocket = MockWebSocket as unknown as typeof WebSocket;
 
 // Spy on console methods to avoid noise in test output
-// @ts-ignore
 global.console.log = jest.fn();
-// @ts-ignore
 global.console.error = jest.fn();
 
 describe('RealSignalHubAdapter', () => {
@@ -126,7 +124,7 @@ describe('RealSignalHubAdapter', () => {
       const connectPromise = adapter.connect(roomId, peerId);
       
       // Get the created WebSocket instance
-      // @ts-ignore - We know adapter has a socket property, even if it may be private
+      // @ts-expect-error - Accessing private socket property
       mockSocket = adapter['socket'] as MockWebSocket;
       
       // Setup send function implementation
@@ -163,8 +161,8 @@ describe('RealSignalHubAdapter', () => {
       const connectPromise = adapter.connect(roomId, peerId);
       
       // Get the created WebSocket instance
-      // @ts-ignore
-      mockSocket = adapter['socket'] as MockWebSocket;
+      
+      mockSocket = adapter['socket'] as unknown as MockWebSocket;
       
       // Simulate connection error
       mockSocket.simulateError();
@@ -187,7 +185,7 @@ describe('RealSignalHubAdapter', () => {
       const connectPromise = adapter.connect(roomId, peerId);
       
       // Get the created WebSocket instance
-      // @ts-ignore
+      // @ts-expect-error - Accessing private socket property
       mockSocket = adapter['socket'] as MockWebSocket;
       
       // Ensure mock resolves properly
@@ -225,7 +223,7 @@ describe('RealSignalHubAdapter', () => {
       const connectPromise = adapter.connect(roomId, peerId);
       
       // Get the created WebSocket instance
-      // @ts-ignore
+      // @ts-expect-error - Accessing private socket property
       mockSocket = adapter['socket'] as MockWebSocket;
       
       // Ensure the send method is properly mocked
@@ -385,7 +383,7 @@ describe('RealSignalHubAdapter', () => {
       const connectPromise = adapter.connect(roomId, peerId);
       
       // Get the created WebSocket instance
-      // @ts-ignore
+      // @ts-expect-error - Accessing private socket property
       mockSocket = adapter['socket'] as MockWebSocket;
       
       // Ensure the send method is properly mocked

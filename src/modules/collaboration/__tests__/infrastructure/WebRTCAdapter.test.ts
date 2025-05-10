@@ -56,8 +56,8 @@ class MockRTCPeerConnection {
 }
 
 // 自定義RTCIceCandidate類型，擴展原生的RTCIceCandidateInit並添加toJSON方法
-// @ts-ignore - 此介面暫未使用，但可能在將來的測試中有用
-interface MockRTCIceCandidate extends RTCIceCandidateInit {
+// @ts-expect-error - 此介面暫未使用，但可能在將來的測試中有用
+interface _MockRTCIceCandidate extends RTCIceCandidateInit {
   toJSON(): any;
 }
 

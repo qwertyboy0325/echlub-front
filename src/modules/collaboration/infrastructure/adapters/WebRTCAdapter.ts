@@ -498,10 +498,11 @@ export class WebRTCAdapter implements IWebRTCAdapter {
     
     try {
       switch (type) {
-        case SignalType.OFFER:
+        case SignalType.OFFER: {
           const answer = await connection.createAnswer(payload.sdp);
           await this.signalHub.sendAnswer(remotePeerId.toString(), answer);
           break;
+        }
           
         case SignalType.ANSWER:
           await connection.setRemoteAnswer(payload.sdp);

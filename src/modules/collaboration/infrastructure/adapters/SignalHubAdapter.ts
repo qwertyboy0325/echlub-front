@@ -50,14 +50,16 @@ export class SignalHubAdapter implements ISignalHubAdapter {
   private currentPeerId: string | null = null;
   
   // Get API URL from environment or use default
-  private apiBaseUrl: string;
+  private readonly apiBaseUrl: string;
   
   constructor(
     @inject(TYPES.EventBus)
     private readonly eventBus: IEventBus,
+    @inject(TYPES.ENV_CONFIG)
+    private readonly envConfig: { API_URL: string }
   ) {
-    // 直接使用環境變數
-    this.apiBaseUrl = process.env.VITE_API_URL || 'wss://api.echlub.com';
+    // 使用注入的配置而不是直接訪問環境變數
+    this.apiBaseUrl = envConfig.API_URL || 'wss://api.echlub.com';
   }
   
   /**

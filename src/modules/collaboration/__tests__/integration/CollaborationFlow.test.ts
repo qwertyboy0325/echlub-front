@@ -20,6 +20,7 @@ PeerId.setGenerator(() => uuidv4());
 
 // Mock RTCPeerConnection
 class MockRTCPeerConnection {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onicecandidate: ((event: any) => void) | null = null;
   oniceconnectionstatechange: (() => void) | null = null;
   iceConnectionState: RTCIceConnectionState = 'new';
@@ -51,6 +52,7 @@ class MockRTCPeerConnection {
 
 // Mock LocalCacheAdapter
 class MockLocalCacheAdapter implements ILocalCacheAdapter {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private cache: Map<string, any> = new Map();
   
   async get<T>(key: string): Promise<T | null> {
@@ -80,8 +82,9 @@ global.RTCPeerConnection = MockRTCPeerConnection as unknown as typeof RTCPeerCon
 describe('Collaboration Flow Integration', () => {
   let container: Container;
   let collaborationService: CollaborationService;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockEventBus: any;
-  let eventHandlers: Record<string, Function[]>;
+  let eventHandlers: Record<string, Array<(data: any) => void>>;
   
   beforeEach(() => {
     // Create event bus mock
