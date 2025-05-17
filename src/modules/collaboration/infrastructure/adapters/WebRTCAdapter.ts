@@ -6,7 +6,7 @@ import { CollaborationTypes } from '../../di/CollaborationTypes';
 import type { ISignalHubAdapter } from './ISignalHubAdapter';
 
 /**
- * WebRTC 對等連接選項
+ * WebRTC Peer Connection Options
  */
 interface RTCPeerOptions {
   iceServers: RTCIceServer[];
@@ -15,7 +15,7 @@ interface RTCPeerOptions {
 }
 
 /**
- * WebRTC 連接包裝器
+ * WebRTC Connection Wrapper
  */
 class PeerConnection {
   private connection: RTCPeerConnection;
@@ -30,14 +30,14 @@ class PeerConnection {
   ) {
     this.connection = new RTCPeerConnection(options);
     
-    // 監聽 ICE 連接狀態變更
+    // Listen for ICE connection state changes
     this.connection.oniceconnectionstatechange = () => {
       this.updateState(this.mapIceStateToConnectionState(this.connection.iceConnectionState));
     };
   }
   
   /**
-   * 創建新的數據通道
+   * Create a new data channel
    */
   createDataChannel(channelName: string): RTCDataChannel {
     const channel = this.connection.createDataChannel(channelName, {
@@ -50,7 +50,7 @@ class PeerConnection {
   }
   
   /**
-   * 設置數據通道處理器
+   * Set up data channel handlers
    */
   private setupDataChannel(channel: RTCDataChannel): void {
     channel.onopen = () => {
@@ -80,7 +80,7 @@ class PeerConnection {
   }
   
   /**
-   * 監聽數據通道接收
+   * Handle data channel reception
    */
   onDataChannel(event: RTCDataChannelEvent): void {
     const channel = event.channel;
@@ -89,7 +89,7 @@ class PeerConnection {
   }
   
   /**
-   * 創建連接提議
+   * Create connection offer
    */
   async createOffer(): Promise<RTCSessionDescriptionInit> {
     const offer = await this.connection.createOffer();
@@ -98,7 +98,7 @@ class PeerConnection {
   }
   
   /**
-   * 設置遠程提議並創建應答
+   * Set remote offer and create answer
    */
   async createAnswer(offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
     await this.connection.setRemoteDescription(offer);
@@ -108,28 +108,28 @@ class PeerConnection {
   }
   
   /**
-   * 設置遠程應答
+   * Set remote answer
    */
   async setRemoteAnswer(answer: RTCSessionDescriptionInit): Promise<void> {
     await this.connection.setRemoteDescription(answer);
   }
   
   /**
-   * 添加 ICE 候選者
+   * Add ICE candidate
    */
   async addIceCandidate(candidate: RTCIceCandidateInit): Promise<void> {
     await this.connection.addIceCandidate(candidate);
   }
   
   /**
-   * 發送數據
+   * Send data
    */
   async sendData(channelName: string, data: any): Promise<void> {
     const channel = this.dataChannels.get(channelName);
     if (!channel) {
       const newChannel = this.createDataChannel(channelName);
       
-      // 等待通道打開
+      // Wait for channel to open
       if (newChannel.readyState !== 'open') {
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
@@ -160,7 +160,7 @@ class PeerConnection {
   }
   
   /**
-   * 訂閱通道數據
+   * Subscribe to channel data
    */
   subscribe(channelName: string, callback: (data: any) => void): void {
     if (!this.channelListeners.has(channelName)) {
@@ -171,7 +171,7 @@ class PeerConnection {
   }
   
   /**
-   * 取消訂閱通道數據
+   * Unsubscribe from channel data
    */
   unsubscribe(channelName: string, callback: (data: any) => void): void {
     const listeners = this.channelListeners.get(channelName);
@@ -181,35 +181,35 @@ class PeerConnection {
   }
   
   /**
-   * 關閉連接
+   * Close connection
    */
   close(): void {
-    // 關閉所有數據通道
+    // Close all data channels
     this.dataChannels.forEach(channel => {
       channel.close();
     });
     
-    // 關閉 RTCPeerConnection
+    // Close RTCPeerConnection
     this.connection.close();
     this.updateState(ConnectionState.DISCONNECTED);
   }
   
   /**
-   * 獲取 ICE 連接狀態
+   * Get ICE connection state
    */
   getIceState(): RTCIceConnectionState {
     return this.connection.iceConnectionState;
   }
   
   /**
-   * 獲取連接狀態
+   * Get connection state
    */
   getConnectionState(): ConnectionState {
     return this.state;
   }
   
   /**
-   * 更新連接狀態
+   * Update connection state
    */
   private updateState(newState: ConnectionState): void {
     if (this.state !== newState) {
@@ -219,7 +219,7 @@ class PeerConnection {
   }
   
   /**
-   * 映射 WebRTC ICE 狀態到應用連接狀態
+   * Map WebRTC ICE state to application connection state
    */
   private mapIceStateToConnectionState(iceState: RTCIceConnectionState): ConnectionState {
     switch (iceState) {
@@ -241,14 +241,14 @@ class PeerConnection {
   }
   
   /**
-   * 註冊狀態變更監聽器
+   * Register state change listener
    */
   onStateChange(listener: (state: ConnectionState) => void): void {
     this.listeners.push(listener);
   }
   
   /**
-   * 獲取 ICE 候選者
+   * Get ICE candidates
    */
   onIceCandidate(callback: (candidate: RTCIceCandidate | null) => void): void {
     this.connection.onicecandidate = (event) => {
@@ -258,7 +258,7 @@ class PeerConnection {
 }
 
 /**
- * WebRTC 適配器實現
+ * WebRTC Adapter Implementation
  */
 @injectable()
 export class WebRTCAdapter implements IWebRTCAdapter {
@@ -273,7 +273,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   ) {}
   
   /**
-   * 獲取 ICE 服務器配置
+   * Get ICE server configuration
    */
   private getIceServers(): RTCIceServer[] {
     return [
@@ -293,12 +293,12 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 初始化 WebRTC 適配器
+   * Initialize WebRTC adapter
    */
   async initialize(localPeerId: PeerId): Promise<void> {
     this.localPeerId = localPeerId;
     
-    // 使用新的訂閱方式
+    // Use new subscription method
     this.signalHub.onIceCandidate(this.handleIceCandidate.bind(this));
     this.signalHub.onOffer(this.handleOffer.bind(this));
     this.signalHub.onAnswer(this.handleAnswer.bind(this));
@@ -310,7 +310,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 處理收到的 ICE 候選者
+   * Handle received ICE candidate
    */
   private async handleIceCandidate(data: { from: string, candidate: RTCIceCandidateInit }): Promise<void> {
     const { from, candidate } = data;
@@ -324,7 +324,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 處理收到的提議
+   * Handle received offer
    */
   private async handleOffer(data: { from: string, offer: RTCSessionDescriptionInit }): Promise<void> {
     const { from, offer } = data;
@@ -338,7 +338,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 處理收到的應答
+   * Handle received answer
    */
   private async handleAnswer(data: { from: string, answer: RTCSessionDescriptionInit }): Promise<void> {
     const { from, answer } = data;
@@ -352,7 +352,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 處理需要重新連接的請求
+   * Handle reconnection request
    */
   private async handleReconnectNeeded(data: { from: string }): Promise<void> {
     const { from } = data;
@@ -360,23 +360,23 @@ export class WebRTCAdapter implements IWebRTCAdapter {
     
     console.log(`Reconnection needed with peer: ${from}`);
     
-    // 關閉現有連接並創建新連接
+    // Close existing connection and create new one
     await this.closeConnection(remotePeerId);
     await this.createConnection(remotePeerId, true);
   }
   
   /**
-   * 處理對等方連接狀態變更
+   * Handle peer connection state change
    */
   private async handlePeerConnectionState(data: { peerId: string, state: string }): Promise<void> {
     const { peerId, state } = data;
     console.log(`Peer ${peerId} connection state changed to ${state}`);
     
-    // 可以在這裡添加額外的處理邏輯
+    // Additional handling logic can be added here
   }
   
   /**
-   * 處理需要啟用備援模式的請求
+   * Handle fallback mode activation request
    */
   private async handleFallbackNeeded(data: { peerId: string }): Promise<void> {
     const { peerId } = data;
@@ -384,12 +384,12 @@ export class WebRTCAdapter implements IWebRTCAdapter {
     
     console.log(`WebRTC fallback needed for peer: ${peerId}`);
     
-    // 通知應用程序 WebRTC 需要使用備援模式
+    // Notify application that WebRTC needs to use fallback mode
     this.notifyConnectionStateChange(remotePeerId, ConnectionState.FALLBACK);
   }
   
   /**
-   * 創建新的對等連接
+   * Create new peer connection
    */
   async createConnection(remotePeerId: PeerId, initiator: boolean): Promise<void> {
     if (!this.localPeerId) {
@@ -398,7 +398,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
     
     const peerIdStr = remotePeerId.toString();
     
-    // 檢查是否已存在連接
+    // Check if connection already exists
     if (this.connections.has(peerIdStr)) {
       console.log(`Connection with ${peerIdStr} already exists`);
       return;
@@ -406,22 +406,22 @@ export class WebRTCAdapter implements IWebRTCAdapter {
     
     console.log(`Creating new connection with ${peerIdStr}, initiator: ${initiator}`);
     
-    // 創建新連接
+    // Create new connection
     const peerConnection = new PeerConnection(remotePeerId, {
       iceServers: this.getIceServers(),
       iceCandidatePoolSize: 10
     });
     
-    // 監聽連接狀態變更
+    // Listen for connection state changes
     peerConnection.onStateChange((state) => {
       this.notifyConnectionStateChange(remotePeerId, state);
       
-      // 通知伺服器連接狀態變更
+      // Notify server about connection state change
       this.signalHub.updateConnectionState(remotePeerId.toString(), state.toString())
         .catch(error => console.error('Error updating connection state:', error));
     });
     
-    // 監聽 ICE 候選者
+    // Listen for ICE candidates
     peerConnection.onIceCandidate((candidate) => {
       if (candidate) {
         this.signalHub.sendIceCandidate(remotePeerId.toString(), candidate.toJSON())
@@ -429,10 +429,10 @@ export class WebRTCAdapter implements IWebRTCAdapter {
       }
     });
     
-    // 儲存連接
+    // Store connection
     this.connections.set(peerIdStr, peerConnection);
     
-    // 如果是發起方，創建並發送提議
+    // If initiator, create and send offer
     if (initiator) {
       try {
         const offer = await peerConnection.createOffer();
@@ -445,7 +445,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 關閉與特定對等方的連接
+   * Close connection with specific peer
    */
   async closeConnection(remotePeerId: PeerId): Promise<void> {
     const peerIdStr = remotePeerId.toString();
@@ -459,7 +459,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 關閉所有連接
+   * Close all connections
    */
   async closeAllConnections(): Promise<void> {
     for (const [peerIdStr, connection] of this.connections.entries()) {
@@ -471,7 +471,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 處理接收到的信令數據
+   * Process received signal data
    */
   async processSignal(signal: SignalData): Promise<void> {
     if (!this.localPeerId) {
@@ -485,7 +485,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
     
     let connection = this.connections.get(sender);
     
-    // 如果收到提議但連接不存在，創建一個新連接
+    // If received offer but connection doesn't exist, create a new connection
     if (type === SignalType.OFFER && !connection) {
       await this.createConnection(remotePeerId, false);
       connection = this.connections.get(sender);
@@ -523,7 +523,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 發送信令數據
+   * Send signal data
    */
   async sendSignal(recipientId: PeerId, signalType: SignalType, payload: any): Promise<void> {
     if (!this.localPeerId) {
@@ -546,7 +546,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 啟用與對等方的備援模式
+   * Activate fallback mode with peer
    */
   async activateFallback(peerId: PeerId): Promise<void> {
     await this.signalHub.activateWebRTCFallback(peerId.toString());
@@ -554,7 +554,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 通過備援模式發送數據
+   * Send data through fallback mechanism
    */
   async sendFallbackData(peerId: PeerId, channel: string, data: any): Promise<void> {
     await this.signalHub.relayData(peerId.toString(), {
@@ -564,14 +564,14 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 請求與對等方重新連接
+   * Request reconnection with peer
    */
   async requestReconnect(peerId: PeerId): Promise<void> {
     await this.signalHub.requestReconnect(peerId.toString());
   }
   
   /**
-   * 獲取與對等方的連接狀態
+   * Get connection state with peer
    */
   getConnectionState(peerId: PeerId): ConnectionState {
     const connection = this.connections.get(peerId.toString());
@@ -579,12 +579,12 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 發送數據至特定對等方
+   * Send data to specific peer
    */
   async sendData(peerId: PeerId, channel: string, data: any): Promise<void> {
     const connection = this.connections.get(peerId.toString());
     if (!connection) {
-      // 檢查是否使用備援模式
+      // Check if using fallback mode
       if (this.getConnectionState(peerId) === ConnectionState.FALLBACK) {
         await this.sendFallbackData(peerId, channel, data);
         return;
@@ -598,7 +598,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
     } catch (error) {
       console.error(`Error sending data to peer ${peerId.toString()}:`, error);
       
-      // 如果發送失敗，嘗試使用備援模式
+      // If sending fails, try using fallback mode
       console.log(`Trying fallback mode for peer ${peerId.toString()}`);
       await this.activateFallback(peerId);
       await this.sendFallbackData(peerId, channel, data);
@@ -606,7 +606,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 廣播數據至所有已連接的對等方
+   * Broadcast data to all connected peers
    */
   async broadcastData(channel: string, data: any): Promise<void> {
     const promises: Promise<void>[] = [];
@@ -621,13 +621,13 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 訂閱特定通道的數據
+   * Subscribe to data from specific channel
    */
   subscribe(channel: string, callback: (peerId: PeerId, data: any) => void): void {
     if (!this.channelSubscriptions.has(channel)) {
       this.channelSubscriptions.set(channel, new Set());
       
-      // 為每個現有連接設置訂閱
+      // Set up subscription for each existing connection
       for (const [peerIdStr, connection] of this.connections.entries()) {
         const peerId = PeerId.fromString(peerIdStr);
         connection.subscribe(channel, (data) => {
@@ -640,7 +640,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 取消訂閱特定通道
+   * Unsubscribe from specific channel
    */
   unsubscribe(channel: string, callback: (peerId: PeerId, data: any) => void): void {
     const subscriptions = this.channelSubscriptions.get(channel);
@@ -650,14 +650,14 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 監聽連接狀態變化
+   * Register connection state change listener
    */
   onConnectionStateChange(listener: (peerId: PeerId, state: ConnectionState) => void): void {
     this.stateChangeListeners.push(listener);
   }
   
   /**
-   * 通知連接狀態變化
+   * Notify connection state change
    */
   private notifyConnectionStateChange(peerId: PeerId, state: ConnectionState): void {
     this.stateChangeListeners.forEach(listener => {
@@ -666,7 +666,7 @@ export class WebRTCAdapter implements IWebRTCAdapter {
   }
   
   /**
-   * 獲取所有已連接的對等方
+   * Get all connected peers
    */
   getConnectedPeers(): PeerId[] {
     const connectedPeers: PeerId[] = [];

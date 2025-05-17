@@ -23,7 +23,14 @@ import { UpdateRoomRulesCommandHandler } from '../application/handlers/UpdateRoo
 import { CloseRoomCommandHandler } from '../application/handlers/CloseRoomCommandHandler';
 
 // Services
-import { CollaborationService } from '../application/services/CollaborationService';
+import type { CollaborationService } from '../application/services/CollaborationService';
+import { CollaborationServiceImplementation } from '../application/services/CollaborationServiceImplementation';
+
+// WebRTC & Signaling
+import type { SignalingService } from '../domain/interfaces/SignalingService';
+import { WebSocketSignalingService } from '../infrastructure/WebSocketSignalingService';
+import type { PeerConnectionManager } from '../domain/interfaces/PeerConnectionManager';
+import { WebRTCPeerConnectionManager } from '../infrastructure/WebRTCPeerConnectionManager';
 
 /**
  * 配置 Collaboration 模塊的依賴注入容器
@@ -51,9 +58,18 @@ export const configureCollaborationContainer = (container: Container): void => {
     .to(CollaborationApiAdapter)
     .inSingletonScope();
   
+  // 註冊 WebRTC 和信令服務
+  container.bind<SignalingService>(CollaborationTypes.SignalingService)
+    .to(WebSocketSignalingService)
+    .inSingletonScope();
+    
+  container.bind<PeerConnectionManager>(CollaborationTypes.PeerConnectionManager)
+    .to(WebRTCPeerConnectionManager)
+    .inSingletonScope();
+  
   // 註冊服務
-  container.bind(CollaborationTypes.CollaborationService)
-    .to(CollaborationService)
+  container.bind<CollaborationService>(CollaborationTypes.CollaborationService)
+    .to(CollaborationServiceImplementation)
     .inSingletonScope();
   
   // 註冊命令處理器

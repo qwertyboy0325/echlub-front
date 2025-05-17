@@ -22,10 +22,11 @@ export interface RoomResponse {
  */
 export interface CreateRoomRequest {
   ownerId: string;
-  maxPlayers: number;
-  allowRelay: boolean;
-  latencyTargetMs: number;
-  opusBitrate: number;
+  roomName: string;
+  maxPlayers?: number;
+  allowRelay?: boolean;
+  latencyTargetMs?: number;
+  opusBitrate?: number;
 }
 
 /**
@@ -33,10 +34,10 @@ export interface CreateRoomRequest {
  */
 export interface UpdateRoomRulesRequest {
   ownerId: string;
-  maxPlayers: number;
-  allowRelay: boolean;
-  latencyTargetMs: number;
-  opusBitrate: number;
+  maxPlayers?: number;
+  allowRelay?: boolean;
+  latencyTargetMs?: number;
+  opusBitrate?: number;
 }
 
 /**
@@ -47,11 +48,18 @@ export interface CloseRoomRequest {
 }
 
 /**
+ * Join room request
+ */
+export interface JoinRoomRequest {
+  peerId: string;
+}
+
+/**
  * API response result
  */
 export interface ApiResponse<T> {
+  success?: boolean;
   data?: T;
-  message?: string;
   error?: string;
 }
 
@@ -73,16 +81,30 @@ export interface ICollaborationApiAdapter {
   getRoom(roomId: RoomId): Promise<ApiResponse<RoomResponse>>;
   
   /**
+   * Get room list
+   * @param limit Result count limit
+   * @param offset Page offset
+   */
+  getRooms(limit?: number, offset?: number): Promise<ApiResponse<{ rooms: any[], total: number }>>;
+  
+  /**
    * Update room rules
    * @param roomId Room ID
    * @param request Update rules request
    */
-  updateRoomRules(roomId: RoomId, request: UpdateRoomRulesRequest): Promise<ApiResponse<void>>;
+  updateRoomRules(roomId: RoomId, request: UpdateRoomRulesRequest): Promise<ApiResponse<any>>;
   
   /**
    * Close room
    * @param roomId Room ID
    * @param request Close room request
    */
-  closeRoom(roomId: RoomId, request: CloseRoomRequest): Promise<ApiResponse<void>>;
+  closeRoom(roomId: RoomId, request: { ownerId: string }): Promise<ApiResponse<any>>;
+  
+  /**
+   * Join a room
+   * @param roomId Room ID
+   * @param request Join room request
+   */
+  joinRoom(roomId: RoomId, request: JoinRoomRequest): Promise<ApiResponse<RoomResponse>>;
 } 

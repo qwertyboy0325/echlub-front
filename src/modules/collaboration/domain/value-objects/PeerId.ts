@@ -1,38 +1,62 @@
-import { UniqueId } from '../../../../shared/domain/value-objects/UniqueId';
-
 /**
- * Represents a unique participant identifier in a room
+ * Peer ID Value Object
+ * Represents the unique identifier of a peer in WebRTC connections
  */
-export class PeerId extends UniqueId<string> {
-  /**
-   * Create a new PeerId
-   */
-  public static create(): PeerId {
-    if (!PeerId.generator) {
-      // Try using built-in method
-      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return new PeerId(crypto.randomUUID());
-      }
-      throw new Error('No UUID generator available, please call UniqueId.initialize() or UniqueId.setGenerator() first');
-    }
-    
-    return new PeerId(PeerId.generator());
+export class PeerId {
+  private static generator: () => string = () => 
+    Math.random().toString(36).substring(2, 15);
+  
+  private readonly id: string;
+  
+  private constructor(id: string) {
+    this.id = id;
   }
-
+  
   /**
-   * Create PeerId from an existing string
+   * Create PeerId from string
+   * @param id ID string
    */
   public static fromString(id: string): PeerId {
-    if (!UniqueId.isValidUUID(id)) {
-      throw new Error('Invalid participant ID format');
+    if (!id) {
+      throw new Error('PeerId cannot be empty');
     }
     return new PeerId(id);
   }
-
+  
   /**
-   * Check if string is a valid PeerId format
+   * Generate new PeerId
    */
-  public static isValid(id: string): boolean {
-    return UniqueId.isValidUUID(id);
+  public static generate(): PeerId {
+    return new PeerId(PeerId.generator());
+  }
+  
+  /**
+   * Generate new PeerId (alias for generate)
+   */
+  public static create(): PeerId {
+    return PeerId.generate();
+  }
+  
+  /**
+   * Set ID generator function
+   * @param generator Generator function
+   */
+  public static setGenerator(generator: () => string): void {
+    PeerId.generator = generator;
+  }
+  
+  /**
+   * Convert to string
+   */
+  public toString(): string {
+    return this.id;
+  }
+  
+  /**
+   * Compare two PeerIds for equality
+   * @param other Another PeerId
+   */
+  public equals(other: PeerId): boolean {
+    return this.id === other.id;
   }
 } 

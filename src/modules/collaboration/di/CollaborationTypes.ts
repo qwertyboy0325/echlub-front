@@ -25,6 +25,10 @@ export const CollaborationTypes = {
   LocalCacheAdapter: Symbol.for('LocalCacheAdapter'),
   CollaborationApiAdapter: Symbol.for('CollaborationApiAdapter'),
   
+  // WebRTC and Signaling
+  SignalingService: Symbol.for('SignalingService'),
+  PeerConnectionManager: Symbol.for('PeerConnectionManager'),
+  
   // Event Bus
   EventBus: Symbol.for('EventBus'),
 }; 

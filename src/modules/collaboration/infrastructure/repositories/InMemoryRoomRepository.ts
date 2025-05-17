@@ -5,8 +5,8 @@ import { RoomId } from '../../domain/value-objects/RoomId';
 import { PeerId } from '../../domain/value-objects/PeerId';
 
 /**
- * 記憶體版本的房間倉儲
- * 用於開發和測試環境
+ * In-memory implementation of Room Repository
+ * Used for development and testing environments
  */
 @injectable()
 export class InMemoryRoomRepository implements IRoomRepository {
@@ -48,5 +48,17 @@ export class InMemoryRoomRepository implements IRoomRepository {
 
   async delete(id: RoomId): Promise<void> {
     this.rooms.delete(id.toString());
+  }
+
+  /**
+   * Close a room
+   * @param roomId Room ID
+   */
+  async closeRoom(roomId: RoomId): Promise<void> {
+    const room = await this.findById(roomId);
+    if (room) {
+      room.close();
+      await this.save(room);
+    }
   }
 } 

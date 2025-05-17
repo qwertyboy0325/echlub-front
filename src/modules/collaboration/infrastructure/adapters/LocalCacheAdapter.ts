@@ -2,7 +2,7 @@ import { injectable } from 'inversify';
 import { ILocalCacheAdapter } from './ILocalCacheAdapter';
 
 /**
- * 基於 IndexedDB 的本地緩存適配器
+ * IndexedDB-based Local Cache Adapter
  */
 @injectable()
 export class LocalCacheAdapter implements ILocalCacheAdapter {
@@ -18,7 +18,7 @@ export class LocalCacheAdapter implements ILocalCacheAdapter {
   }
   
   /**
-   * 初始化 IndexedDB 數據庫
+   * Initialize IndexedDB database
    */
   private async initDatabase(): Promise<void> {
     if (this.db) {
@@ -41,7 +41,7 @@ export class LocalCacheAdapter implements ILocalCacheAdapter {
       request.onupgradeneeded = () => {
         const db = request.result;
         
-        // 如果存儲對象不存在，創建一個新的
+        // Create a new object store if it doesn't exist
         if (!db.objectStoreNames.contains(this.STORE_NAME)) {
           db.createObjectStore(this.STORE_NAME, { keyPath: 'key' });
         }
@@ -50,8 +50,8 @@ export class LocalCacheAdapter implements ILocalCacheAdapter {
   }
   
   /**
-   * 獲取數據庫事務
-   * @param mode 事務模式
+   * Get database transaction
+   * @param mode Transaction mode
    */
   private async getTransaction(mode: IDBTransactionMode = 'readonly'): Promise<IDBTransaction> {
     if (!this.db) {
@@ -66,8 +66,8 @@ export class LocalCacheAdapter implements ILocalCacheAdapter {
   }
   
   /**
-   * 獲取對象存儲
-   * @param mode 事務模式
+   * Get object store
+   * @param mode Transaction mode
    */
   private async getObjectStore(mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
     const transaction = await this.getTransaction(mode);
@@ -75,7 +75,7 @@ export class LocalCacheAdapter implements ILocalCacheAdapter {
   }
   
   /**
-   * 存儲數據
+   * Store data
    */
   async set<T>(key: string, data: T): Promise<void> {
     const store = await this.getObjectStore('readwrite');
@@ -93,7 +93,7 @@ export class LocalCacheAdapter implements ILocalCacheAdapter {
   }
   
   /**
-   * 獲取數據
+   * Retrieve data
    */
   async get<T>(key: string): Promise<T | null> {
     const store = await this.getObjectStore();
@@ -111,7 +111,7 @@ export class LocalCacheAdapter implements ILocalCacheAdapter {
   }
   
   /**
-   * 刪除數據
+   * Delete data
    */
   async remove(key: string): Promise<void> {
     const store = await this.getObjectStore('readwrite');
@@ -125,7 +125,7 @@ export class LocalCacheAdapter implements ILocalCacheAdapter {
   }
   
   /**
-   * 清除所有緩存
+   * Clear all cache
    */
   async clear(): Promise<void> {
     const store = await this.getObjectStore('readwrite');
@@ -139,7 +139,7 @@ export class LocalCacheAdapter implements ILocalCacheAdapter {
   }
   
   /**
-   * 檢查鍵是否存在
+   * Check if key exists
    */
   async has(key: string): Promise<boolean> {
     const store = await this.getObjectStore();

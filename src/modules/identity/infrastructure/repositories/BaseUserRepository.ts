@@ -20,15 +20,40 @@ export abstract class BaseUserRepository implements IUserRepository {
 
   // Token operations
   setToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
+    console.log('[BaseUserRepository] 存儲 token 到 localStorage:', token);
+    try {
+      localStorage.setItem(this.TOKEN_KEY, token);
+      // 立即檢查是否成功存儲
+      const storedToken = localStorage.getItem(this.TOKEN_KEY);
+      console.log('[BaseUserRepository] 驗證存儲結果:', storedToken);
+      if (storedToken !== token) {
+        console.warn('[BaseUserRepository] ⚠️ 存儲的 token 與期望值不一致!');
+        console.log('[BaseUserRepository] 預期:', token);
+        console.log('[BaseUserRepository] 實際:', storedToken);
+      }
+    } catch (error) {
+      console.error('[BaseUserRepository] localStorage 存儲失敗:', error);
+    }
   }
 
   getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
+    try {
+      const token = localStorage.getItem(this.TOKEN_KEY);
+      console.log('[BaseUserRepository] 從 localStorage 獲取 token:', token);
+      return token;
+    } catch (error) {
+      console.error('[BaseUserRepository] 無法從 localStorage 獲取 token:', error);
+      return null;
+    }
   }
 
   removeToken(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
+    try {
+      localStorage.removeItem(this.TOKEN_KEY);
+      console.log('[BaseUserRepository] 已從 localStorage 移除 token');
+    } catch (error) {
+      console.error('[BaseUserRepository] 無法從 localStorage 移除 token:', error);
+    }
   }
 
   /**

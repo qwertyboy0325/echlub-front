@@ -56,8 +56,8 @@ describe('CloseRoomCommandHandler', () => {
   let commandHandler: CloseRoomCommandHandler;
   
   // Test room data
-  const roomId = RoomId.create();
-  const ownerId = PeerId.create();
+  const roomId = RoomId.generate();
+  const ownerId = PeerId.generate();
   const ownerUsername = 'RoomOwner';
   const roomName = 'Test Room';
   const rules = RoomRuleVO.create(4, true, 100, 32000);
@@ -93,7 +93,7 @@ describe('CloseRoomCommandHandler', () => {
   
   test('should throw an error when room does not exist', async () => {
     // Create test data with non-existent room
-    const nonExistentRoomId = RoomId.create();
+    const nonExistentRoomId = RoomId.generate();
     
     // Create command
     const command = new CloseRoomCommand(nonExistentRoomId, ownerId);
@@ -104,7 +104,7 @@ describe('CloseRoomCommandHandler', () => {
   
   test('should throw an error when non-owner tries to close the room', async () => {
     // Create test data with different user ID
-    const nonOwnerPeerId = PeerId.create();
+    const nonOwnerPeerId = PeerId.generate();
     
     // Create command with non-owner ID
     const command = new CloseRoomCommand(roomId, nonOwnerPeerId);
@@ -120,8 +120,8 @@ describe('CloseRoomCommandHandler', () => {
     
     if (room) {
       // Add two more players
-      const player1Id = PeerId.create();
-      const player2Id = PeerId.create();
+      const player1Id = PeerId.generate();
+      const player2Id = PeerId.generate();
       
       room.joinPlayer(player1Id, 'Player1');
       room.joinPlayer(player2Id, 'Player2');

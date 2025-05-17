@@ -20,7 +20,7 @@ describe('Room Aggregate', () => {
   let rules: RoomRuleVO;
   
   beforeEach(() => {
-    roomId = RoomId.create();
+    roomId = RoomId.generate();
     ownerId = PeerId.create();
     ownerUsername = 'RoomOwner';
     roomName = 'Test Room';

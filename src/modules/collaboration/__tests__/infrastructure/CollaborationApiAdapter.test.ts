@@ -46,7 +46,7 @@ describe('CollaborationApiAdapter', () => {
   describe('getRoom', () => {
     test('should return room data', async () => {
       // Create room ID
-      const roomId = RoomId.create();
+      const roomId = RoomId.generate();
       
       // Call method
       const result = await adapter.getRoom(roomId);
@@ -61,7 +61,7 @@ describe('CollaborationApiAdapter', () => {
   describe('updateRoomRules', () => {
     test('should update room rules successfully', async () => {
       // Create room ID
-      const roomId = RoomId.create();
+      const roomId = RoomId.generate();
       
       // Request data
       const request = {
@@ -84,7 +84,7 @@ describe('CollaborationApiAdapter', () => {
   describe('closeRoom', () => {
     test('should close room successfully', async () => {
       // Create room ID
-      const roomId = RoomId.create();
+      const roomId = RoomId.generate();
       
       // Request data
       const request = {

@@ -56,7 +56,7 @@ describe('JoinRoomCommandHandler', () => {
   let commandHandler: JoinRoomCommandHandler;
   
   // Test room data
-  const roomId = RoomId.create();
+  const roomId = RoomId.generate();
   const ownerId = PeerId.create();
   const ownerUsername = 'RoomOwner';
   const roomName = 'Test Room';
@@ -104,7 +104,7 @@ describe('JoinRoomCommandHandler', () => {
   
   test('should throw an error when room does not exist', async () => {
     // Create test data
-    const nonExistentRoomId = RoomId.create();
+    const nonExistentRoomId = RoomId.generate();
     const peerId = PeerId.create();
     const username = 'TestPlayer';
     
@@ -136,7 +136,7 @@ describe('JoinRoomCommandHandler', () => {
   
   test('should throw an error when room is full', async () => {
     // Create a room that only allows 2 people
-    const smallRoomId = RoomId.create();
+    const smallRoomId = RoomId.generate();
     const smallRoom = Room.create(
       smallRoomId,
       ownerId,

@@ -7,7 +7,7 @@ import { RoomId } from '../../domain/value-objects/RoomId';
 import type { IEventBus } from '../../../../core/event-bus/IEventBus';
 
 /**
- * 處理創建房間命令
+ * Handle create room command
  */
 @injectable()
 export class CreateRoomCommandHandler {
@@ -20,16 +20,16 @@ export class CreateRoomCommandHandler {
   ) {}
 
   /**
-   * 處理創建房間命令，創建並保存新房間
+   * Handle create room command, create and save new room
    */
   async handle(command: CreateRoomCommand): Promise<RoomId> {
-    // 創建房間ID
-    const roomId = RoomId.create();
+    // Create room ID
+    const roomId = RoomId.generate();
     
-    // 從命令獲取房間規則
+    // Get room rules from command
     const rules = command.getRules();
     
-    // 創建房間聚合
+    // Create room aggregate
     const room = Room.create(
       roomId,
       command.ownerId,
@@ -38,16 +38,16 @@ export class CreateRoomCommandHandler {
       rules
     );
     
-    // 保存房間
+    // Save room
     await this.roomRepository.save(room);
     
-    // 發佈領域事件
+    // Publish domain events
     const domainEvents = room.getDomainEvents();
     for (const event of domainEvents) {
       await this.eventBus.publish(event);
     }
     
-    // 清除已發佈的事件
+    // Clear published events
     room.clearDomainEvents();
     
     return roomId;

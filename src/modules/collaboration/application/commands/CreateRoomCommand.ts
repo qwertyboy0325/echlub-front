@@ -2,7 +2,7 @@ import { RoomRuleVO } from '../../domain/value-objects/RoomRuleVO';
 import { PeerId } from '../../domain/value-objects/PeerId';
 
 /**
- * 創建房間命令
+ * Create Room Command
  */
 export class CreateRoomCommand {
   constructor(
@@ -16,7 +16,7 @@ export class CreateRoomCommand {
   ) {}
 
   /**
-   * 獲取從命令參數生成的房間規則
+   * Get room rules generated from command parameters
    */
   public getRules(): RoomRuleVO {
     return RoomRuleVO.create(

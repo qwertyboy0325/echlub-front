@@ -56,7 +56,7 @@ describe('LeaveRoomCommandHandler', () => {
   let commandHandler: LeaveRoomCommandHandler;
   
   // Test room data
-  const roomId = RoomId.create();
+  const roomId = RoomId.generate();
   const ownerId = PeerId.create();
   const ownerUsername = 'RoomOwner';
   const roomName = 'Test Room';
@@ -110,7 +110,7 @@ describe('LeaveRoomCommandHandler', () => {
   
   test('should throw an error when room does not exist', async () => {
     // Create test data
-    const nonExistentRoomId = RoomId.create();
+    const nonExistentRoomId = RoomId.generate();
     const peerId = PeerId.create();
     
     // Create command

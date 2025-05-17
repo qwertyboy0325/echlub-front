@@ -1,38 +1,36 @@
-import { Room } from '../aggregates/Room';
 import { RoomId } from '../value-objects/RoomId';
-import { PeerId } from '../value-objects/PeerId';
 
 /**
- * 房間倉儲介面
+ * Room Repository Interface
+ * Provides access and management functions for room data
  */
 export interface IRoomRepository {
   /**
-   * 保存房間
+   * Get a specific room
+   * @param roomId Room ID
    */
-  save(room: Room): Promise<void>;
+  findById(roomId: RoomId): Promise<any | null>;
   
   /**
-   * 根據ID查找房間
+   * Get list of active rooms
    */
-  findById(id: RoomId): Promise<Room | null>;
+  findActiveRooms(): Promise<any[]>;
   
   /**
-   * 查找用戶參與的所有房間
+   * Save room data
+   * @param room Room data
    */
-  findByParticipant(peerId: PeerId): Promise<Room[]>;
+  save(room: any): Promise<void>;
   
   /**
-   * 查找所有活躍房間
+   * Close a room
+   * @param roomId Room ID
    */
-  findActiveRooms(): Promise<Room[]>;
+  closeRoom(roomId: RoomId): Promise<void>;
   
   /**
-   * 根據搜尋條件查找房間
+   * Delete a room
+   * @param roomId Room ID
    */
-  search(query: string, limit?: number): Promise<Room[]>;
-  
-  /**
-   * 刪除房間
-   */
-  delete(id: RoomId): Promise<void>;
+  delete(roomId: RoomId): Promise<void>;
 } 

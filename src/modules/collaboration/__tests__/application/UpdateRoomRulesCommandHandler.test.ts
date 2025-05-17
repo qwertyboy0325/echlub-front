@@ -56,7 +56,7 @@ describe('UpdateRoomRulesCommandHandler', () => {
   let commandHandler: UpdateRoomRulesCommandHandler;
   
   // Test room data
-  const roomId = RoomId.create();
+  const roomId = RoomId.generate();
   const ownerId = PeerId.create();
   const ownerUsername = 'RoomOwner';
   const roomName = 'Test Room';
@@ -137,7 +137,7 @@ describe('UpdateRoomRulesCommandHandler', () => {
   
   test('should throw an error when room does not exist', async () => {
     // Create test data with non-existent room
-    const nonExistentRoomId = RoomId.create();
+    const nonExistentRoomId = RoomId.generate();
     
     // Create command
     const command = new UpdateRoomRulesCommand(
@@ -167,7 +167,7 @@ describe('UpdateRoomRulesCommandHandler', () => {
   
   test('should handle valid rule values at limits', async () => {
     // Create room with specific rules
-    const customRoomId = RoomId.create();
+    const customRoomId = RoomId.generate();
     const customRoom = Room.create(
       customRoomId,
       ownerId,

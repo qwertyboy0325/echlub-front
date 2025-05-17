@@ -1,35 +1,35 @@
 /**
- * 本地緩存適配器接口
- * 用於緩存房間和連接狀態信息
+ * Local Cache Adapter Interface
+ * Provides key-value storage functionality
  */
 export interface ILocalCacheAdapter {
   /**
-   * 存儲數據
-   * @param key 緩存鍵
-   * @param data 要緩存的數據
+   * Store item in cache
+   * @param key Key name
+   * @param value Value
    */
-  set<T>(key: string, data: T): Promise<void>;
+  set<T>(key: string, value: T): Promise<void>;
   
   /**
-   * 獲取數據
-   * @param key 緩存鍵
+   * Retrieve item from cache
+   * @param key Key name
    */
   get<T>(key: string): Promise<T | null>;
   
   /**
-   * 刪除數據
-   * @param key 緩存鍵
+   * Remove item from cache
+   * @param key Key name
    */
   remove(key: string): Promise<void>;
   
   /**
-   * 清除所有緩存
-   */
-  clear(): Promise<void>;
-  
-  /**
-   * 檢查鍵是否存在
-   * @param key 緩存鍵
+   * Check if cache contains a key
+   * @param key Key name
    */
   has(key: string): Promise<boolean>;
+  
+  /**
+   * Clear all cached data
+   */
+  clear(): Promise<void>;
 } 

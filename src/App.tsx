@@ -4,6 +4,7 @@ import { Container } from 'inversify';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
+import CollaborationPage from './pages/Collaboration/CollaborationPage';
 
 interface AppProps {
   diContainer: Container;
@@ -32,7 +33,7 @@ const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 // 主應用組件（登入後顯示）
-const MainApp: React.FC = () => {
+const MainApp: React.FC<{diContainer: Container}> = ({diContainer}) => {
   const { logout, user } = useAuth();
 
   return (
@@ -51,6 +52,24 @@ const MainApp: React.FC = () => {
           您好，{user.username || user.email}
         </p>
       )}
+
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <a 
+          href="/collaboration"
+          style={{ 
+            padding: '12px 24px', 
+            backgroundColor: '#2e7d32', 
+            color: 'white', 
+            textDecoration: 'none',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          協作房間
+        </a>
+      </div>
+      
       <button 
         onClick={logout}
         style={{ 
@@ -100,10 +119,24 @@ const App: React.FC<AppProps> = ({ diContainer }) => {
             path="/" 
             element={
               <ProtectedRoute>
-                <MainApp />
+                <MainApp diContainer={diContainer} />
               </ProtectedRoute>
             } 
           />
+          
+          {/* 協作模組路由 - 使用嵌套路由 */}
+          <Route
+            path="/collaboration/*"
+            element={
+              <ProtectedRoute>
+                <CollaborationPage diContainer={diContainer} />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* 兼容舊版路由，重定向到新路徑 */}
+          <Route path="/rooms" element={<Navigate to="/collaboration/rooms" replace />} />
+          <Route path="/room/:roomId" element={<Navigate to="/collaboration/room/:roomId" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

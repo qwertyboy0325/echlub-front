@@ -22,7 +22,7 @@ describe('InMemoryRoomRepository', () => {
   
   test('should save and find a room by ID', async () => {
     // Create a test room
-    const roomId = RoomId.create();
+    const roomId = RoomId.generate();
     const ownerId = PeerId.create();
     const ownerUsername = 'TestOwner';
     const roomName = 'Test Room';
@@ -44,7 +44,7 @@ describe('InMemoryRoomRepository', () => {
   });
   
   test('should return null when finding a non-existent room', async () => {
-    const nonExistentRoomId = RoomId.create();
+    const nonExistentRoomId = RoomId.generate();
     
     const room = await repository.findById(nonExistentRoomId);
     
@@ -53,7 +53,7 @@ describe('InMemoryRoomRepository', () => {
   
   test('should update an existing room', async () => {
     // Create a test room
-    const roomId = RoomId.create();
+    const roomId = RoomId.generate();
     const ownerId = PeerId.create();
     const ownerUsername = 'TestOwner';
     const roomName = 'Test Room';
@@ -83,7 +83,7 @@ describe('InMemoryRoomRepository', () => {
   
   test('should delete a room', async () => {
     // Create a test room
-    const roomId = RoomId.create();
+    const roomId = RoomId.generate();
     const ownerId = PeerId.create();
     const ownerUsername = 'TestOwner';
     const roomName = 'Test Room';
@@ -105,7 +105,7 @@ describe('InMemoryRoomRepository', () => {
   });
   
   test('should handle deleting a non-existent room without errors', async () => {
-    const nonExistentRoomId = RoomId.create();
+    const nonExistentRoomId = RoomId.generate();
     
     // Deleting a non-existent room should not throw an error
     await expect(repository.delete(nonExistentRoomId)).resolves.not.toThrow();

@@ -1,11 +1,12 @@
 /**
- * Enum representing connection states
+ * Connection State Enum
+ * Represents different states of a connection
  */
 export enum ConnectionState {
-  DISCONNECTED = 'disconnected',  // Disconnected
-  CONNECTING = 'connecting',      // Connecting
-  CONNECTED = 'connected',        // Connected
-  RELAYING = 'relaying',          // Relaying mode
-  FALLBACK = 'fallback',          // Fallback mode (WebRTC failed, using WebSocket)
-  ERROR = 'error'                 // Error state
+  CONNECTING = 'connecting',
+  CONNECTED = 'connected',
+  DISCONNECTED = 'disconnected',
+  ERROR = 'error',
+  FALLBACK = 'fallback',
+  RELAYING = 'relaying'
 } 
