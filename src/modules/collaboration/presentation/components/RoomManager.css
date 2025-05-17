@@ -1,0 +1,132 @@
+.room-manager-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.room-manager-header {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.room-manager-header h2 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 24px;
+}
+
+.peer-info {
+  background-color: #eef2ff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  display: inline-block;
+}
+
+.peer-info code {
+  background-color: #dfe6ff;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.room-manager-content {
+  display: flex;
+  gap: 30px;
+}
+
+.room-section {
+  flex: 1;
+}
+
+.room-divider {
+  width: 1px;
+  background-color: #e0e0e0;
+}
+
+.room-manager-error {
+  padding: 10px;
+  margin-bottom: 20px;
+  background-color: #feebeb;
+  border-left: 4px solid #d63031;
+  color: #d63031;
+  border-radius: 4px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #4a4a4a;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #4a90e2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.create-button {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.create-button:hover:not(:disabled) {
+  background-color: #3a7bc8;
+}
+
+.join-button {
+  background-color: #27ae60;
+  color: white;
+}
+
+.join-button:hover:not(:disabled) {
+  background-color: #219653;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .room-manager-content {
+    flex-direction: column;
+  }
+  
+  .room-divider {
+    height: 1px;
+    width: 100%;
+    margin: 15px 0;
+  }
+} 

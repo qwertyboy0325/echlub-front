@@ -2,8 +2,8 @@
  * API 配置
  * 
  * 使用環境變量來設置API基礎URL
- * - 開發環境: .env.development 或 .env 文件中的 VITE_API_BASE_URL
- * - 生產環境: .env.production 文件中的 VITE_API_BASE_URL
+ * - 開發環境: .env.development 或 .env 文件中的 VITE_BASE_URL
+ * - 生產環境: .env.production 文件中的 VITE_BASE_URL
  */
 
 // 為了讓測試能通過，需要檢測當前環境
@@ -17,12 +17,26 @@ const getEnvValue = (key: string, defaultValue: string) => {
   return defaultValue;
 };
 
+// 基礎 URL，確保包含協議前綴
+const baseUrlWithoutProtocol = getEnvValue('VITE_BASE_URL', 'localhost:3000');
+
+// 檢查是否已經包含協議前綴，如果沒有則添加 http://
+const baseURL = baseUrlWithoutProtocol.startsWith('http://') || baseUrlWithoutProtocol.startsWith('https://')
+  ? baseUrlWithoutProtocol
+  : `http://${baseUrlWithoutProtocol}`;
+
+// 添加更多調試信息
+console.log('環境變量 VITE_BASE_URL:', getEnvValue('VITE_BASE_URL', '未設置'));
+console.log('原始基礎 URL:', baseUrlWithoutProtocol);
+console.log('處理後基礎 URL:', baseURL);
+
 export const ApiConfig = {
   /**
    * API 基礎 URL
    * 從環境變量中獲取，如果未設置則使用默認值
    */
-  baseUrl: getEnvValue('VITE_API_BASE_URL', 'http://localhost:3000/api'),
+  baseUrl: `${baseURL}/api`,
+  wsUrl: baseURL,
 
   /**
    * 身份認證相關的 API 路徑

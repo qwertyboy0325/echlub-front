@@ -1,3 +1,6 @@
+/**
+ * 核心依賴注入類型
+ */
 export const TYPES = {
   // 倉儲
   TrackRepository: Symbol.for('TrackRepository'),
@@ -19,5 +22,20 @@ export const TYPES = {
 
   // 客戶端
   WebSocketClient: Symbol.for('WebSocketClient'),
-  WebRTCClient: Symbol.for('WebRTCClient')
+  WebRTCClient: Symbol.for('WebRTCClient'),
+
+  // General
+  ENV_CONFIG: Symbol.for('ENV_CONFIG'), // Environment configuration for adapters and services
+
+  // 配置
+  Configuration: Symbol.for('Configuration'),
+  
+  // 儲存
+  Storage: Symbol.for('Storage'),
+  
+  // API客戶端
+  ApiClient: Symbol.for('ApiClient'),
+  
+  // 缓存
+  Cache: Symbol.for('Cache')
 } as const; 
