@@ -36,7 +36,7 @@ export interface PeerConnectionManager {
    * @param channel Channel name
    * @param data Data to send
    */
-  sendData(remotePeerId: PeerId, channel: string, data: any): boolean;
+  sendData(remotePeerId: PeerId, channel: string, data: any): Promise<boolean>;
   
   /**
    * Broadcast data to all connected peers

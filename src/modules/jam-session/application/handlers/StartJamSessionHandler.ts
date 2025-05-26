@@ -1,41 +1,30 @@
 import { injectable, inject } from 'inversify';
-import type { ICommandHandler } from '../../../../core/mediator/ICommandHandler';
 import type { StartJamSessionCommand } from '../commands/StartJamSessionCommand';
 import { JamSessionTypes } from '../../di/JamSessionTypes';
-import type { ISessionRepository } from '../../domain/repositories/ISessionRepository';
-import type { IJamEventBus } from '../../domain/events/IJamEventBus';
-import { SessionId } from '../../domain/value-objects/SessionId';
+import type { SessionRepository } from '../../domain/interfaces/SessionRepository';
+import type { IJamEventBus } from '../../domain/interfaces/IJamEventBus';
+import { Session } from '../../domain/aggregates/Session';
+import { BaseSessionCommandHandler } from './BaseSessionCommandHandler';
 
 /**
- * 開始 JamSession 命令處理器
+ * 處理開始 Jam Session 的命令
  */
 @injectable()
-export class StartJamSessionHandler implements ICommandHandler<StartJamSessionCommand, void> {
+export class StartJamSessionHandler extends BaseSessionCommandHandler<StartJamSessionCommand> {
   constructor(
-    @inject(JamSessionTypes.SessionRepository) private readonly sessionRepository: ISessionRepository,
-    @inject(JamSessionTypes.JamEventBus) private readonly eventBus: IJamEventBus
-  ) {}
+    @inject(JamSessionTypes.SessionRepository) sessionRepository: SessionRepository,
+    @inject(JamSessionTypes.JamEventBus) eventBus: IJamEventBus
+  ) {
+    super(sessionRepository, eventBus);
+  }
 
   /**
-   * 處理開始 JamSession 命令
-   * @param command 開始 JamSession 命令
+   * 執行開始 Jam Session 操作
+   * @param command 開始 Jam Session 命令
+   * @param session 會話實體
    */
-  async handle(command: StartJamSessionCommand): Promise<void> {
-    // 獲取會話
-    const session = await this.sessionRepository.findById(SessionId.fromString(command.sessionId));
-    if (!session) {
-      throw new Error(`Session not found: ${command.sessionId}`);
-    }
-
-    // 開始會話
+  protected async executeOperation(command: StartJamSessionCommand, session: Session): Promise<void> {
+    // 開始 Jam Session
     session.startJamSession();
-    
-    // 保存會話
-    await this.sessionRepository.save(session);
-    
-    // 發布事件
-    await this.eventBus.publish('SessionStarted', {
-      sessionId: command.sessionId
-    });
   }
 } 

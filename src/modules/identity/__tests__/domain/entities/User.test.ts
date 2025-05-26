@@ -8,11 +8,13 @@ import { PasswordChangedEvent } from '../../../domain/events/PasswordChangedEven
 
 describe('User', () => {
   let user: User;
+  const validUserId = '550e8400-e29b-41d4-a716-446655440000';
+  const validUserId2 = '550e8400-e29b-41d4-a716-446655440001';
 
   beforeEach(() => {
     jest.useFakeTimers();
     user = new User(
-      '1',
+      validUserId,
       'test@example.com',
       'testuser',
       new Date(),
@@ -29,7 +31,7 @@ describe('User', () => {
 
   describe('constructor', () => {
     it('should create a user with all properties', () => {
-      expect(user.id).toBe('1');
+      expect(user.idString).toBe(validUserId);
       expect(user.email).toBe('test@example.com');
       expect(user.username).toBe('testuser');
       expect(user.firstName).toBe('John');
@@ -39,14 +41,14 @@ describe('User', () => {
 
     it('should create a user with minimal properties', () => {
       const minimalUser = new User(
-        '2',
+        validUserId2,
         'minimal@example.com',
         'minimal',
         new Date(),
         new Date()
       );
 
-      expect(minimalUser.id).toBe('2');
+      expect(minimalUser.idString).toBe(validUserId2);
       expect(minimalUser.email).toBe('minimal@example.com');
       expect(minimalUser.username).toBe('minimal');
       expect(minimalUser.firstName).toBeUndefined();
@@ -58,7 +60,7 @@ describe('User', () => {
       const events = user.getDomainEvents();
       expect(events).toHaveLength(1);
       expect(events[0]).toBeInstanceOf(UserRegisteredEvent);
-      expect((events[0] as UserRegisteredEvent).userId).toBe('1');
+      expect((events[0] as UserRegisteredEvent).userId).toBe(validUserId);
       expect((events[0] as UserRegisteredEvent).email).toBe('test@example.com');
     });
   });
@@ -100,7 +102,7 @@ describe('User', () => {
       const lastEvent = events[events.length - 1];
       
       expect(lastEvent).toBeInstanceOf(UserProfileUpdatedEvent);
-      expect((lastEvent as UserProfileUpdatedEvent).userId).toBe('1');
+      expect((lastEvent as UserProfileUpdatedEvent).userId).toBe(validUserId);
       expect((lastEvent as UserProfileUpdatedEvent).email).toBe('test@example.com');
     });
   });
@@ -112,7 +114,7 @@ describe('User', () => {
       const lastEvent = events[events.length - 1];
       
       expect(lastEvent).toBeInstanceOf(UserLoggedInEvent);
-      expect((lastEvent as UserLoggedInEvent).userId).toBe('1');
+      expect((lastEvent as UserLoggedInEvent).userId).toBe(validUserId);
       expect((lastEvent as UserLoggedInEvent).email).toBe('test@example.com');
     });
 
@@ -138,7 +140,7 @@ describe('User', () => {
   describe('equals', () => {
     it('should return true for same user', () => {
       const sameUser = new User(
-        '1',
+        validUserId,
         'test@example.com',
         'testuser',
         new Date(),
@@ -153,7 +155,7 @@ describe('User', () => {
 
     it('should return false for different user', () => {
       const differentUser = new User(
-        '2',
+        validUserId2,
         'other@example.com',
         'otheruser',
         new Date(),

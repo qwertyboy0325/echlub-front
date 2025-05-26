@@ -1,42 +1,33 @@
 import { injectable, inject } from 'inversify';
-import type { ICommandHandler } from '../../../../core/mediator/ICommandHandler';
 import { EndJamSessionCommand } from '../commands/EndJamSessionCommand';
 import { JamSessionTypes } from '../../di/JamSessionTypes';
-import { SessionId } from '../../domain/value-objects/SessionId';
-import type { IJamEventBus } from '../../domain/events/IJamEventBus';
-import type { ISessionRepository } from '../../domain/repositories/ISessionRepository';
+import type { SessionRepository } from '../../domain/interfaces/SessionRepository';
+import type { IJamEventBus } from '../../domain/interfaces/IJamEventBus';
+import { Session } from '../../domain/aggregates/Session';
+import { BaseSessionCommandHandler } from './BaseSessionCommandHandler';
 
 /**
  * 結束 JamSession 命令處理器
  */
 @injectable()
-export class EndJamSessionHandler implements ICommandHandler<EndJamSessionCommand, void> {
+export class EndJamSessionHandler extends BaseSessionCommandHandler<EndJamSessionCommand> {
   constructor(
-    @inject(JamSessionTypes.SessionRepository) private readonly sessionRepository: ISessionRepository,
-    @inject(JamSessionTypes.JamEventBus) private readonly eventBus: IJamEventBus
-  ) {}
+    @inject(JamSessionTypes.SessionRepository) sessionRepository: SessionRepository,
+    @inject(JamSessionTypes.JamEventBus) eventBus: IJamEventBus
+  ) {
+    super(sessionRepository, eventBus);
+  }
 
   /**
-   * 處理結束 JamSession 命令
+   * 執行結束 JamSession 操作
    * @param command 結束 JamSession 命令
+   * @param session 會話實體
    */
-  async handle(command: EndJamSessionCommand): Promise<void> {
-    // 獲取會話
-    const session = await this.sessionRepository.findById(
-      SessionId.fromString(command.sessionId)
-    );
-    
-    if (!session) {
-      throw new Error(`Session not found: ${command.sessionId}`);
-    }
-
+  protected async executeOperation(command: EndJamSessionCommand, session: Session): Promise<void> {
     // 結束會話
     session.endJamSession();
     
-    // 保存會話
-    await this.sessionRepository.save(session);
-    
-    // 發布事件
+    // 發布自訂事件
     await this.eventBus.publish('SessionEnded', {
       sessionId: command.sessionId,
       initiatorPeerId: command.initiatorPeerId

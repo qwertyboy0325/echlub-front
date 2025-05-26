@@ -1,43 +1,44 @@
 import { injectable, inject } from 'inversify';
-import type { ICommandHandler } from '../../../../core/mediator/ICommandHandler';
-import { StartNextRoundCommand } from '../commands/StartNextRoundCommand';
+import type { StartNextRoundCommand } from '../commands/StartNextRoundCommand';
 import { JamSessionTypes } from '../../di/JamSessionTypes';
-import { SessionId } from '../../domain/value-objects/SessionId';
-import type { IJamEventBus } from '../../domain/events/IJamEventBus';
-import type { ISessionRepository } from '../../domain/repositories/ISessionRepository';
+import type { SessionRepository } from '../../domain/interfaces/SessionRepository';
+import type { IJamEventBus } from '../../domain/interfaces/IJamEventBus';
+import type { JamTimerScheduler } from '../../infrastructure/timing/JamTimerScheduler';
+import { Session } from '../../domain/aggregates/Session';
+import { BaseSessionCommandHandler } from './BaseSessionCommandHandler';
 
 /**
- * 開始下一回合命令處理器
+ * 處理開始下一回合的命令
  */
 @injectable()
-export class StartNextRoundHandler implements ICommandHandler<StartNextRoundCommand, void> {
-    constructor(    @inject(JamSessionTypes.SessionRepository) private readonly sessionRepository: ISessionRepository,    @inject(JamSessionTypes.JamEventBus) private readonly eventBus: IJamEventBus  ) {}
+export class StartNextRoundHandler extends BaseSessionCommandHandler<StartNextRoundCommand> {
+  private readonly timerScheduler: JamTimerScheduler;
+
+  constructor(
+    @inject(JamSessionTypes.SessionRepository) sessionRepository: SessionRepository,
+    @inject(JamSessionTypes.JamEventBus) eventBus: IJamEventBus,
+    @inject(JamSessionTypes.JamTimerScheduler) timerScheduler: JamTimerScheduler
+  ) {
+    super(sessionRepository, eventBus);
+    this.timerScheduler = timerScheduler;
+  }
 
   /**
-   * 處理開始下一回合命令
+   * 執行開始下一回合操作
    * @param command 開始下一回合命令
+   * @param session 會話實體
    */
-  async handle(command: StartNextRoundCommand): Promise<void> {
-    // 獲取會話
-    const session = await this.sessionRepository.findById(
-      SessionId.fromString(command.sessionId)
-    );
-    
-    if (!session) {
-      throw new Error(`Session not found: ${command.sessionId}`);
-    }
+  protected async executeOperation(command: StartNextRoundCommand, session: Session): Promise<void> {
+    console.log(`[StartNextRoundHandler] Starting next round for session: ${command.sessionId}`);
 
-    // 開始下一回合
-    session.startNextRound(command.durationSeconds);
-    
-    // 保存會話
-    await this.sessionRepository.save(session);
-    
-    // 發布事件
-    await this.eventBus.publish('RoundStarted', {
-      sessionId: command.sessionId,
-      roundNumber: session.currentRoundNumber,
-      durationSeconds: command.durationSeconds
-    });
+    try {
+      // 準備下一回合
+      const nextRoundNumber = session.prepareNextRound();
+
+      console.log(`[StartNextRoundHandler] Successfully started round ${session.currentRoundNumber} for session: ${command.sessionId}`);
+    } catch (error) {
+      console.error(`[StartNextRoundHandler] Error starting next round:`, error);
+      throw error;
+    }
   }
 } 

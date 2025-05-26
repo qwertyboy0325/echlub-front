@@ -1,9 +1,10 @@
-export abstract class DomainEvent {
-  public readonly occurredOn: Date;
-  public readonly eventName: string;
- 
+import { DomainEvent as NewDomainEvent } from '../events/DomainEvent';
+
+/**
+ * @deprecated 此檔案已被棄用，請使用 @/core/events/DomainEvent 代替
+ */
+export abstract class DomainEvent extends NewDomainEvent {
   constructor(eventName: string) {
-    this.occurredOn = new Date();
-    this.eventName = eventName;
+    super(eventName);
   }
 } 

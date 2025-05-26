@@ -79,7 +79,7 @@ export class MockUserRepository implements IUserRepository {
 
     const data = await response.json();
     return new User(
-      data.id,
+      data.id || '550e8400-e29b-41d4-a716-446655440000',
       data.email,
       data.username,
       new Date(data.createdAt),
@@ -131,7 +131,7 @@ export class MockUserRepository implements IUserRepository {
 
     const data = await response.json();
     return new User(
-      data.id,
+      data.id || '550e8400-e29b-41d4-a716-446655440000',
       data.email,
       data.username,
       new Date(data.createdAt),
@@ -163,7 +163,7 @@ export class MockUserRepository implements IUserRepository {
 
     const data = await response.json();
     return new User(
-      data.id,
+      data.id || '550e8400-e29b-41d4-a716-446655440000',
       data.email,
       data.username,
       new Date(data.createdAt),
@@ -215,7 +215,7 @@ export class MockUserRepository implements IUserRepository {
       const data = await response.json();
       
       return new User(
-        data.id,
+        data.id || '550e8400-e29b-41d4-a716-446655440000',
         data.email,
         data.username || '',
         new Date(data.createdAt),

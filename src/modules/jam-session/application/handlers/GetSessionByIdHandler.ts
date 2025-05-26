@@ -3,7 +3,7 @@ import type { IQueryHandler } from '../../../../core/mediator/IQueryHandler';
 import type { GetSessionByIdQuery } from '../queries/GetSessionByIdQuery';
 import type { SessionDto } from '../types';
 import { JamSessionTypes } from '../../di/JamSessionTypes';
-import type { ISessionRepository } from '../../domain/repositories/ISessionRepository';
+import type { SessionRepository } from '../../domain/interfaces/SessionRepository';
 import { SessionId } from '../../domain/value-objects/SessionId';
 import { SessionDtoMapper } from '../mappers/SessionDtoMapper';
 
@@ -13,7 +13,7 @@ import { SessionDtoMapper } from '../mappers/SessionDtoMapper';
 @injectable()
 export class GetSessionByIdHandler implements IQueryHandler<GetSessionByIdQuery, SessionDto | null> {
   constructor(
-    @inject(JamSessionTypes.SessionRepository) private readonly sessionRepository: ISessionRepository,
+    @inject(JamSessionTypes.SessionRepository) private readonly sessionRepository: SessionRepository,
     @inject(JamSessionTypes.SessionDtoMapper) private readonly dtoMapper: SessionDtoMapper
   ) {}
 

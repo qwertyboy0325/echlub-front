@@ -2,10 +2,11 @@ import { injectable, inject } from 'inversify';
 import type { ICommandHandler } from '../../../../core/mediator/ICommandHandler';
 import type { CreateJamSessionCommand } from '../commands/CreateJamSessionCommand';
 import { JamSessionTypes } from '../../di/JamSessionTypes';
-import type { ISessionRepository } from '../../domain/repositories/ISessionRepository';
-import type { IJamEventBus } from '../../domain/events/IJamEventBus';
+import type { SessionRepository } from '../../domain/interfaces/SessionRepository';
+import type { IJamEventBus } from '../../domain/interfaces/IJamEventBus';
 import { Session } from '../../domain/aggregates/Session';
 import { SessionId } from '../../domain/value-objects/SessionId';
+import { JamEventTypes } from '../../domain/events/EventTypes';
 
 /**
  * 創建 JamSession 命令處理器
@@ -13,7 +14,7 @@ import { SessionId } from '../../domain/value-objects/SessionId';
 @injectable()
 export class CreateJamSessionHandler implements ICommandHandler<CreateJamSessionCommand, string> {
   constructor(
-    @inject(JamSessionTypes.SessionRepository) private readonly sessionRepository: ISessionRepository,
+    @inject(JamSessionTypes.SessionRepository) private readonly sessionRepository: SessionRepository,
     @inject(JamSessionTypes.JamEventBus) private readonly eventBus: IJamEventBus
   ) {}
 
@@ -26,13 +27,13 @@ export class CreateJamSessionHandler implements ICommandHandler<CreateJamSession
     const sessionId = SessionId.generate();
     
     // 創建會話實體
-    const session = new Session(sessionId, command.roomId, command.initiatorPeerId);
+    const session = Session.create(sessionId, command.roomId, command.initiatorPeerId);
     
     // 保存會話
     await this.sessionRepository.save(session);
     
     // 發布事件
-    await this.eventBus.publish('SessionCreated', {
+    await this.eventBus.publish(JamEventTypes.SESSION_CREATED, {
       sessionId: sessionId.toString(),
       roomId: command.roomId,
       initiatorPeerId: command.initiatorPeerId

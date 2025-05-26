@@ -1,45 +1,35 @@
 import { injectable, inject } from 'inversify';
-import type { ICommandHandler } from '../../../../core/mediator/ICommandHandler';
 import { EndCurrentRoundCommand } from '../commands/EndCurrentRoundCommand';
 import { JamSessionTypes } from '../../di/JamSessionTypes';
-import { SessionId } from '../../domain/value-objects/SessionId';
-import type { IJamEventBus } from '../../domain/events/IJamEventBus';
-import type { ISessionRepository } from '../../domain/repositories/ISessionRepository';
+import type { IJamEventBus } from '../../domain/interfaces/IJamEventBus';
+import type { SessionRepository } from '../../domain/interfaces/SessionRepository';
+import { Session } from '../../domain/aggregates/Session';
+import { BaseSessionCommandHandler } from './BaseSessionCommandHandler';
 
 /**
  * 結束當前回合命令處理器
  */
 @injectable()
-export class EndCurrentRoundHandler implements ICommandHandler<EndCurrentRoundCommand, void> {
+export class EndCurrentRoundHandler extends BaseSessionCommandHandler<EndCurrentRoundCommand> {
   constructor(
-    @inject(JamSessionTypes.SessionRepository) private readonly sessionRepository: ISessionRepository,
-    @inject(JamSessionTypes.JamEventBus) private readonly eventBus: IJamEventBus
-  ) {}
+    @inject(JamSessionTypes.SessionRepository) sessionRepository: SessionRepository,
+    @inject(JamSessionTypes.JamEventBus) eventBus: IJamEventBus
+  ) {
+    super(sessionRepository, eventBus);
+  }
 
   /**
-   * 處理結束當前回合命令
+   * 執行結束當前回合操作
    * @param command 結束當前回合命令
+   * @param session 會話實體
    */
-  async handle(command: EndCurrentRoundCommand): Promise<void> {
-    // 獲取會話
-    const session = await this.sessionRepository.findById(
-      SessionId.fromString(command.sessionId)
-    );
-    
-    if (!session) {
-      throw new Error(`Session not found: ${command.sessionId}`);
+  protected async executeOperation(command: EndCurrentRoundCommand, session: Session): Promise<void> {
+    // 檢查當前回合
+    if (!session.currentRoundId) {
+      throw new Error('No active round to end');
     }
-
-    // 結束當前回合
-    session.endCurrentRound();
     
-    // 保存會話
-    await this.sessionRepository.save(session);
-    
-    // 發布事件
-    await this.eventBus.publish('RoundEnded', {
-      sessionId: command.sessionId,
-      roundNumber: session.currentRoundNumber
-    });
+    // 標記當前回合已完成
+    session.markRoundCompleted(session.currentRoundId);
   }
 } 

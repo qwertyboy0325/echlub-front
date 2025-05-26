@@ -6,7 +6,7 @@ import { InMemoryRoomRepository } from '../../infrastructure/repositories/InMemo
 import { IEventBus } from '../../../../core/event-bus/IEventBus';
 import { PeerId } from '../../domain/value-objects/PeerId';
 import { RoomId } from '../../domain/value-objects/RoomId';
-import { UniqueId } from '../../../../shared/domain/value-objects/UniqueId';
+import { UniqueId } from '../../../../core/value-objects/UniqueId';
 import { v4 as uuidv4 } from 'uuid';
 
 // Initialize UUID generators

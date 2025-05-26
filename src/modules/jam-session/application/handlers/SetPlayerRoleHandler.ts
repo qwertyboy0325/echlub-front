@@ -1,49 +1,46 @@
 import { injectable, inject } from 'inversify';
-import type { ICommandHandler } from '../../../../core/mediator/ICommandHandler';
 import type { SetPlayerRoleCommand } from '../commands/SetPlayerRoleCommand';
 import { JamSessionTypes } from '../../di/JamSessionTypes';
-import type { ISessionRepository } from '../../domain/repositories/ISessionRepository';
-import type { IJamEventBus } from '../../domain/events/IJamEventBus';
-import { SessionId } from '../../domain/value-objects/SessionId';
-import { RoleVO } from '../../domain/value-objects/RoleVO';
+import type { SessionRepository } from '../../domain/interfaces/SessionRepository';
+import type { IJamEventBus } from '../../domain/interfaces/IJamEventBus';
+import type { RoleRegistry } from '../services/RoleRegistry';
+import { Session } from '../../domain/aggregates/Session';
+import { BaseSessionCommandHandler } from './BaseSessionCommandHandler';
 
 /**
- * 設置玩家角色命令處理器
+ * 處理設置玩家角色的命令
  */
 @injectable()
-export class SetPlayerRoleHandler implements ICommandHandler<SetPlayerRoleCommand, void> {
+export class SetPlayerRoleHandler extends BaseSessionCommandHandler<SetPlayerRoleCommand> {
+  private readonly roleRegistry: RoleRegistry;
+
   constructor(
-    @inject(JamSessionTypes.SessionRepository) private readonly sessionRepository: ISessionRepository,
-    @inject(JamSessionTypes.JamEventBus) private readonly eventBus: IJamEventBus
-  ) {}
+    @inject(JamSessionTypes.SessionRepository) sessionRepository: SessionRepository,
+    @inject(JamSessionTypes.JamEventBus) eventBus: IJamEventBus,
+    @inject(JamSessionTypes.RoleRegistry) roleRegistry: RoleRegistry
+  ) {
+    super(sessionRepository, eventBus);
+    this.roleRegistry = roleRegistry;
+  }
 
   /**
-   * 處理設置玩家角色命令
+   * 執行設置玩家角色操作
    * @param command 設置玩家角色命令
+   * @param session 會話實體
    */
-  async handle(command: SetPlayerRoleCommand): Promise<void> {
-    // 獲取會話
-    const session = await this.sessionRepository.findById(SessionId.fromString(command.sessionId));
-    if (!session) {
-      throw new Error(`Session not found: ${command.sessionId}`);
+  protected async executeOperation(command: SetPlayerRoleCommand, session: Session): Promise<void> {
+    // 驗證角色 ID
+    if (!this.roleRegistry.isValidRoleId(command.roleId)) {
+      throw new Error(`Invalid role ID: ${command.roleId}`);
     }
 
-    // 創建角色值對象
-    const role = RoleVO.create(command.roleId, command.roleName, command.roleColor);
-    
+    // 獲取角色
+    const role = this.roleRegistry.getRoleById(command.roleId);
+    if (!role) {
+      throw new Error(`Role not found with ID: ${command.roleId}`);
+    }
+
     // 設置玩家角色
     session.setPlayerRole(command.peerId, role);
-    
-    // 保存會話
-    await this.sessionRepository.save(session);
-    
-    // 發布事件
-    await this.eventBus.publish('PlayerRoleChanged', {
-      sessionId: command.sessionId,
-      peerId: command.peerId,
-      roleId: command.roleId,
-      roleName: command.roleName,
-      roleColor: command.roleColor
-    });
   }
 } 

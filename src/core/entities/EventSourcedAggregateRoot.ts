@@ -1,13 +1,15 @@
 import { AggregateRoot } from './AggregateRoot';
 import { DomainEvent } from '../events/DomainEvent';
+import { UniqueId } from '../value-objects/UniqueId';
 
 /**
  * 事件溯源聚合根
  * 擴展基本聚合根，增加事件溯源功能
  * 使用事件作為唯一事實來源，透過歷史事件重建狀態
  */
-export abstract class EventSourcedAggregateRoot extends AggregateRoot {
+export abstract class EventSourcedAggregateRoot<T extends UniqueId = UniqueId> extends AggregateRoot {
   private _version: number = 0;
+  private _snapshotVersion: number = 0;
   
   /**
    * 應用事件以更新聚合根狀態
@@ -19,8 +21,14 @@ export abstract class EventSourcedAggregateRoot extends AggregateRoot {
   /**
    * 從事件歷史重建聚合根狀態
    * @param events 歷史事件列表
+   * @param fromVersion 起始版本號
    */
-  public loadFromHistory(events: DomainEvent[]): void {
+  public loadFromHistory(events: DomainEvent[], fromVersion: number = 0): void {
+    if (fromVersion > 0) {
+      this._version = fromVersion;
+      this._snapshotVersion = fromVersion;
+    }
+    
     events.forEach(event => {
       this.applyEventInternal(event, false);
       this._version++;
@@ -40,6 +48,9 @@ export abstract class EventSourcedAggregateRoot extends AggregateRoot {
     if (isNew) {
       this.addDomainEvent(event);
     }
+    
+    // 更新時間戳
+    this.updateTimestamp();
   }
   
   /**
@@ -61,6 +72,21 @@ export abstract class EventSourcedAggregateRoot extends AggregateRoot {
   }
   
   /**
+   * 獲取上次快照的版本號
+   */
+  get snapshotVersion(): number {
+    return this._snapshotVersion;
+  }
+  
+  /**
+   * 創建狀態快照
+   * 更新快照版本號為當前版本
+   */
+  public createSnapshot(): void {
+    this._snapshotVersion = this._version;
+  }
+  
+  /**
    * 獲取未提交事件
    * 使用基類中的 getDomainEvents 方法
    */
@@ -69,10 +95,37 @@ export abstract class EventSourcedAggregateRoot extends AggregateRoot {
   }
   
   /**
+   * 獲取自上次快照以來發生的事件數量
+   */
+  public getEventCountSinceSnapshot(): number {
+    return this._version - this._snapshotVersion;
+  }
+  
+  /**
    * 清除未提交事件
    * 使用基類中的 clearDomainEvents 方法
    */
   public clearUncommittedEvents(): void {
     this.clearDomainEvents();
+  }
+  
+  /**
+   * 收集並清除領域事件
+   * 收集聚合根產生的所有未提交事件，並在返回前清除
+   * 這是一個方便的方法，結合了獲取和清除操作
+   * @returns 領域事件陣列
+   */
+  public collectDomainEvents(): DomainEvent[] {
+    const events = this.getDomainEvents();
+    this.clearDomainEvents();
+    return events;
+  }
+  
+  /**
+   * 檢查聚合根是否有變更
+   * 通過判斷是否有未提交事件來確定
+   */
+  public hasChanges(): boolean {
+    return this.getUncommittedEvents().length > 0;
   }
 } 

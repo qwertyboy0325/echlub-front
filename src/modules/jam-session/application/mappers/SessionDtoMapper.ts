@@ -1,6 +1,6 @@
 import { injectable } from 'inversify';
 import type { Session } from '../../domain/aggregates/Session';
-import type { SessionDto, PlayerDto, RoundDto } from '../types';
+import type { SessionDto } from '../types';
 
 /**
  * Session DTO 轉換器
