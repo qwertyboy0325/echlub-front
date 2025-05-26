@@ -75,6 +75,9 @@ describe('IdentityService', () => {
         id: '1',
         email: 'test@example.com',
         username: 'testuser',
+        firstName: undefined,
+        lastName: undefined,
+        avatar: undefined,
         createdAt: mockUser.createdAt,
         updatedAt: mockUser.updatedAt
       };
@@ -217,6 +220,7 @@ describe('IdentityService', () => {
         username: 'testuser',
         firstName: 'John',
         lastName: 'Doe',
+        avatar: undefined,
         createdAt: mockUser.createdAt,
         updatedAt: mockUser.updatedAt
       };
@@ -286,6 +290,9 @@ describe('IdentityService', () => {
         id: '1',
         email: 'test@example.com',
         username: 'testuser',
+        firstName: undefined,
+        lastName: undefined,
+        avatar: undefined,
         createdAt: mockUser.createdAt,
         updatedAt: mockUser.updatedAt
       };

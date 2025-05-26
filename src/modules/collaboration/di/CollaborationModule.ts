@@ -6,6 +6,8 @@ import type { PeerConnectionManager } from '../domain/interfaces/PeerConnectionM
 import { WebRTCPeerConnectionManager } from '../infrastructure/WebRTCPeerConnectionManager';
 import type { CollaborationService } from '../application/services/CollaborationService';
 import { CollaborationServiceImplementation } from '../application/services/CollaborationServiceImplementation';
+import { WebRTCSignalingService } from '../infrastructure/WebRTCSignalingService';
+import { CollaborationEventHandler } from '../application/handlers/CollaborationEventHandler';
 
 /**
  * 協作模組的依賴注入模組
@@ -28,7 +30,10 @@ export class CollaborationModule extends ContainerModule {
         .to(WebRTCPeerConnectionManager)
         .inSingletonScope();
         
-      // 這裡可以繼續註冊其他協作模組所需的依賴...
+      // 註冊事件處理器
+      bind(CollaborationEventHandler)
+        .toSelf()
+        .inSingletonScope();
     });
   }
   

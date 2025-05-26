@@ -4,6 +4,7 @@ import { UserLoggedInEvent } from '../events/UserLoggedInEvent';
 import { UserLoggedOutEvent } from '../events/UserLoggedOutEvent';
 import { UserProfileUpdatedEvent } from '../events/UserProfileUpdatedEvent';
 import { PasswordChangedEvent } from '../events/PasswordChangedEvent';
+import { UserId } from '../value-objects/UserId';
 
 export interface UserProps {
   id: string;
@@ -15,7 +16,6 @@ export interface UserProps {
 }
 
 export class User extends AggregateRoot {
-  private readonly _id: string;
   private _email: string;
   private _username: string;
   private _firstName?: string;
@@ -33,19 +33,22 @@ export class User extends AggregateRoot {
     lastName?: string,
     avatar?: string
   ) {
-    super(createdAt, updatedAt);
-    this._id = id;
+    super(UserId.fromString(id), createdAt, updatedAt);
     this._email = email;
     this._username = username;
     this._firstName = firstName;
     this._lastName = lastName;
     this._avatar = avatar;
     
-    this.addDomainEvent(new UserRegisteredEvent(this._id, this._email));
+    this.addDomainEvent(new UserRegisteredEvent(this.id.toString(), this._email));
   }
 
-  get id(): string {
+  get id(): UserId {
     return this._id;
+  }
+
+  get idString(): string {
+    return this._id.toString();
   }
 
   get email(): string {
@@ -83,12 +86,12 @@ export class User extends AggregateRoot {
 
     this.updateTimestamp();
     this.incrementVersion();
-    this.addDomainEvent(new UserProfileUpdatedEvent(this._id, this._email));
+    this.addDomainEvent(new UserProfileUpdatedEvent(this.id.toString(), this._email));
   }
 
   public login(): void {
     this.updateTimestamp();
-    this.addDomainEvent(new UserLoggedInEvent(this._id, this._email));
+    this.addDomainEvent(new UserLoggedInEvent(this.id.toString(), this._email));
   }
 
   public logout(): void {
@@ -112,7 +115,7 @@ export class User extends AggregateRoot {
 
   public toJSON(): object {
     return {
-      id: this._id,
+      id: this.id.toString(),
       email: this._email,
       username: this._username,
       firstName: this._firstName,

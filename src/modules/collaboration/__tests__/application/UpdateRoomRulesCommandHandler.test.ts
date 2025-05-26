@@ -8,7 +8,7 @@ import { PeerId } from '../../domain/value-objects/PeerId';
 import { RoomId } from '../../domain/value-objects/RoomId';
 import { Room } from '../../domain/aggregates/Room';
 import { RoomRuleVO } from '../../domain/value-objects/RoomRuleVO';
-import { UniqueId } from '../../../../shared/domain/value-objects/UniqueId';
+import { UniqueId } from '../../../../core/value-objects/UniqueId';
 import { v4 as uuidv4 } from 'uuid';
 
 // Initialize the UUID generator for tests

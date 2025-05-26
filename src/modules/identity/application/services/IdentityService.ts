@@ -137,7 +137,7 @@ export class IdentityService {
 
   private toUserDTO(user: User): UserDTO {
     return {
-      id: user.id,
+      id: user.idString,
       email: user.email,
       username: user.username,
       firstName: user.firstName,

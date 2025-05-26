@@ -3,85 +3,83 @@ import { RoomId } from '../value-objects/RoomId';
 import { ConnectionState } from '../value-objects/ConnectionState';
 
 /**
- * Signaling Service Interface
- * Defines common operations and event handling methods for signaling service
+ * 信令事件類型
+ */
+export type SignalingEventType = 
+  | 'message'
+  | 'offer'
+  | 'answer'
+  | 'ice-candidate'
+  | 'reconnect-request'
+  | 'webrtc-fallback-activate'
+  | 'relay-data';
+
+/**
+ * 信令事件處理器類型
+ */
+export type SignalingEventHandler<T = any> = (payload: T) => void;
+
+/**
+ * 信令服務介面
  */
 export interface SignalingService {
   /**
-   * Connect to signaling server
-   * @param roomId Room ID
-   * @param peerId Local peer ID
+   * 發送消息
+   */
+  sendMessage(message: string): Promise<void>;
+
+  /**
+   * 訂閱事件
+   */
+  on<T = any>(event: SignalingEventType, handler: SignalingEventHandler<T>): void;
+
+  /**
+   * 取消訂閱事件
+   */
+  off<T = any>(event: SignalingEventType, handler: SignalingEventHandler<T>): void;
+
+  /**
+   * 連接到信令伺服器
    */
   connect(roomId: RoomId, peerId: PeerId): Promise<boolean>;
-  
+
   /**
-   * Send message to signaling server
-   * @param message Signaling message
+   * 發送 Offer
    */
-  sendMessage(message: any): boolean;
-  
+  sendOffer(to: PeerId, offer: RTCSessionDescriptionInit): Promise<void>;
+
   /**
-   * Send connection request (Offer)
-   * @param to Target peer ID
-   * @param offer SDP offer
+   * 發送 Answer
    */
-  sendOffer(to: PeerId, offer: RTCSessionDescriptionInit): boolean;
-  
+  sendAnswer(to: PeerId, answer: RTCSessionDescriptionInit): Promise<void>;
+
   /**
-   * Send connection answer
-   * @param to Target peer ID
-   * @param answer SDP answer
+   * 發送 ICE Candidate
    */
-  sendAnswer(to: PeerId, answer: RTCSessionDescriptionInit): boolean;
-  
+  sendIceCandidate(to: PeerId, candidate: RTCIceCandidate): Promise<void>;
+
   /**
-   * Send ICE Candidate
-   * @param to Target peer ID
-   * @param candidate ICE candidate
+   * 發送重連請求
    */
-  sendIceCandidate(to: PeerId, candidate: RTCIceCandidate): boolean;
-  
+  sendReconnectRequest(to: PeerId): Promise<void>;
+
   /**
-   * Send reconnection request
-   * @param to Target peer ID
+   * 啟用備用模式
    */
-  sendReconnectRequest(to: PeerId): boolean;
-  
+  activateFallback(to: PeerId): Promise<void>;
+
   /**
-   * Activate fallback mode message
-   * @param to Target peer ID
+   * 轉發數據
    */
-  activateFallback(to: PeerId): boolean;
-  
+  relayData(to: PeerId, channel: string, data: any): Promise<boolean>;
+
   /**
-   * Relay data
-   * @param to Target peer ID
-   * @param channel Channel name
-   * @param data Data
-   */
-  relayData(to: PeerId, channel: string, data: any): boolean;
-  
-  /**
-   * Leave room, disconnect
+   * 斷開連接
    */
   disconnect(): Promise<void>;
-  
+
   /**
-   * Register signaling message handler
-   * @param type Message type
-   * @param handler Handler function
-   */
-  on(type: string, handler: (message: any) => void): void;
-  
-  /**
-   * Remove signaling message handler
-   * @param type Message type
-   * @param handler Handler function
-   */
-  off(type: string, handler: (message: any) => void): void;
-  
-  /**
-   * Get current connection state
+   * 獲取連接狀態
    */
   getConnectionState(): ConnectionState;
 } 

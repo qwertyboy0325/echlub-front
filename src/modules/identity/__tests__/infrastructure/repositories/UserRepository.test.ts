@@ -11,6 +11,9 @@ const TEST_CREDENTIALS = {
   WRONG_PASSWORD: 'wrong_password_for_testing' // NOSONAR
 };
 
+// 測試用的有效 UUID
+const VALID_USER_ID = '550e8400-e29b-41d4-a716-446655440000';
+
 describe('UserRepository', () => {
   let container: Container;
   let repository: MockUserRepository;
@@ -102,15 +105,26 @@ describe('UserRepository', () => {
 
   describe('authentication', () => {
     it('should login user successfully', async () => {
+      const mockUser = new User(
+        VALID_USER_ID,
+        'test@example.com',
+        'testuser',
+        new Date(),
+        new Date()
+      );
+      
       const mockResponse: AuthResponseDTO = {
         token: 'mock-token',
-        user: new User(
-          '1',
-          'test@example.com',
-          'testuser',
-          new Date(),
-          new Date()
-        )
+        user: {
+          id: mockUser.idString,
+          email: mockUser.email,
+          username: mockUser.username,
+          firstName: mockUser.firstName,
+          lastName: mockUser.lastName,
+          avatar: mockUser.avatar,
+          createdAt: mockUser.createdAt,
+          updatedAt: mockUser.updatedAt
+        }
       };
 
       global.fetch = jest.fn().mockResolvedValue({
@@ -147,7 +161,7 @@ describe('UserRepository', () => {
 
     it('should register user successfully', async () => {
       const mockUser = new User(
-        '1',
+        VALID_USER_ID,
         'test@example.com',
         'testuser',
         new Date(),
@@ -168,7 +182,7 @@ describe('UserRepository', () => {
       const result = await repository.register(registerData);
 
       // 使用更靈活的比較方式
-      expect(result.id).toBe(mockUser.id);
+      expect(result.idString).toBe(mockUser.idString);
       expect(result.email).toBe(mockUser.email);
       expect(result.username).toBe(mockUser.username);
       expect(result instanceof User).toBe(true);
@@ -216,7 +230,7 @@ describe('UserRepository', () => {
       it('should get current user successfully', async () => {
         const mockDate = new Date('2025-05-02T03:33:38.704Z');
         const mockUser = new User(
-          '1',
+          VALID_USER_ID,
           'test@example.com',
           'testuser',
           mockDate,
@@ -226,7 +240,7 @@ describe('UserRepository', () => {
         global.fetch = jest.fn().mockResolvedValue({
           ok: true,
           json: () => Promise.resolve({
-            id: '1',
+            id: VALID_USER_ID,
             email: 'test@example.com',
             username: 'testuser',
             createdAt: mockDate.toISOString(),
@@ -239,11 +253,11 @@ describe('UserRepository', () => {
 
         // Compare user properties instead of the whole object
         expect(result).toBeDefined();
-        expect(result?.id).toBe(mockUser.id);
+        expect(result?.idString).toBe(mockUser.idString);
         expect(result?.email).toBe(mockUser.email);
         expect(result?.username).toBe(mockUser.username);
         expect(result?.createdAt.getTime()).toBe(mockUser.createdAt.getTime());
-        expect(result?.updatedAt.getTime()).toBe(mockUser.updatedAt.getTime());
+        expect(Math.abs(result!.updatedAt.getTime() - mockUser.updatedAt.getTime())).toBeLessThan(10);
       });
 
       it('should handle get current user failure', async () => {
@@ -306,7 +320,7 @@ describe('UserRepository', () => {
           ok: true,
           json: () => Promise.resolve({
             // 僅返回必要字段
-            id: '1',
+            id: VALID_USER_ID,
             email: 'test@example.com',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()

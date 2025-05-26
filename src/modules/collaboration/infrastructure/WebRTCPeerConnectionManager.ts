@@ -4,6 +4,8 @@ import type { SignalingService } from '../domain/interfaces/SignalingService';
 import { PeerId } from '../domain/value-objects/PeerId';
 import { ConnectionState } from '../domain/value-objects/ConnectionState';
 import { CollaborationTypes } from '../di/CollaborationTypes';
+import { IntegrationEventBus } from '../../../core/event-bus/IntegrationEventBus';
+import { CollaborationEvent } from '../domain/events/CollaborationEvent';
 
 interface PeerConnection {
   connection: RTCPeerConnection;
@@ -35,7 +37,8 @@ export class WebRTCPeerConnectionManager implements PeerConnectionManager {
   };
 
   constructor(
-    @inject(CollaborationTypes.SignalingService) private signalingService: SignalingService
+    @inject(CollaborationTypes.SignalingService) private signalingService: SignalingService,
+    @inject('IntegrationEventBus') private eventBus: IntegrationEventBus
   ) {
     // Initialize ICE server configuration
     this.iceServers = [
@@ -372,6 +375,15 @@ export class WebRTCPeerConnectionManager implements PeerConnectionManager {
    * @param data Data
    */
   private notifyDataHandlers(channel: string, remotePeerId: PeerId, data: any): void {
+    // Publish to IntegrationEventBus first
+    const collaborationEvent = new CollaborationEvent(remotePeerId, {
+      channel,
+      data,
+      sender: remotePeerId.toString()
+    });
+    this.eventBus.publish(collaborationEvent);
+
+    // Then notify local handlers
     const handlers = this.dataHandlers.get(channel);
     if (handlers) {
       for (const handler of handlers) {
@@ -437,13 +449,13 @@ export class WebRTCPeerConnectionManager implements PeerConnectionManager {
    * @param channel Channel name
    * @param data Data to send
    */
-  sendData(remotePeerId: PeerId, channel: string, data: any): boolean {
+  async sendData(remotePeerId: PeerId, channel: string, data: any): Promise<boolean> {
     const remoteId = remotePeerId.toString();
     const conn = this.connections.get(remoteId);
     
     // If no connection, try using fallback mode
     if (!conn) {
-      return this.sendViaFallback(remotePeerId, channel, data);
+      return await this.sendViaFallback(remotePeerId, channel, data);
     }
     
     const dataChannel = conn.dataChannels.get(channel);
@@ -455,11 +467,11 @@ export class WebRTCPeerConnectionManager implements PeerConnectionManager {
         return true;
       } catch (err) {
         console.error(`Failed to send data through data channel:`, err);
-        return this.sendViaFallback(remotePeerId, channel, data);
+        return await this.sendViaFallback(remotePeerId, channel, data);
       }
     } else {
       // If channel is not ready, use fallback mode
-      return this.sendViaFallback(remotePeerId, channel, data);
+      return await this.sendViaFallback(remotePeerId, channel, data);
     }
   }
 
@@ -469,9 +481,9 @@ export class WebRTCPeerConnectionManager implements PeerConnectionManager {
    * @param channel Channel name
    * @param data Data to send
    */
-  private sendViaFallback(remotePeerId: PeerId, channel: string, data: any): boolean {
+  private async sendViaFallback(remotePeerId: PeerId, channel: string, data: any): Promise<boolean> {
     // Try using relay to send
-    return this.signalingService.relayData(remotePeerId, channel, data);
+    return await this.signalingService.relayData(remotePeerId, channel, data);
   }
 
   /**
@@ -481,7 +493,8 @@ export class WebRTCPeerConnectionManager implements PeerConnectionManager {
    */
   broadcastData(channel: string, data: any): void {
     for (const peerId of this.getConnectedPeers()) {
-      this.sendData(peerId, channel, data);
+      // Use void to ignore promise, as we don't need to wait for the result
+      void this.sendData(peerId, channel, data);
     }
   }
 
