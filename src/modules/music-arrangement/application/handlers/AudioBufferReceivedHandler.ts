@@ -35,7 +35,7 @@ export class AudioBufferReceivedHandler {
         console.error('Invalid audio buffer event data: missing required fields');
         return;
       }
-
+      
       // Find the track that requested this audio buffer
       const trackId = TrackId.fromString(eventData.trackId);
       const track = await this.trackRepository.loadWithClips(trackId);

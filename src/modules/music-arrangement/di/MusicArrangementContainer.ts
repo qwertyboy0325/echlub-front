@@ -29,6 +29,7 @@ import { AudioBufferReceivedHandler } from '../application/handlers/AudioBufferR
 import { JamClockTickHandler } from '../application/handlers/JamClockTickHandler';
 
 // Services
+import { MusicArrangementService } from '../application/services/MusicArrangementService';
 import { EventSynchronizerService } from '../application/services/EventSynchronizerService';
 
 // Adapters
@@ -137,6 +138,11 @@ export class MusicArrangementContainer {
   }
 
   private bindServices(): void {
+    // ✅ Main Application Service - The primary entry point
+    this.container.bind(MusicArrangementTypes.MusicArrangementService)
+      .to(MusicArrangementService)
+      .inSingletonScope();
+
     this.container.bind(MusicArrangementTypes.EventSynchronizerService)
       .to(EventSynchronizerService)
       .inSingletonScope();

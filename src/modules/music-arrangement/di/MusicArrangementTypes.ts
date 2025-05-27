@@ -33,6 +33,7 @@ export const MusicArrangementTypes = {
   JamClockTickHandler: Symbol.for('MusicArrangement.JamClockTickHandler'),
 
   // Services
+  MusicArrangementService: Symbol.for('MusicArrangement.MusicArrangementService'),
   EventSynchronizerService: Symbol.for('MusicArrangement.EventSynchronizerService'),
 
   // Adapters
