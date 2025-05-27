@@ -12,17 +12,54 @@ import { MidiNote } from '../entities/MidiNote';
 import { ClipId } from '../value-objects/ClipId';
 import { MidiNoteId } from '../value-objects/MidiNoteId';
 import { ClipType } from '../value-objects/ClipType';
+import { DomainError } from '../errors/DomainError';
 
-// Placeholder for PeerId - should be imported from collaboration module
-export interface PeerId {
-  toString(): string;
-  equals(other: PeerId): boolean;
+// Import events from separated files
+import {
+  PeerId,
+  TrackCreatedEvent,
+  ClipAddedToTrackEvent,
+  ClipRemovedFromTrackEvent,
+  ClipMovedInTrackEvent,
+  TrackMetadataUpdatedEvent
+} from '../events/TrackEvents';
+
+import {
+  MidiNoteAddedEvent,
+  MidiNoteRemovedEvent,
+  MidiNoteUpdatedEvent,
+  MidiClipQuantizedEvent,
+  MidiClipTransposedEvent,
+  MidiClipNotesReplacedEvent
+} from '../events/MidiEvents';
+
+import {
+  AudioClipGainChangedEvent
+} from '../events/ClipEvents';
+
+// Define specific operation types
+export interface TrackOperation {
+  type: string;
+  aggregateId: string;
+  timestamp: Date;
+  userId: string;
+}
+
+export interface AddClipOperation extends TrackOperation {
+  type: 'AddClip';
+  clipId: string;
+  clipData: any;
+}
+
+export interface RemoveClipOperation extends TrackOperation {
+  type: 'RemoveClip';
+  clipId: string;
 }
 
 // Placeholder for CollaborationState - should be imported from collaboration module
 export interface CollaborationState {
-  canApplyOperation(operation: any, peerId: PeerId): boolean;
-  recordOperation(operation: any, peerId: PeerId): void;
+  canApplyOperation(operation: TrackOperation, peerId: PeerId): boolean;
+  recordOperation(operation: TrackOperation, peerId: PeerId): void;
 }
 
 /**
@@ -31,17 +68,33 @@ export interface CollaborationState {
  * Uses event sourcing for undo/redo support
  */
 export class Track extends EventSourcedAggregateRoot<TrackId> {
+  private _trackId: TrackId;
+  private _ownerId: PeerId;
+  private _trackType: TrackType;
+  private _clips: Map<ClipId, Clip>;
+  private _metadata: TrackMetadata;
+  private _collaborationState: CollaborationState;
+
   private constructor(
-    private readonly _trackId: TrackId,
-    private readonly _ownerId: PeerId,
-    private readonly _trackType: TrackType,
-    private _clips: Map<ClipId, Clip>, // Now stores Clip entities
-    private _metadata: TrackMetadata,
-    private _collaborationState: CollaborationState,
+    trackId: TrackId,
+    ownerId?: PeerId,
+    trackType?: TrackType,
+    clips?: Map<ClipId, Clip>,
+    metadata?: TrackMetadata,
+    collaborationState?: CollaborationState,
     createdAt?: Date,
     updatedAt?: Date
   ) {
-    super(_trackId, createdAt, updatedAt); // Initialize EventSourcedAggregateRoot with TrackId
+    super(trackId, createdAt, updatedAt);
+    this._trackId = trackId;
+    this._ownerId = ownerId!;
+    this._trackType = trackType!;
+    this._clips = clips || new Map();
+    this._metadata = metadata!;
+    this._collaborationState = collaborationState || { 
+      canApplyOperation: () => true, 
+      recordOperation: () => {} 
+    };
   }
 
   // Factory method for new tracks
@@ -51,20 +104,17 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
     trackType: TrackType,
     metadata: TrackMetadata
   ): Track {
-    const track = new Track(
-      trackId,
-      ownerId,
-      trackType,
-      new Map(),
-      metadata,
-      { 
-        canApplyOperation: () => true, 
-        recordOperation: () => {} 
-      } as CollaborationState // Temporary implementation
-    );
+    const track = new Track(trackId);
     
     // Raise event instead of direct state change
     track.raiseEvent(new TrackCreatedEvent(trackId, ownerId, trackType));
+    return track;
+  }
+
+  // Factory method for loading from events (event sourcing)
+  public static fromHistory(trackId: TrackId, events: DomainEvent[]): Track {
+    const track = new Track(trackId);
+    track.loadFromHistory(events);
     return track;
   }
 
@@ -80,7 +130,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   public removeClip(clipId: ClipId): void {
     const clip = this._clips.get(clipId);
     if (!clip) {
-      throw new Error('Clip not found in track');
+      throw DomainError.clipNotFound(clipId.toString());
     }
 
     this.raiseEvent(new ClipRemovedFromTrackEvent(this._trackId, clipId, clip.getType()));
@@ -90,7 +140,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   public moveClip(clipId: ClipId, newRange: TimeRangeVO): void {
     const clip = this._clips.get(clipId);
     if (!clip) {
-      throw new Error('Clip not found in track');
+      throw DomainError.clipNotFound(clipId.toString());
     }
 
     // Validate no overlap with other clips
@@ -108,12 +158,12 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   // MIDI-specific operations that raise events
   public addMidiNoteToClip(clipId: ClipId, note: MidiNote): void {
     if (!this._trackType.isInstrument()) {
-      throw new Error('Only instrument tracks can contain MIDI notes');
+      throw DomainError.trackTypeMismatch('addMidiNote', this._trackType.toString());
     }
     
     const clip = this._clips.get(clipId);
     if (!clip || clip.getType() !== ClipType.MIDI) {
-      throw new Error('MIDI clip not found');
+      throw DomainError.clipTypeMismatch('MIDI', clip?.getType().toString() || 'unknown');
     }
     
     // Raise event instead of direct modification
@@ -123,13 +173,13 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   public removeMidiNoteFromClip(clipId: ClipId, noteId: MidiNoteId): void {
     const clip = this._clips.get(clipId);
     if (!clip || clip.getType() !== ClipType.MIDI) {
-      throw new Error('MIDI clip not found');
+      throw DomainError.clipTypeMismatch('MIDI', clip?.getType().toString() || 'unknown');
     }
 
     const midiClip = clip as MidiClip;
     const note = midiClip.notes.find(n => n.noteId.equals(noteId));
     if (!note) {
-      throw new Error('NOTE_NOT_FOUND');
+      throw DomainError.midiNoteNotFound(noteId.toString());
     }
     
     this.raiseEvent(new MidiNoteRemovedEvent(this._trackId, clipId, noteId, note));
@@ -138,13 +188,13 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   public updateMidiNote(clipId: ClipId, noteId: MidiNoteId, newNote: MidiNote): void {
     const clip = this._clips.get(clipId);
     if (!clip || clip.getType() !== ClipType.MIDI) {
-      throw new Error('MIDI clip not found');
+      throw DomainError.clipTypeMismatch('MIDI', clip?.getType().toString() || 'unknown');
     }
     
     const midiClip = clip as MidiClip;
     const oldNote = midiClip.notes.find(n => n.noteId.equals(noteId));
     if (!oldNote) {
-      throw new Error('NOTE_NOT_FOUND');
+      throw DomainError.midiNoteNotFound(noteId.toString());
     }
     
     this.raiseEvent(new MidiNoteUpdatedEvent(this._trackId, clipId, noteId, oldNote, newNote));
@@ -153,7 +203,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   public quantizeMidiClip(clipId: ClipId, quantizeValue: QuantizeValue): void {
     const clip = this._clips.get(clipId);
     if (!clip || clip.getType() !== ClipType.MIDI) {
-      throw new Error('MIDI clip not found');
+      throw DomainError.clipTypeMismatch('MIDI', clip?.getType().toString() || 'unknown');
     }
 
     const midiClip = clip as MidiClip;
@@ -164,7 +214,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   public transposeMidiClip(clipId: ClipId, semitones: number): void {
     const clip = this._clips.get(clipId);
     if (!clip || clip.getType() !== ClipType.MIDI) {
-      throw new Error('MIDI clip not found');
+      throw DomainError.clipTypeMismatch('MIDI', clip?.getType().toString() || 'unknown');
     }
 
     const midiClip = clip as MidiClip;
@@ -175,12 +225,16 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   // Audio-specific operations
   public setAudioClipGain(clipId: ClipId, gain: number): void {
     if (!this._trackType.isAudio()) {
-      throw new Error('Only audio tracks can have audio clips');
+      throw DomainError.trackTypeMismatch('setAudioClipGain', this._trackType.toString());
     }
 
     const clip = this._clips.get(clipId);
     if (!clip || clip.getType() !== ClipType.AUDIO) {
-      throw new Error('Audio clip not found');
+      throw DomainError.clipTypeMismatch('AUDIO', clip?.getType().toString() || 'unknown');
+    }
+
+    if (gain < 0) {
+      throw DomainError.invalidGain(gain);
     }
 
     this.raiseEvent(new AudioClipGainChangedEvent(this._trackId, clipId, gain));
@@ -219,22 +273,35 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
       case 'MidiClipTransposed':
         this.applyMidiClipTransposedEvent(event as MidiClipTransposedEvent);
         break;
+      case 'MidiClipNotesReplaced':
+        this.applyMidiClipNotesReplacedEvent(event as MidiClipNotesReplacedEvent);
+        break;
       case 'AudioClipGainChanged':
         this.applyAudioClipGainChangedEvent(event as AudioClipGainChangedEvent);
         break;
-      // Add other event handlers as needed
+      default:
+        // Ignore unknown events for forward compatibility
+        console.warn(`Unknown event type: ${event.eventName}`);
     }
   }
 
-  // Event application methods
+  // Event application methods - these reconstruct state from events
   private applyTrackCreatedEvent(event: TrackCreatedEvent): void {
-    // Track is already created in constructor, no additional state changes needed
+    this._trackId = event.trackId;
+    this._ownerId = event.ownerId;
+    this._trackType = event.trackType;
+    this._clips = new Map();
+    this._collaborationState = { 
+      canApplyOperation: () => true, 
+      recordOperation: () => {} 
+    };
   }
 
   private applyClipAddedToTrackEvent(event: ClipAddedToTrackEvent): void {
-    // The clip should be provided in the event or loaded separately
-    // For now, this is a placeholder - in real implementation, 
-    // the clip would be reconstructed from the event data
+    // Note: In a complete implementation, we would need to reconstruct the clip
+    // from its own events or from a separate clip repository
+    // For now, this is a placeholder
+    console.log(`Clip ${event.clipId.toString()} added to track ${event.trackId.toString()}`);
   }
 
   private applyClipRemovedFromTrackEvent(event: ClipRemovedFromTrackEvent): void {
@@ -244,6 +311,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   private applyClipMovedInTrackEvent(event: ClipMovedInTrackEvent): void {
     const clip = this._clips.get(event.clipId);
     if (clip) {
+      // Apply the range change to the clip
       clip.moveToRange(event.newRange);
     }
   }
@@ -292,6 +360,16 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
     }
   }
 
+  private applyMidiClipNotesReplacedEvent(event: MidiClipNotesReplacedEvent): void {
+    const clip = this._clips.get(event.clipId);
+    if (clip && clip.getType() === ClipType.MIDI) {
+      const midiClip = clip as MidiClip;
+      // Replace all notes with the provided notes
+      // This is used for undo operations
+      this.replaceAllNotesInClip(midiClip, event.notes);
+    }
+  }
+
   private applyAudioClipGainChangedEvent(event: AudioClipGainChangedEvent): void {
     const clip = this._clips.get(event.clipId);
     if (clip && clip.getType() === ClipType.AUDIO) {
@@ -300,30 +378,50 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
     }
   }
 
-  // Collaboration support
-  public applyRemoteOperation(operation: any, peerId: PeerId): void {
-    if (!this._collaborationState.canApplyOperation(operation, peerId)) {
-      throw new Error('Operation not permitted');
+  // Helper method to replace all notes in a MIDI clip (for undo operations)
+  private replaceAllNotesInClip(midiClip: MidiClip, notes: MidiNote[]): void {
+    // Clear existing notes
+    const existingNotes = [...midiClip.notes];
+    for (const note of existingNotes) {
+      midiClip.removeNote(note.noteId);
     }
     
-    // this.executeOperation(operation);
+    // Add new notes
+    for (const note of notes) {
+      midiClip.addNote(note);
+    }
+  }
+
+  // Collaboration support
+  public applyRemoteOperation(operation: TrackOperation, peerId: PeerId): void {
+    if (!this._collaborationState.canApplyOperation(operation, peerId)) {
+      throw DomainError.operationNotPermitted(operation.type, 'Insufficient permissions');
+    }
+    
+    this.executeOperation(operation);
     this._collaborationState.recordOperation(operation, peerId);
+  }
+
+  private executeOperation(operation: TrackOperation): void {
+    // Execute the operation based on its type
+    // This would be implemented based on the specific operation types
+    console.log(`Executing operation: ${operation.type}`);
   }
 
   // Validation methods
   private validateClipType(clip: Clip): void {
     if (this._trackType.isAudio() && clip.getType() !== ClipType.AUDIO) {
-      throw new Error('Audio tracks can only contain audio clips');
+      throw DomainError.clipTypeMismatch('AUDIO', clip.getType().toString());
     }
     if (this._trackType.isInstrument() && clip.getType() !== ClipType.MIDI) {
-      throw new Error('Instrument tracks can only contain MIDI clips');
+      throw DomainError.clipTypeMismatch('MIDI', clip.getType().toString());
     }
   }
 
   private validateNoOverlap(range: TimeRangeVO): void {
     for (const clip of this._clips.values()) {
       if (clip.range.intersects(range)) {
-        throw new Error('Clips cannot overlap');
+        throw DomainError.clipOverlap();
       }
     }
   }
@@ -331,28 +429,25 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   private validateNoOverlapExcept(range: TimeRangeVO, excludeClipId: ClipId): void {
     for (const [clipId, clip] of this._clips) {
       if (!clipId.equals(excludeClipId) && clip.range.intersects(range)) {
-        throw new Error('Clips cannot overlap');
+        throw DomainError.clipOverlap();
       }
     }
   }
 
   // Query methods
   public getClipsInRange(range: TimeRangeVO): Clip[] {
-    return Array.from(this._clips.values()).filter(clip => 
-      clip.range.intersects(range)
-    );
+    return Array.from(this._clips.values())
+      .filter(clip => clip.range.intersects(range));
   }
 
   public getClipsAtTime(timePoint: number): Clip[] {
-    return Array.from(this._clips.values()).filter(clip => 
-      clip.contains(timePoint)
-    );
+    return Array.from(this._clips.values())
+      .filter(clip => timePoint >= clip.range.start && timePoint < clip.range.end);
   }
 
   public getClipsByType(clipType: ClipType): Clip[] {
-    return Array.from(this._clips.values()).filter(clip => 
-      clip.getType() === clipType
-    );
+    return Array.from(this._clips.values())
+      .filter(clip => clip.getType() === clipType);
   }
 
   public hasClips(): boolean {
@@ -394,7 +489,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
 
   public get duration(): number {
     if (this._clips.size === 0) return 0;
-    return Math.max(...Array.from(this._clips.values()).map(clip => clip.endTime));
+    return Math.max(...Array.from(this._clips.values()).map(clip => clip.range.end));
   }
 
   public getClip(clipId: ClipId): Clip | undefined { 
@@ -403,127 +498,11 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
 
   public getMidiClip(clipId: ClipId): MidiClip | undefined {
     const clip = this._clips.get(clipId);
-    return clip?.getType() === ClipType.MIDI ? clip as MidiClip : undefined;
+    return clip && clip.getType() === ClipType.MIDI ? clip as MidiClip : undefined;
   }
 
   public getAudioClip(clipId: ClipId): AudioClip | undefined {
     const clip = this._clips.get(clipId);
-    return clip?.getType() === ClipType.AUDIO ? clip as AudioClip : undefined;
-  }
-}
-
-// Placeholder event classes - these should be properly implemented
-class TrackCreatedEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly ownerId: PeerId,
-    public readonly trackType: TrackType
-  ) {
-    super('TrackCreated', trackId.toString());
-  }
-}
-
-class ClipAddedToTrackEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly clipType: ClipType
-  ) {
-    super('ClipAddedToTrack', trackId.toString());
-  }
-}
-
-class ClipRemovedFromTrackEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly clipType: ClipType
-  ) {
-    super('ClipRemovedFromTrack', trackId.toString());
-  }
-}
-
-class ClipMovedInTrackEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly oldRange: TimeRangeVO,
-    public readonly newRange: TimeRangeVO
-  ) {
-    super('ClipMovedInTrack', trackId.toString());
-  }
-}
-
-class TrackMetadataUpdatedEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly metadata: TrackMetadata
-  ) {
-    super('TrackMetadataUpdated', trackId.toString());
-  }
-}
-
-class MidiNoteAddedEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly note: MidiNote
-  ) {
-    super('MidiNoteAdded', trackId.toString());
-  }
-}
-
-class MidiNoteRemovedEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly noteId: MidiNoteId,
-    public readonly removedNote: MidiNote
-  ) {
-    super('MidiNoteRemoved', trackId.toString());
-  }
-}
-
-class MidiNoteUpdatedEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly noteId: MidiNoteId,
-    public readonly oldNote: MidiNote,
-    public readonly newNote: MidiNote
-  ) {
-    super('MidiNoteUpdated', trackId.toString());
-  }
-}
-
-class MidiClipQuantizedEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly quantizeValue: QuantizeValue,
-    public readonly originalNotes: MidiNote[]
-  ) {
-    super('MidiClipQuantized', trackId.toString());
-  }
-}
-
-class MidiClipTransposedEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly semitones: number,
-    public readonly originalNotes: MidiNote[]
-  ) {
-    super('MidiClipTransposed', trackId.toString());
-  }
-}
-
-class AudioClipGainChangedEvent extends DomainEvent {
-  constructor(
-    public readonly trackId: TrackId,
-    public readonly clipId: ClipId,
-    public readonly gain: number
-  ) {
-    super('AudioClipGainChanged', trackId.toString());
+    return clip && clip.getType() === ClipType.AUDIO ? clip as AudioClip : undefined;
   }
 } 

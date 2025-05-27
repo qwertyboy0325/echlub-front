@@ -1,7 +1,5 @@
-import { injectable, inject } from 'inversify';
 import type { IntegrationEvent } from '../../../../core/events/IntegrationEvent';
 import type { TrackRepository } from '../../domain/repositories/TrackRepository';
-import { MusicArrangementTypes } from '../../di/MusicArrangementTypes';
 import { AudioSourceRef } from '../../domain/value-objects/AudioSourceRef';
 import { ClipId } from '../../domain/value-objects/ClipId';
 import { TrackId } from '../../domain/value-objects/TrackId';
@@ -18,20 +16,26 @@ interface AudioBufferReceivedEventData {
   channels: number;
   startTime?: number;
   fileName?: string;
+  buffer?: ArrayBuffer;
+  collaboratorId?: string;
+  sessionId?: string;
 }
 
-@injectable()
 export class AudioBufferReceivedHandler {
   constructor(
-    @inject(MusicArrangementTypes.TrackRepository)
     private readonly trackRepository: TrackRepository
   ) {}
 
   async handle(event: IntegrationEvent): Promise<void> {
     try {
-      // Cast event to expected data structure
-      const eventData = event as any as AudioBufferReceivedEventData;
+      // Type-safe event data extraction
+      const eventData = event as unknown as AudioBufferReceivedEventData;
       
+      if (!eventData.trackId || !eventData.audioUrl) {
+        console.error('Invalid audio buffer event data: missing required fields');
+        return;
+      }
+
       // Find the track that requested this audio buffer
       const trackId = TrackId.fromString(eventData.trackId);
       const track = await this.trackRepository.loadWithClips(trackId);

@@ -1,18 +1,20 @@
-import { injectable, inject } from 'inversify';
 import type { IQueryHandler } from '../../../../core/mediator/IQueryHandler';
 import type { GetTracksByOwnerQuery } from '../queries/GetTracksByOwnerQuery';
 import type { Track } from '../../domain/aggregates/Track';
 import type { TrackRepository } from '../../domain/repositories/TrackRepository';
-import { MusicArrangementTypes } from '../../di/MusicArrangementTypes';
+import { PeerId } from '../../../collaboration/domain/value-objects/PeerId';
 
-@injectable()
 export class GetTracksByOwnerQueryHandler implements IQueryHandler<GetTracksByOwnerQuery, Track[]> {
   constructor(
-    @inject(MusicArrangementTypes.TrackRepository)
     private readonly trackRepository: TrackRepository
   ) {}
 
   async handle(query: GetTracksByOwnerQuery): Promise<Track[]> {
-    return await this.trackRepository.findByOwnerId(query.ownerId as any); // PeerId conversion
+    // Convert string to PeerId if needed
+    const ownerId = typeof query.ownerId === 'string' 
+      ? PeerId.fromString(query.ownerId)
+      : query.ownerId;
+      
+    return await this.trackRepository.findByOwnerId(ownerId);
   }
 } 
