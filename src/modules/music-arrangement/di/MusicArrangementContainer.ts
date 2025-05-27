@@ -32,6 +32,9 @@ import { JamClockTickHandler } from '../application/handlers/JamClockTickHandler
 import { MusicArrangementService } from '../application/services/MusicArrangementService';
 import { EventSynchronizerService } from '../application/services/EventSynchronizerService';
 
+// Mediator
+import { MusicArrangementMediator } from '../application/mediator/MusicArrangementMediator';
+
 // Adapters
 import { CollaborationAdapter } from '../integration/adapters/CollaborationAdapter';
 import { AudioAdapter } from '../integration/adapters/AudioAdapter';
@@ -138,6 +141,11 @@ export class MusicArrangementContainer {
   }
 
   private bindServices(): void {
+    // ✅ Mediator - Command/Query dispatcher
+    this.container.bind(MusicArrangementTypes.MusicArrangementMediator)
+      .to(MusicArrangementMediator)
+      .inSingletonScope();
+
     // ✅ Main Application Service - The primary entry point
     this.container.bind(MusicArrangementTypes.MusicArrangementService)
       .to(MusicArrangementService)

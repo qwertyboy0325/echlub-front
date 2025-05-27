@@ -1,4 +1,460 @@
-# Music Arrangement Bounded Context
+# Music Arrangement BC (Bounded Context)
+
+## 🏗️ Clean Architecture with Command Pattern
+
+This module implements the Music Arrangement Bounded Context following **Clean Architecture** principles with **Command/Query Responsibility Segregation (CQRS)** pattern. All operations go through the **Mediator** pattern to ensure proper separation of concerns.
+
+### 🔒 Architecture Principles
+
+1. **Single Entry Point**: Only `MusicArrangementService` is exposed to external layers
+2. **Command Pattern**: All operations use Commands/Queries through Mediator
+3. **DTO Pattern**: Only simple data types and DTOs cross boundaries
+4. **Domain Isolation**: Domain objects never leave the application layer
+5. **Dependency Inversion**: All dependencies point inward
+
+## 📋 Table of Contents
+
+- [Quick Start](#quick-start)
+- [Architecture Overview](#architecture-overview)
+- [Command Pattern Flow](#command-pattern-flow)
+- [API Reference](#api-reference)
+- [DTOs](#dtos)
+- [Error Handling](#error-handling)
+- [Examples](#examples)
+
+## 🚀 Quick Start
+
+### Basic Setup
+
+```typescript
+import { container } from '@/modules/music-arrangement';
+import { 
+  MusicArrangementService, 
+  type TrackInfoDTO,
+  type ClipInfoDTO,
+  type TimeRangeDTO 
+} from '@/modules/music-arrangement';
+
+// Get the service from DI container
+const service = container.get<MusicArrangementService>(
+  MusicArrangementTypes.MusicArrangementService
+);
+```
+
+### Create a Track
+
+```typescript
+// ✅ Correct: Using simple data types
+const trackId = await service.createTrack(
+  'user123',           // ownerId: string
+  'instrument',        // type: string
+  'Lead Synth'         // name: string
+);
+
+console.log(`Created track: ${trackId}`);
+```
+
+### Add MIDI Clip and Notes
+
+```typescript
+// Create MIDI clip
+const clipId = await service.createMidiClip(
+  trackId,
+  { startTime: 0, endTime: 4 },  // timeRange: TimeRangeDTO
+  { type: 'synth', name: 'Lead' }, // instrument: InstrumentDTO
+  'Main Melody'                   // name: string
+);
+
+// Add MIDI note
+const noteId = await service.addMidiNote(
+  trackId,
+  clipId,
+  60,                            // pitch: number (C4)
+  100,                           // velocity: number
+  { startTime: 0, endTime: 1 }   // timeRange: TimeRangeDTO
+);
+```
+
+## 🏛️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    External Layers                          │
+│  (UI Components, API Controllers, Other Modules)           │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ Only DTOs and simple types
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                Application Layer                            │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │           MusicArrangementService                   │   │
+│  │  (Single Entry Point - Clean Architecture)         │   │
+│  └─────────────────────┬───────────────────────────────┘   │
+│                        │ Commands/Queries                  │
+│                        ▼                                   │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              Mediator                               │   │
+│  │  (Command/Query Dispatcher)                         │   │
+│  └─────────────────────┬───────────────────────────────┘   │
+│                        │                                   │
+│  ┌─────────────────────▼───────────────────────────────┐   │
+│  │         Command/Query Handlers                      │   │
+│  │  • CreateTrackCommandHandler                        │   │
+│  │  • AddMidiNoteCommandHandler                        │   │
+│  │  • GetTrackByIdQueryHandler                         │   │
+│  │  • ...                                              │   │
+│  └─────────────────────┬───────────────────────────────┘   │
+└────────────────────────┼───────────────────────────────────┘
+                         │ Domain operations
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Domain Layer                              │
+│  • Track (Aggregate Root)                                  │
+│  • AudioClip, MidiClip (Entities)                         │
+│  • TrackId, ClipId (Value Objects)                        │
+│  • Domain Events                                           │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ Repository interfaces
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                Infrastructure Layer                         │
+│  • InMemoryTrackRepository                                 │
+│  • InMemoryClipRepository                                  │
+│  • EventStore                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## ⚡ Command Pattern Flow
+
+### Command Execution Flow
+
+```
+User Request
+     │
+     ▼
+MusicArrangementService
+     │ (converts simple types to domain objects)
+     ▼
+Mediator.send(Command)
+     │
+     ▼
+CommandHandler.handle()
+     │ (domain operations)
+     ▼
+Domain Layer (Track, Clip, etc.)
+     │
+     ▼
+Repository.save()
+     │
+     ▼
+Infrastructure Layer
+```
+
+### Query Execution Flow
+
+```
+User Request
+     │
+     ▼
+MusicArrangementService
+     │
+     ▼
+Mediator.query(Query)
+     │
+     ▼
+QueryHandler.handle()
+     │
+     ▼
+Repository.find()
+     │ (domain objects)
+     ▼
+MusicArrangementService
+     │ (converts to DTOs)
+     ▼
+User receives DTOs
+```
+
+## 📚 API Reference
+
+### Track Operations
+
+#### `createTrack(ownerId: string, type: string, name: string): Promise<string>`
+Creates a new track using CreateTrackCommand.
+
+**Parameters:**
+- `ownerId`: User/peer identifier
+- `type`: Track type ('instrument' | 'audio' | 'master')
+- `name`: Track display name
+
+**Returns:** Track ID as string
+
+**Example:**
+```typescript
+const trackId = await service.createTrack('user123', 'instrument', 'Bass Line');
+```
+
+#### `getTrackInfo(trackId: string): Promise<TrackInfoDTO | null>`
+Retrieves track information using GetTrackByIdQuery.
+
+#### `deleteTrack(trackId: string): Promise<void>`
+⚠️ **Not yet implemented** - Would use DeleteTrackCommand
+
+### Clip Operations
+
+#### `createAudioClip(trackId, timeRange, audioSource, name): Promise<string>`
+Creates audio clip using CreateAudioClipCommand.
+
+#### `createMidiClip(trackId, timeRange, instrument, name): Promise<string>`
+Creates MIDI clip using CreateMidiClipCommand.
+
+#### `getClipsInTrack(trackId: string): Promise<ClipInfoDTO[]>`
+Gets all clips in track using GetTrackWithClipsQuery.
+
+### MIDI Operations
+
+#### `addMidiNote(trackId, clipId, pitch, velocity, timeRange): Promise<string>`
+Adds MIDI note using AddMidiNoteCommand.
+
+#### `quantizeMidiClip(trackId, clipId, quantizeValue): Promise<void>`
+Quantizes MIDI clip using QuantizeMidiClipCommand.
+
+#### `transposeMidiClip(trackId, clipId, semitones): Promise<void>`
+Transposes MIDI clip using TransposeMidiClipCommand.
+
+## 📦 DTOs
+
+### TrackInfoDTO
+```typescript
+interface TrackInfoDTO {
+  id: string;
+  name: string;
+  type: string;
+  ownerId: string;
+  clipCount: number;
+}
+```
+
+### ClipInfoDTO
+```typescript
+interface ClipInfoDTO {
+  id: string;
+  name: string;
+  type: string;
+  startTime: number;
+  endTime: number;
+  duration: number;
+}
+```
+
+### TimeRangeDTO
+```typescript
+interface TimeRangeDTO {
+  startTime: number;
+  endTime: number;
+}
+```
+
+### InstrumentDTO
+```typescript
+interface InstrumentDTO {
+  type: string;
+  name: string;
+}
+```
+
+## 🚨 Error Handling
+
+All domain errors are converted to simple error messages:
+
+```typescript
+try {
+  const trackId = await service.createTrack('user123', 'invalid-type', 'Test');
+} catch (error) {
+  // Error format: "ERROR_CODE: Error message"
+  console.error(error.message); // "INVALID_TRACK_TYPE: Invalid track type: invalid-type"
+}
+```
+
+## 📖 Examples
+
+### Complete Workflow Example
+
+```typescript
+import { container } from '@/modules/music-arrangement';
+import { MusicArrangementService } from '@/modules/music-arrangement';
+
+async function createMusicArrangement() {
+  const service = container.get<MusicArrangementService>(
+    MusicArrangementTypes.MusicArrangementService
+  );
+
+  try {
+    // 1. Create track using Command Pattern
+    const trackId = await service.createTrack(
+      'producer123',
+      'instrument', 
+      'Lead Synth'
+    );
+
+    // 2. Create MIDI clip using Command Pattern
+    const clipId = await service.createMidiClip(
+      trackId,
+      { startTime: 0, endTime: 8 },
+      { type: 'synth', name: 'Analog Lead' },
+      'Main Melody'
+    );
+
+    // 3. Add MIDI notes using Command Pattern
+    const notes = [
+      { pitch: 60, start: 0, end: 1 },    // C4
+      { pitch: 64, start: 1, end: 2 },    // E4
+      { pitch: 67, start: 2, end: 3 },    // G4
+    ];
+
+    for (const note of notes) {
+      await service.addMidiNote(
+        trackId,
+        clipId,
+        note.pitch,
+        100,
+        { startTime: note.start, endTime: note.end }
+      );
+    }
+
+    // 4. Quantize the clip using Command Pattern
+    await service.quantizeMidiClip(trackId, clipId, '1/16');
+
+    // 5. Get track info using Query Pattern
+    const trackInfo = await service.getTrackInfo(trackId);
+    console.log('Track created:', trackInfo);
+
+    // 6. Get all clips using Query Pattern
+    const clips = await service.getClipsInTrack(trackId);
+    console.log('Clips:', clips);
+
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+```
+
+### System Monitoring Example
+
+```typescript
+async function monitorSystem() {
+  const service = container.get<MusicArrangementService>(
+    MusicArrangementTypes.MusicArrangementService
+  );
+
+  // Get system statistics
+  const stats = await service.getSystemStats();
+  console.log('System Stats:', stats);
+
+  // Validate track state
+  const validation = await service.validateTrackState(trackId);
+  if (!validation.valid) {
+    console.error('Validation errors:', validation.errors);
+  }
+
+  // Get debug information
+  const debug = await service.getDebugInfo(trackId);
+  console.log('Debug Info:', debug);
+}
+```
+
+## 🔧 Advanced Usage
+
+### Custom Error Handling
+
+```typescript
+async function handleErrors() {
+  try {
+    await service.createTrack('', 'instrument', 'Test');
+  } catch (error) {
+    if (error.message.includes('INVALID_OWNER_ID')) {
+      // Handle specific error
+      console.log('Please provide a valid owner ID');
+    } else {
+      // Handle general error
+      console.error('Unexpected error:', error.message);
+    }
+  }
+}
+```
+
+### Batch Operations
+
+```typescript
+async function batchOperations() {
+  const service = container.get<MusicArrangementService>(
+    MusicArrangementTypes.MusicArrangementService
+  );
+
+  // Create multiple tracks
+  const trackPromises = ['Lead', 'Bass', 'Drums'].map(name =>
+    service.createTrack('user123', 'instrument', name)
+  );
+  
+  const trackIds = await Promise.all(trackPromises);
+  console.log('Created tracks:', trackIds);
+}
+```
+
+## ❌ What NOT to Do
+
+```typescript
+// ❌ WRONG: Don't import domain types
+import { Track, TrackType } from '@/modules/music-arrangement/domain';
+
+// ❌ WRONG: Don't create domain objects directly
+const track = Track.create(trackId, ownerId, trackType, metadata);
+
+// ❌ WRONG: Don't access repositories directly
+const trackRepo = container.get(MusicArrangementTypes.TrackRepository);
+
+// ❌ WRONG: Don't use Command/Query objects directly
+const command = new CreateTrackCommand(ownerId, trackType, metadata);
+
+// ✅ CORRECT: Only use MusicArrangementService
+const service = container.get<MusicArrangementService>(
+  MusicArrangementTypes.MusicArrangementService
+);
+const trackId = await service.createTrack('user123', 'instrument', 'Lead');
+```
+
+## 🎯 Key Benefits
+
+1. **Clean Architecture Compliance**: Strict dependency rules enforced
+2. **Command Pattern**: All operations are traceable and auditable
+3. **Type Safety**: Full TypeScript support with proper DTOs
+4. **Testability**: Easy to mock and test individual components
+5. **Maintainability**: Clear separation of concerns
+6. **Scalability**: Easy to add new commands/queries
+7. **Domain Isolation**: Business logic protected from external changes
+
+## 🔄 Command/Query Reference
+
+### Available Commands
+- `CreateTrackCommand` - Creates new track
+- `CreateAudioClipCommand` - Creates audio clip
+- `CreateMidiClipCommand` - Creates MIDI clip
+- `AddMidiNoteCommand` - Adds MIDI note
+- `QuantizeMidiClipCommand` - Quantizes MIDI clip
+- `TransposeMidiClipCommand` - Transposes MIDI clip
+
+### Available Queries
+- `GetTrackByIdQuery` - Gets track by ID
+- `GetTrackWithClipsQuery` - Gets track with all clips
+- `GetTracksByOwnerQuery` - Gets tracks by owner
+
+### Future Commands/Queries
+- `DeleteTrackCommand` - Delete track
+- `GetSystemStatsQuery` - System statistics
+- `GetClipsInTimeRangeQuery` - Clips in time range
+
+---
+
+**Note**: This module strictly follows Clean Architecture principles. All operations must go through the `MusicArrangementService` using the Command/Query pattern via Mediator. Direct access to domain objects or repositories is not allowed.
 
 ## 🎯 Overview
 
