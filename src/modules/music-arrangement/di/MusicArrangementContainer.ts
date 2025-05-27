@@ -4,6 +4,8 @@ import { MusicArrangementTypes } from './MusicArrangementTypes';
 // Repositories
 import { TrackRepositoryImpl } from '../infrastructure/repositories/TrackRepositoryImpl';
 import type { TrackRepository } from '../domain/repositories/TrackRepository';
+import { ClipRepositoryImpl } from '../infrastructure/repositories/ClipRepositoryImpl';
+import type { ClipRepository } from '../domain/repositories/ClipRepository';
 
 // Command Handlers
 import { CreateTrackCommandHandler } from '../application/handlers/CreateTrackCommandHandler';
@@ -31,6 +33,9 @@ import { JamClockTickHandler } from '../application/handlers/JamClockTickHandler
 // Services
 import { MusicArrangementService } from '../application/services/MusicArrangementService';
 import { EventSynchronizerService } from '../application/services/EventSynchronizerService';
+
+// Core Services
+import { IntegrationEventBus } from '../../../core/events/IntegrationEventBus';
 
 // Mediator
 import { MusicArrangementMediator } from '../application/mediator/MusicArrangementMediator';
@@ -63,6 +68,10 @@ export class MusicArrangementContainer {
   private bindRepositories(): void {
     this.container.bind<TrackRepository>(MusicArrangementTypes.TrackRepository)
       .to(TrackRepositoryImpl)
+      .inSingletonScope();
+
+    this.container.bind<ClipRepository>(MusicArrangementTypes.ClipRepository)
+      .to(ClipRepositoryImpl)
       .inSingletonScope();
   }
 
@@ -141,6 +150,11 @@ export class MusicArrangementContainer {
   }
 
   private bindServices(): void {
+    // ✅ Core Event Bus
+    this.container.bind(MusicArrangementTypes.IntegrationEventBus)
+      .to(IntegrationEventBus)
+      .inSingletonScope();
+
     // ✅ Mediator - Command/Query dispatcher
     this.container.bind(MusicArrangementTypes.MusicArrangementMediator)
       .to(MusicArrangementMediator)

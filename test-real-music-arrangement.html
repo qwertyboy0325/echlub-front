@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Real Music Arrangement BC Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section h2 {
+            margin-top: 0;
+            color: #ffd700;
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+            padding-bottom: 10px;
+        }
+        
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .track-button {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        }
+        
+        .collaboration-button {
+            background: linear-gradient(45deg, #a8edea, #fed6e3);
+            color: #333;
+        }
+        
+        .audio-button {
+            background: linear-gradient(45deg, #ffeaa7, #fab1a0);
+            color: #333;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        
+        input, select {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        
+        .status {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .track-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .track-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .track-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .track-controls {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .small-button {
+            padding: 5px 10px;
+            font-size: 12px;
+            min-width: auto;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid rgba(255, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .success {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid rgba(0, 255, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .emoji {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Real Music Arrangement BC Test</h1>
+        
+        <div id="moduleStatus" class="section">
+            <h2>📦 Module Loading Status</h2>
+            <div id="loadingStatus">🔄 Loading music-arrangement module...</div>
+        </div>
+        
+        <!-- Track Management Section -->
+        <div class="section">
+            <h2>🎛️ Track Management (Real BC)</h2>
+            
+            <div class="input-group">
+                <input type="text" id="trackName" placeholder="軌道名稱" value="My Real Track">
+                <select id="trackType">
+                    <option value="audio">Audio Track</option>
+                    <option value="midi">MIDI Track</option>
+                </select>
+                <input type="text" id="ownerId" placeholder="擁有者 ID" value="user123">
+            </div>
+            
+            <div class="button-grid">
+                <button onclick="createRealTrack()" class="track-button">
+                    <span class="emoji">➕</span>創建真實軌道
+                </button>
+                <button onclick="getAllRealTracks()" class="track-button">
+                    <span class="emoji">📋</span>獲取所有軌道
+                </button>
+                <button onclick="testRealAudio()" class="audio-button">
+                    <span class="emoji">🎵</span>測試真實音頻
+                </button>
+                <button onclick="getRealSystemStats()" class="track-button">
+                    <span class="emoji">📊</span>真實系統統計
+                </button>
+            </div>
+            
+            <div class="track-list" id="realTrackList">
+                <!-- 真實軌道列表將在這裡顯示 -->
+            </div>
+        </div>
+        
+        <!-- MIDI Section -->
+        <div class="section">
+            <h2>🎹 MIDI Operations (Real BC)</h2>
+            
+            <div class="input-group">
+                <input type="text" id="midiTrackId" placeholder="MIDI 軌道 ID">
+                <input type="number" id="midiNote" placeholder="音符 (60=C4)" value="60" min="0" max="127">
+                <input type="number" id="midiVelocity" placeholder="力度" value="100" min="0" max="127">
+                <input type="number" id="midiStartTime" placeholder="開始時間" value="0" step="0.1">
+                <input type="number" id="midiDuration" placeholder="持續時間" value="1" step="0.1">
+            </div>
+            
+            <div class="button-grid">
+                <button onclick="addMidiNote()" class="audio-button">
+                    <span class="emoji">🎹</span>添加 MIDI 音符
+                </button>
+                <button onclick="quantizeMidi()" class="audio-button">
+                    <span class="emoji">📐</span>量化 MIDI
+                </button>
+                <button onclick="transposeMidi()" class="audio-button">
+                    <span class="emoji">🎵</span>移調 MIDI
+                </button>
+            </div>
+        </div>
+        
+        <!-- Audio Clips Section -->
+        <div class="section">
+            <h2>🎵 Audio Clips (Real BC)</h2>
+            
+            <div class="input-group">
+                <input type="text" id="audioTrackId" placeholder="音頻軌道 ID">
+                <input type="text" id="audioUrl" placeholder="音頻 URL" value="https://example.com/audio.mp3">
+                <input type="number" id="audioStartTime" placeholder="開始時間" value="0" step="0.1">
+                <input type="number" id="audioDuration" placeholder="持續時間" value="5" step="0.1">
+            </div>
+            
+            <div class="button-grid">
+                <button onclick="createAudioClip()" class="audio-button">
+                    <span class="emoji">🎵</span>創建音頻片段
+                </button>
+                <button onclick="getTrackClips()" class="track-button">
+                    <span class="emoji">📋</span>獲取軌道片段
+                </button>
+            </div>
+        </div>
+        
+        <!-- System Status -->
+        <div class="section">
+            <h2>📊 System Status</h2>
+            <button onclick="clearLog()" class="collaboration-button">
+                <span class="emoji">🧹</span>清除日誌
+            </button>
+            <div class="status" id="status">
+                <div>🎵 Initializing Real Music Arrangement BC...</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 🎵 真正使用 Music Arrangement BC 模組
+        
+        let musicArrangementService = null;
+        let isModuleLoaded = false;
+        
+        // 嘗試載入真正的模組
+        async function loadMusicArrangementModule() {
+            try {
+                log('🔄 Attempting to load real music-arrangement module...');
+                
+                // 嘗試導入真正的模組
+                const { MusicArrangementContainer, MusicArrangementTypes } = await import('./src/modules/music-arrangement/index.js');
+                
+                // 創建 DI 容器並獲取服務
+                const container = new MusicArrangementContainer();
+                await container.initialize();
+                musicArrangementService = container.get(MusicArrangementTypes.MusicArrangementService);
+                
+                isModuleLoaded = true;
+                
+                document.getElementById('loadingStatus').innerHTML = `
+                    <div class="success">
+                        ✅ Successfully loaded real Music Arrangement BC!<br>
+                        📦 Service: ${musicArrangementService.constructor.name}<br>
+                        🎵 Ready for real operations
+                    </div>
+                `;
+                
+                log('✅ Real Music Arrangement BC loaded successfully!');
+                log('🎵 You can now use real track management, MIDI, and audio features');
+                
+                // 測試基本功能
+                await testBasicFunctionality();
+                
+            } catch (error) {
+                console.error('Failed to load music-arrangement module:', error);
+                
+                document.getElementById('loadingStatus').innerHTML = `
+                    <div class="error">
+                        ❌ Failed to load real Music Arrangement BC<br>
+                        📝 Error: ${error.message}<br>
+                        💡 Make sure the module files exist in src/modules/music-arrangement/
+                    </div>
+                `;
+                
+                log(`❌ Failed to load real module: ${error.message}`);
+                log('💡 This page requires the actual music-arrangement module files');
+                
+                // 提供備用的模擬實現
+                await loadFallbackImplementation();
+            }
+        }
+        
+        // 備用模擬實現
+        async function loadFallbackImplementation() {
+            log('🔄 Loading fallback simulation...');
+            
+            // 簡化的模擬服務
+            musicArrangementService = {
+                async createTrack(name, type, ownerId) {
+                    log(`📝 [SIMULATION] Creating track: ${name} (${type}) for ${ownerId}`);
+                    return {
+                        trackId: `sim_track_${Date.now()}`,
+                        name,
+                        type,
+                        ownerId,
+                        status: 'active'
+                    };
+                },
+                
+                async getSystemStats() {
+                    log('📊 [SIMULATION] Getting system stats');
+                    return {
+                        trackCount: 0,
+                        clipCount: 0,
+                        isSimulation: true
+                    };
+                },
+                
+                async addMidiNote(trackId, note, velocity, startTime, duration) {
+                    log(`🎹 [SIMULATION] Adding MIDI note ${note} to track ${trackId}`);
+                    return { success: true, simulation: true };
+                },
+                
+                async createAudioClip(trackId, audioUrl, startTime, duration) {
+                    log(`🎵 [SIMULATION] Creating audio clip in track ${trackId}`);
+                    return { 
+                        clipId: `sim_clip_${Date.now()}`,
+                        trackId,
+                        audioUrl,
+                        startTime,
+                        duration
+                    };
+                }
+            };
+            
+            document.getElementById('loadingStatus').innerHTML += `
+                <div class="error">
+                    🔄 Using fallback simulation mode<br>
+                    ⚠️ This is not the real Music Arrangement BC
+                </div>
+            `;
+            
+            log('🔄 Fallback simulation loaded');
+        }
+        
+        // 測試基本功能
+        async function testBasicFunctionality() {
+            try {
+                log('🧪 Testing basic functionality...');
+                
+                // 測試系統統計
+                const stats = await musicArrangementService.getSystemStats();
+                log(`📊 System stats: ${JSON.stringify(stats)}`);
+                
+                log('✅ Basic functionality test passed!');
+                
+            } catch (error) {
+                log(`❌ Basic functionality test failed: ${error.message}`);
+            }
+        }
+        
+        // UI 函數 - 使用真正的服務
+        window.createRealTrack = async function() {
+            if (!musicArrangementService) {
+                log('❌ Music Arrangement Service not loaded');
+                return;
+            }
+            
+            const name = document.getElementById('trackName').value;
+            const type = document.getElementById('trackType').value;
+            const ownerId = document.getElementById('ownerId').value;
+            
+            try {
+                const result = await musicArrangementService.createTrack(name, type, ownerId);
+                log(`✅ Track created: ${JSON.stringify(result)}`);
+                
+                // 更新軌道列表
+                updateRealTrackList();
+                
+            } catch (error) {
+                log(`❌ Error creating track: ${error.message}`);
+            }
+        };
+        
+        window.getAllRealTracks = async function() {
+            if (!musicArrangementService) {
+                log('❌ Music Arrangement Service not loaded');
+                return;
+            }
+            
+            try {
+                // 如果有 getAllTracks 方法
+                if (typeof musicArrangementService.getAllTracks === 'function') {
+                    const tracks = await musicArrangementService.getAllTracks();
+                    log(`📋 Retrieved ${tracks.length} tracks`);
+                    updateRealTrackList(tracks);
+                } else {
+                    log('📋 getAllTracks method not available in current service');
+                }
+            } catch (error) {
+                log(`❌ Error getting tracks: ${error.message}`);
+            }
+        };
+        
+        window.testRealAudio = async function() {
+            if (!musicArrangementService) {
+                log('❌ Music Arrangement Service not loaded');
+                return;
+            }
+            
+            try {
+                // 如果有音頻測試方法
+                if (typeof musicArrangementService.playTestSound === 'function') {
+                    await musicArrangementService.playTestSound();
+                    log('🎵 Playing test sound through real service');
+                } else {
+                    log('🎵 Audio test method not available in current service');
+                }
+            } catch (error) {
+                log(`❌ Error testing audio: ${error.message}`);
+            }
+        };
+        
+        window.getRealSystemStats = async function() {
+            if (!musicArrangementService) {
+                log('❌ Music Arrangement Service not loaded');
+                return;
+            }
+            
+            try {
+                const stats = await musicArrangementService.getSystemStats();
+                log(`📊 Real system stats: ${JSON.stringify(stats, null, 2)}`);
+            } catch (error) {
+                log(`❌ Error getting system stats: ${error.message}`);
+            }
+        };
+        
+        window.addMidiNote = async function() {
+            if (!musicArrangementService) {
+                log('❌ Music Arrangement Service not loaded');
+                return;
+            }
+            
+            const trackId = document.getElementById('midiTrackId').value;
+            const note = parseInt(document.getElementById('midiNote').value);
+            const velocity = parseInt(document.getElementById('midiVelocity').value);
+            const startTime = parseFloat(document.getElementById('midiStartTime').value);
+            const duration = parseFloat(document.getElementById('midiDuration').value);
+            
+            if (!trackId) {
+                log('❌ Please enter a MIDI track ID');
+                return;
+            }
+            
+            try {
+                if (typeof musicArrangementService.addMidiNote === 'function') {
+                    const result = await musicArrangementService.addMidiNote(trackId, note, velocity, startTime, duration);
+                    log(`🎹 MIDI note added: ${JSON.stringify(result)}`);
+                } else {
+                    log('🎹 addMidiNote method not available in current service');
+                }
+            } catch (error) {
+                log(`❌ Error adding MIDI note: ${error.message}`);
+            }
+        };
+        
+        window.quantizeMidi = async function() {
+            const trackId = document.getElementById('midiTrackId').value;
+            
+            if (!trackId) {
+                log('❌ Please enter a MIDI track ID');
+                return;
+            }
+            
+            try {
+                if (typeof musicArrangementService.quantizeMidi === 'function') {
+                    const result = await musicArrangementService.quantizeMidi(trackId, 0.25); // 16th note quantization
+                    log(`📐 MIDI quantized: ${JSON.stringify(result)}`);
+                } else {
+                    log('📐 quantizeMidi method not available in current service');
+                }
+            } catch (error) {
+                log(`❌ Error quantizing MIDI: ${error.message}`);
+            }
+        };
+        
+        window.transposeMidi = async function() {
+            const trackId = document.getElementById('midiTrackId').value;
+            
+            if (!trackId) {
+                log('❌ Please enter a MIDI track ID');
+                return;
+            }
+            
+            try {
+                if (typeof musicArrangementService.transposeMidi === 'function') {
+                    const result = await musicArrangementService.transposeMidi(trackId, 2); // Transpose up 2 semitones
+                    log(`🎵 MIDI transposed: ${JSON.stringify(result)}`);
+                } else {
+                    log('🎵 transposeMidi method not available in current service');
+                }
+            } catch (error) {
+                log(`❌ Error transposing MIDI: ${error.message}`);
+            }
+        };
+        
+        window.createAudioClip = async function() {
+            if (!musicArrangementService) {
+                log('❌ Music Arrangement Service not loaded');
+                return;
+            }
+            
+            const trackId = document.getElementById('audioTrackId').value;
+            const audioUrl = document.getElementById('audioUrl').value;
+            const startTime = parseFloat(document.getElementById('audioStartTime').value);
+            const duration = parseFloat(document.getElementById('audioDuration').value);
+            
+            if (!trackId) {
+                log('❌ Please enter an audio track ID');
+                return;
+            }
+            
+            try {
+                if (typeof musicArrangementService.createAudioClip === 'function') {
+                    const result = await musicArrangementService.createAudioClip(trackId, audioUrl, startTime, duration);
+                    log(`🎵 Audio clip created: ${JSON.stringify(result)}`);
+                } else {
+                    log('🎵 createAudioClip method not available in current service');
+                }
+            } catch (error) {
+                log(`❌ Error creating audio clip: ${error.message}`);
+            }
+        };
+        
+        window.getTrackClips = async function() {
+            const trackId = document.getElementById('audioTrackId').value;
+            
+            if (!trackId) {
+                log('❌ Please enter a track ID');
+                return;
+            }
+            
+            try {
+                if (typeof musicArrangementService.getClipsInTrack === 'function') {
+                    const clips = await musicArrangementService.getClipsInTrack(trackId);
+                    log(`📋 Track clips: ${JSON.stringify(clips, null, 2)}`);
+                } else {
+                    log('📋 getClipsInTrack method not available in current service');
+                }
+            } catch (error) {
+                log(`❌ Error getting track clips: ${error.message}`);
+            }
+        };
+        
+        window.clearLog = function() {
+            document.getElementById('status').innerHTML = '<div>🎵 Log cleared</div>';
+        };
+        
+        // 更新軌道列表
+        function updateRealTrackList(tracks = []) {
+            const trackListDiv = document.getElementById('realTrackList');
+            
+            if (tracks.length === 0) {
+                trackListDiv.innerHTML = '<div>No tracks available</div>';
+                return;
+            }
+            
+            trackListDiv.innerHTML = tracks.map(track => `
+                <div class="track-card">
+                    <div class="track-header">
+                        <strong>${track.name}</strong>
+                        <span class="track-controls">
+                            <button class="small-button" onclick="selectTrack('${track.trackId}')">選擇</button>
+                        </span>
+                    </div>
+                    <div>ID: ${track.trackId}</div>
+                    <div>Type: ${track.type}</div>
+                    <div>Owner: ${track.ownerId}</div>
+                    <div>Status: ${track.status}</div>
+                </div>
+            `).join('');
+        }
+        
+        window.selectTrack = function(trackId) {
+            document.getElementById('midiTrackId').value = trackId;
+            document.getElementById('audioTrackId').value = trackId;
+            log(`✅ Selected track: ${trackId}`);
+        };
+        
+        // 日誌函數
+        function log(message) {
+            const statusDiv = document.getElementById('status');
+            const time = new Date().toLocaleTimeString();
+            statusDiv.innerHTML += `<div>[${time}] ${message}</div>`;
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        }
+        
+        // 初始化
+        log('🎵 Starting Real Music Arrangement BC Test...');
+        loadMusicArrangementModule();
+    </script>
+</body>
+</html> 

@@ -15,7 +15,7 @@ export class AudioAdapter {
   private currentPosition: number = 0;
 
   constructor(
-    @inject('IntegrationEventBus')
+    @inject(MusicArrangementTypes.IntegrationEventBus)
     private readonly integrationEventBus: IntegrationEventBus,
     @inject(MusicArrangementTypes.TrackRepository)
     private readonly trackRepository: TrackRepository

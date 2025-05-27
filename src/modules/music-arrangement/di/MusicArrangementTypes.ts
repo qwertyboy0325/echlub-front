@@ -27,6 +27,7 @@ export const MusicArrangementTypes = {
 
   // Event Bus
   EventBus: Symbol.for('MusicArrangement.EventBus'),
+  IntegrationEventBus: Symbol.for('IntegrationEventBus'),
 
   // Integration Event Handlers
   AudioBufferReceivedHandler: Symbol.for('MusicArrangement.AudioBufferReceivedHandler'),

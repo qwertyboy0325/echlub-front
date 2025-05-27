@@ -1,8 +1,10 @@
-import { injectable } from 'inversify';
+import { injectable, inject } from 'inversify';
 import type { TrackRepository } from '../../domain/repositories/TrackRepository';
-import { Track, PeerId } from '../../domain/aggregates/Track';
+import { Track } from '../../domain/aggregates/Track';
+import { PeerId } from '../../domain/events/TrackEvents';
 import { TrackId } from '../../domain/value-objects/TrackId';
 import type { ClipRepository } from '../../domain/repositories/ClipRepository';
+import { MusicArrangementTypes } from '../../di/MusicArrangementTypes';
 
 // Placeholder for DataSource - should be imported from infrastructure
 interface DataSource {
@@ -15,23 +17,28 @@ interface DataSource {
  */
 @injectable()
 export class TrackRepositoryImpl implements TrackRepository {
+  // In-memory storage for development/testing
+  private tracks: Map<string, Track> = new Map();
+
   constructor(
-    private dataSource: DataSource,
+    @inject(MusicArrangementTypes.ClipRepository)
     private clipRepository: ClipRepository
-  ) {}
+  ) {
+    // For now, we'll use a mock DataSource since it's not implemented
+    this.dataSource = {
+      transaction: async <T>(fn: (manager: any) => Promise<T>): Promise<T> => {
+        return fn(null);
+      }
+    };
+  }
+
+  private dataSource: DataSource;
 
   async findById(id: TrackId): Promise<Track | null> {
-    // Implementation for basic track loading
-    // Does not include clips by default for performance
     try {
-      // TODO: Implement actual database query
-      // const trackData = await this.dataSource.query('SELECT * FROM tracks WHERE id = ?', [id.toString()]);
-      // if (!trackData) return null;
-      // return this.mapToTrack(trackData);
-      
-      // Placeholder implementation
-      console.log(`Finding track by ID: ${id.toString()}`);
-      return null;
+      const track = this.tracks.get(id.toString());
+      console.log(`Finding track by ID: ${id.toString()} - ${track ? 'found' : 'not found'}`);
+      return track || null;
     } catch (error) {
       console.error('Error finding track by ID:', error);
       throw error;
@@ -39,13 +46,8 @@ export class TrackRepositoryImpl implements TrackRepository {
   }
 
   async save(track: Track): Promise<void> {
-    // Save track without clips
     try {
-      // TODO: Implement actual database save
-      // const trackData = this.mapFromTrack(track);
-      // await this.dataSource.query('INSERT OR REPLACE INTO tracks VALUES (?)', [trackData]);
-      
-      // Placeholder implementation
+      this.tracks.set(track.trackId.toString(), track);
       console.log(`Saving track: ${track.trackId.toString()}`);
     } catch (error) {
       console.error('Error saving track:', error);
@@ -87,9 +89,14 @@ export class TrackRepositoryImpl implements TrackRepository {
       // Save track
       await this.saveTrackEntity(track, manager);
       
-      // Save all clips
+      // Save all clips with track relationship
       for (const clip of track.clips.values()) {
-        await this.clipRepository.save(clip);
+        // Use the saveWithTrack method if available, otherwise use regular save
+        if ('saveWithTrack' in this.clipRepository) {
+          await (this.clipRepository as any).saveWithTrack(clip, track.trackId);
+        } else {
+          await this.clipRepository.save(clip);
+        }
       }
     });
   }
@@ -99,10 +106,13 @@ export class TrackRepositoryImpl implements TrackRepository {
     const track = await this.findById(id);
     if (!track) return null;
 
+    // Load all clips for this track
     const clips = await this.clipRepository.findByTrackId(id);
-    // TODO: Reconstruct track with clips
-    // This would require a method to add clips to an existing track
-    // or a factory method that can create a track with clips
+    
+    // Add clips to track state using the proper method
+    for (const clip of clips) {
+      track.addClipToState(clip);
+    }
     
     return track;
   }

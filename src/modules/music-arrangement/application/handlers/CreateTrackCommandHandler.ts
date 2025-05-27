@@ -1,3 +1,4 @@
+import { injectable, inject } from 'inversify';
 import type { ICommandHandler } from '../../../../core/mediator/ICommandHandler';
 import type { CreateTrackCommand } from '../commands/CreateTrackCommand';
 import type { TrackId } from '../../domain/value-objects/TrackId';
@@ -5,9 +6,12 @@ import type { TrackRepository } from '../../domain/repositories/TrackRepository'
 import { Track } from '../../domain/aggregates/Track';
 import { TrackId as TrackIdImpl } from '../../domain/value-objects/TrackId';
 import { PeerId } from '../../../collaboration/domain/value-objects/PeerId';
+import { MusicArrangementTypes } from '../../di/MusicArrangementTypes';
 
+@injectable()
 export class CreateTrackCommandHandler implements ICommandHandler<CreateTrackCommand, TrackId> {
   constructor(
+    @inject(MusicArrangementTypes.TrackRepository)
     private readonly trackRepository: TrackRepository
   ) {}
 

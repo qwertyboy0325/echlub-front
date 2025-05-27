@@ -28,17 +28,25 @@ export class CreateAudioClipCommandHandler implements ICommandHandler<CreateAudi
       command.metadata
     );
 
+    // Apply the business rule and raise domain event
     track.addClip(audioClip);
 
-    await this.trackRepository.saveWithClips(track);
-    await this.clipRepository.save(audioClip);
+    // In event sourcing, events are automatically applied when raised
+    // But we need to manually add the clip to state for immediate availability
+    track.addClipToState(audioClip);
 
-    // Publish domain events
+    // Get and log domain events
     const events = track.getUncommittedEvents();
     events.forEach(event => {
       console.log('Domain event:', event);
     });
+    
+    // Clear events after processing
     track.clearUncommittedEvents();
+
+    // Persist the changes
+    await this.trackRepository.saveWithClips(track);
+    await this.clipRepository.save(audioClip);
 
     return audioClip.clipId;
   }

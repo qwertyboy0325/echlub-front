@@ -17,7 +17,7 @@ export class MidiAdapter {
   private midiOutputs: Map<string, any> = new Map();
 
   constructor(
-    @inject('IntegrationEventBus')
+    @inject(MusicArrangementTypes.IntegrationEventBus)
     private readonly integrationEventBus: IntegrationEventBus,
     @inject(MusicArrangementTypes.TrackRepository)
     private readonly trackRepository: TrackRepository

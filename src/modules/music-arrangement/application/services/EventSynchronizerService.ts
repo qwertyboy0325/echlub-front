@@ -10,7 +10,7 @@ import { MusicArrangementTypes } from '../../di/MusicArrangementTypes';
 @injectable()
 export class EventSynchronizerService {
   constructor(
-    @inject('IntegrationEventBus')
+    @inject(MusicArrangementTypes.IntegrationEventBus)
     private readonly integrationEventBus: IntegrationEventBus,
     @inject(MusicArrangementTypes.TrackRepository)
     private readonly trackRepository: TrackRepository

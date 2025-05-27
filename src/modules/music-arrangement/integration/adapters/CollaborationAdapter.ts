@@ -12,7 +12,7 @@ export class CollaborationAdapter {
   private connectedPeers: Set<string> = new Set();
 
   constructor(
-    @inject('IntegrationEventBus')
+    @inject(MusicArrangementTypes.IntegrationEventBus)
     private readonly integrationEventBus: IntegrationEventBus,
     @inject(MusicArrangementTypes.TrackRepository)
     private readonly trackRepository: TrackRepository
