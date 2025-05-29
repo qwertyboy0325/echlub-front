@@ -22,30 +22,33 @@ This project implements a **Domain-Driven Design (DDD)** approach with **Clean A
 ### 🎼 Music Arrangement BC
 **Location**: `src/modules/music-arrangement/`
 
-The heart of the music creation system, providing comprehensive Digital Audio Workstation (DAW) functionality.
+The heart of the music creation system, providing comprehensive Digital Audio Workstation (DAW) functionality with integrated track management.
 
 **Key Features**:
 - ✅ **Complete Event Sourcing** - All operations recorded as events
 - ✅ **Undo/Redo System** - User-scoped with batch operations
 - ✅ **Tone.js Integration** - Full audio engine with MIDI playback
 - ✅ **Real-time Collaboration** - WebRTC audio buffer processing
-- ✅ **Track Management** - Audio, MIDI, and Bus tracks
+- ✅ **Track Management** - Audio, MIDI, and Bus tracks with full lifecycle
+- ✅ **Track Types & Routing** - Audio, Instrument, Bus tracks with signal routing
+- ✅ **Plugin Management** - Audio effects and instruments integration
 - ✅ **Clip System** - Audio and MIDI clips with time-based operations
+- ✅ **Clip-Track Relations** - Comprehensive track-clip relationship management
 - ✅ **MIDI Processing** - Note editing, quantization, transposition
 - ✅ **Audio Engine** - Professional audio routing and effects
 
 **Architecture**:
 ```
 ├── application/          # Use cases and services
-│   ├── commands/        # Command definitions
+│   ├── commands/        # Command definitions (tracks, clips, MIDI)
 │   ├── handlers/        # Command/Query handlers
 │   ├── services/        # Application services
 │   └── mediator/        # CQRS mediator
 ├── domain/              # Core business logic
-│   ├── aggregates/      # Track aggregate
-│   ├── entities/        # Clips, MIDI notes
+│   ├── aggregates/      # Track aggregate (consolidated)
+│   ├── entities/        # Tracks, Clips, MIDI notes
 │   ├── events/          # Domain events
-│   └── value-objects/   # Time ranges, IDs, metadata
+│   └── value-objects/   # Time ranges, IDs, metadata, routing
 ├── infrastructure/      # External concerns
 │   ├── audio/          # Tone.js integration
 │   ├── events/         # Event store implementation
@@ -85,17 +88,6 @@ User authentication and profile management.
 - ✅ **User Registration/Login** - Secure authentication
 - ✅ **Profile Management** - User data and preferences
 - ✅ **Password Management** - Secure password operations
-
-### 🎚️ Track BC
-**Location**: `src/modules/track/`
-
-Track-specific operations and metadata management.
-
-**Key Features**:
-- ✅ **Track Types** - Audio, Instrument, Bus tracks
-- ✅ **Plugin Management** - Audio effects and instruments
-- ✅ **Routing System** - Audio signal routing
-- ✅ **Clip Management** - Track-clip relationships
 
 ## 🛠️ Technology Stack
 
@@ -161,11 +153,10 @@ npm run ci              # Type check + lint + test + build
 
 Current test coverage: **65%+** across all modules
 
-- **Music Arrangement BC**: Comprehensive unit and integration tests
+- **Music Arrangement BC**: Comprehensive unit and integration tests (includes track operations)
 - **Collaboration BC**: E2E collaboration flow tests
 - **Jam Session BC**: Session lifecycle and state management tests
 - **Identity BC**: Authentication and user management tests
-- **Track BC**: Track operations and plugin management tests
 
 ## 🏛️ Clean Architecture Principles
 
