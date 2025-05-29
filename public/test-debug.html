@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Debug Music Arrangement BC</title>
+    <style>
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .status.loading { background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; }
+        .status.success { background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; }
+        .status.error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; }
+        
+        .log {
+            background: #2d3748;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        
+        .log-info { background: rgba(99, 179, 237, 0.1); }
+        .log-success { background: rgba(104, 211, 145, 0.1); }
+        .log-error { background: rgba(252, 129, 129, 0.1); }
+        .log-warning { background: rgba(246, 224, 94, 0.1); }
+        
+        button {
+            background: #3182ce;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover { background: #2c5aa0; }
+        button:disabled { background: #4a5568; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Music Arrangement BC</h1>
+        
+        <div id="status" class="status loading">
+            🔄 正在初始化...
+        </div>
+        
+        <div>
+            <button onclick="testStep1()" id="btn1">Step 1: 載入模組</button>
+            <button onclick="testStep2()" id="btn2" disabled>Step 2: 創建容器</button>
+            <button onclick="testStep3()" id="btn3" disabled>Step 3: 初始化容器</button>
+            <button onclick="testStep4()" id="btn4" disabled>Step 4: 獲取服務</button>
+            <button onclick="testStep5()" id="btn5" disabled>Step 5: 創建軌道</button>
+            <button onclick="clearLog()">清除日誌</button>
+        </div>
+        
+        <div id="log" class="log">
+            <div class="log-entry log-info">[初始化] 準備開始調試...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 過濾瀏覽器擴展錯誤
+        window.addEventListener('error', (event) => {
+            if (event.filename && (
+                event.filename.includes('inpage.js') || 
+                event.filename.includes('content-script') ||
+                event.filename.includes('extension')
+            )) {
+                event.preventDefault();
+                return false;
+            }
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            if (event.reason && event.reason.stack && (
+                event.reason.stack.includes('inpage.js') ||
+                event.reason.stack.includes('extension')
+            )) {
+                event.preventDefault();
+                return false;
+            }
+        });
+        
+        let modules = null;
+        let container = null;
+        let service = null;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+        
+        function enableButton(id) {
+            document.getElementById(id).disabled = false;
+        }
+        
+        window.testStep1 = async function() {
+            try {
+                log('🔄 Step 1: 開始載入模組...', 'info');
+                log('🔍 忽略瀏覽器擴展錯誤 (inpage.js 等)', 'info');
+                
+                // 測試基本模組載入
+                modules = await import('/src/modules/music-arrangement/index.ts');
+                
+                log('✅ Step 1: 模組載入成功', 'success');
+                log(`📦 可用導出: ${Object.keys(modules).join(', ')}`, 'info');
+                
+                enableButton('btn2');
+                updateStatus('Step 1 完成 - 模組已載入', 'success');
+                
+            } catch (error) {
+                // 過濾擴展錯誤
+                if (error.stack && error.stack.includes('inpage.js')) {
+                    log('⚠️ 檢測到瀏覽器擴展錯誤，已忽略', 'warning');
+                    return;
+                }
+                
+                log(`❌ Step 1 失敗: ${error.message}`, 'error');
+                log(`📍 錯誤堆疊: ${error.stack}`, 'error');
+                updateStatus('Step 1 失敗', 'error');
+            }
+        };
+        
+        window.testStep2 = async function() {
+            try {
+                log('🔄 Step 2: 開始創建容器...', 'info');
+                
+                const { MusicArrangementContainer } = modules;
+                container = new MusicArrangementContainer();
+                
+                log('✅ Step 2: 容器創建成功', 'success');
+                log(`📦 容器類型: ${container.constructor.name}`, 'info');
+                
+                enableButton('btn3');
+                updateStatus('Step 2 完成 - 容器已創建', 'success');
+                
+            } catch (error) {
+                if (error.stack && error.stack.includes('inpage.js')) {
+                    log('⚠️ 檢測到瀏覽器擴展錯誤，已忽略', 'warning');
+                    return;
+                }
+                
+                log(`❌ Step 2 失敗: ${error.message}`, 'error');
+                log(`📍 錯誤堆疊: ${error.stack}`, 'error');
+                updateStatus('Step 2 失敗', 'error');
+            }
+        };
+        
+        window.testStep3 = async function() {
+            try {
+                log('🔄 Step 3: 開始初始化容器...', 'info');
+                
+                await container.initialize();
+                
+                log('✅ Step 3: 容器初始化成功', 'success');
+                
+                enableButton('btn4');
+                updateStatus('Step 3 完成 - 容器已初始化', 'success');
+                
+            } catch (error) {
+                if (error.stack && error.stack.includes('inpage.js')) {
+                    log('⚠️ 檢測到瀏覽器擴展錯誤，已忽略', 'warning');
+                    return;
+                }
+                
+                log(`❌ Step 3 失敗: ${error.message}`, 'error');
+                log(`📍 錯誤堆疊: ${error.stack}`, 'error');
+                updateStatus('Step 3 失敗', 'error');
+            }
+        };
+        
+        window.testStep4 = async function() {
+            try {
+                log('🔄 Step 4: 開始獲取服務...', 'info');
+                
+                const { MusicArrangementTypes } = modules;
+                service = container.get(MusicArrangementTypes.SimpleMusicArrangementService);
+                
+                log('✅ Step 4: 服務獲取成功', 'success');
+                log(`📦 服務類型: ${service.constructor.name}`, 'info');
+                
+                enableButton('btn5');
+                updateStatus('Step 4 完成 - 服務已獲取', 'success');
+                
+            } catch (error) {
+                if (error.stack && error.stack.includes('inpage.js')) {
+                    log('⚠️ 檢測到瀏覽器擴展錯誤，已忽略', 'warning');
+                    return;
+                }
+                
+                log(`❌ Step 4 失敗: ${error.message}`, 'error');
+                log(`📍 錯誤堆疊: ${error.stack}`, 'error');
+                updateStatus('Step 4 失敗', 'error');
+            }
+        };
+        
+        window.testStep5 = async function() {
+            try {
+                log('🔄 Step 5: 開始創建軌道...', 'info');
+                log(`📝 調用參數: ownerId='test-user', type='instrument', name='Test Track'`, 'info');
+                
+                const trackId = await service.createTrack('test-user', 'instrument', 'Test Track');
+                
+                log('✅ Step 5: 軌道創建成功', 'success');
+                log(`🎛️ 軌道ID: ${trackId}`, 'success');
+                
+                updateStatus('所有步驟完成 - 系統正常工作', 'success');
+                
+            } catch (error) {
+                if (error.stack && error.stack.includes('inpage.js')) {
+                    log('⚠️ 檢測到瀏覽器擴展錯誤，已忽略', 'warning');
+                    return;
+                }
+                
+                log(`❌ Step 5 失敗: ${error.message}`, 'error');
+                log(`📍 錯誤堆疊: ${error.stack}`, 'error');
+                updateStatus('Step 5 失敗', 'error');
+                
+                // 詳細錯誤分析
+                if (error.message.includes('Cannot read properties of null')) {
+                    log('🔍 檢測到 null 引用錯誤，可能原因:', 'warning');
+                    log('  - TrackType.fromString() 參數問題', 'warning');
+                    log('  - 依賴注入失敗', 'warning');
+                    log('  - 值對象創建失敗', 'warning');
+                }
+            }
+        };
+        
+        window.clearLog = function() {
+            document.getElementById('log').innerHTML = '<div class="log-entry log-info">[清除] 日誌已清除</div>';
+        };
+        
+        // 自動開始第一步
+        setTimeout(() => {
+            log('🚀 自動開始調試流程...', 'info');
+            log('🛡️ 已設置錯誤過濾器，忽略瀏覽器擴展錯誤', 'info');
+        }, 1000);
+    </script>
+</body>
+</html> 
+ 
+ 

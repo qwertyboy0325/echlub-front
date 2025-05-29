@@ -9,6 +9,7 @@ export class QuantizeMidiClipCommand implements ICommand<void> {
   constructor(
     public readonly trackId: TrackId,
     public readonly clipId: ClipId,
-    public readonly quantizeValue: QuantizeValue
+    public readonly quantizeValue: QuantizeValue,
+    public readonly userId: string
   ) {}
 } 

@@ -13,6 +13,7 @@
 
 // ✅ Application Service - The ONLY entry point for users
 export { MusicArrangementService } from './application/services/MusicArrangementService';
+export { SimpleMusicArrangementService } from './application/services/SimpleMusicArrangementService';
 
 // ✅ DTOs for Clean Architecture compliance
 export type {

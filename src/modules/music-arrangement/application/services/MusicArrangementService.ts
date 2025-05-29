@@ -17,6 +17,7 @@ import { GetTrackWithClipsQuery } from '../queries/GetTrackWithClipsQuery';
 // Domain types for internal conversion
 import { TrackId } from '../../domain/value-objects/TrackId';
 import { ClipId } from '../../domain/value-objects/ClipId';
+import { MidiNoteId } from '../../domain/value-objects/MidiNoteId';
 import { TrackType } from '../../domain/value-objects/TrackType';
 import { TrackMetadata } from '../../domain/value-objects/TrackMetadata';
 import { ClipMetadata } from '../../domain/value-objects/ClipMetadata';
@@ -98,16 +99,21 @@ export class MusicArrangementService {
   async createTrack(
     ownerId: string,
     type: string,
-    name: string
+    name: string,
+    userId?: string
   ): Promise<string> {
     try {
       const trackType = TrackType.fromString(type);
-      const metadata = TrackMetadata.create(name);
       
-      const command = new CreateTrackCommand(ownerId, trackType, metadata);
-      const trackId = await this.mediator.send(command) as TrackId;
+      const command = new CreateTrackCommand(
+        ownerId, 
+        trackType, 
+        name, 
+        userId || ownerId // Use ownerId as userId if not provided
+      );
+      const trackId = await this.mediator.send(command) as string;
       
-      return trackId.toString();
+      return trackId;
     } catch (error) {
       if (error instanceof DomainError) {
         throw new Error(`${error.code}: ${error.message}`);
@@ -158,7 +164,8 @@ export class MusicArrangementService {
     trackId: string,
     timeRange: TimeRangeDTO,
     audioSource: { url: string; name: string },
-    name: string
+    name: string,
+    userId?: string
   ): Promise<string> {
     try {
       const range = new TimeRangeVO(timeRange.startTime, timeRange.endTime);
@@ -169,7 +176,8 @@ export class MusicArrangementService {
         TrackId.fromString(trackId),
         range,
         audioSourceRef,
-        metadata
+        metadata,
+        userId || 'default-user'
       );
       
       const clipId = await this.mediator.send(command) as ClipId;
@@ -186,7 +194,8 @@ export class MusicArrangementService {
     trackId: string,
     timeRange: TimeRangeDTO,
     instrument: InstrumentDTO,
-    name: string
+    name: string,
+    userId?: string
   ): Promise<string> {
     try {
       const range = new TimeRangeVO(timeRange.startTime, timeRange.endTime);
@@ -197,10 +206,12 @@ export class MusicArrangementService {
         TrackId.fromString(trackId),
         range,
         instrumentRef,
-        metadata
+        metadata,
+        name,
+        userId || 'default-user'
       );
       
-      const clipId = await this.mediator.send(command);
+      const clipId = await this.mediator.send(command) as ClipId;
       return clipId.toString();
     } catch (error) {
       if (error instanceof DomainError) {
@@ -213,7 +224,7 @@ export class MusicArrangementService {
   async getClipsInTrack(trackId: string): Promise<ClipInfoDTO[]> {
     try {
       const query = new GetTrackWithClipsQuery(TrackId.fromString(trackId));
-      const track = await this.mediator.query(query);
+      const track = await this.mediator.query(query) as Track;
       
       if (!track) {
         throw DomainError.trackNotFound(trackId);
@@ -223,9 +234,9 @@ export class MusicArrangementService {
         id: clip.clipId.toString(),
         name: clip.metadata.name,
         type: clip.getType().toString(),
-        startTime: clip.range.startTime,
-        endTime: clip.range.endTime,
-        duration: clip.range.duration
+        startTime: clip.range.start,
+        endTime: clip.range.end,
+        duration: clip.range.length
       }));
     } catch (error) {
       if (error instanceof DomainError) {
@@ -241,7 +252,8 @@ export class MusicArrangementService {
     clipId: string,
     pitch: number,
     velocity: number,
-    timeRange: TimeRangeDTO
+    timeRange: TimeRangeDTO,
+    userId?: string
   ): Promise<string> {
     try {
       const range = new TimeRangeVO(timeRange.startTime, timeRange.endTime);
@@ -251,10 +263,11 @@ export class MusicArrangementService {
         ClipId.fromString(clipId),
         pitch,
         velocity,
-        range
+        range,
+        userId || 'default-user'
       );
       
-      const noteId = await this.mediator.send(command);
+      const noteId = await this.mediator.send(command) as MidiNoteId;
       return noteId.toString();
     } catch (error) {
       if (error instanceof DomainError) {
@@ -275,9 +288,10 @@ export class MusicArrangementService {
       const command = new QuantizeMidiClipCommand(
         TrackId.fromString(trackId),
         ClipId.fromString(clipId),
-        quantize
+        quantize,
+        'default-user'
       );
-      
+    
       await this.mediator.send(command);
     } catch (error) {
       if (error instanceof DomainError) {
@@ -296,9 +310,10 @@ export class MusicArrangementService {
       const command = new TransposeMidiClipCommand(
         TrackId.fromString(trackId),
         ClipId.fromString(clipId),
-        semitones
+        semitones,
+        'default-user'
       );
-      
+    
       await this.mediator.send(command);
     } catch (error) {
       if (error instanceof DomainError) {
@@ -321,7 +336,7 @@ export class MusicArrangementService {
     } catch (error) {
       if (error instanceof DomainError) {
         throw new Error(`${error.code}: ${error.message}`);
-      }
+    }
       throw error;
     }
   }
@@ -329,11 +344,11 @@ export class MusicArrangementService {
   async getTrackStatus(trackId: string): Promise<TrackStatusDTO> {
     try {
       const query = new GetTrackWithClipsQuery(TrackId.fromString(trackId));
-      const track = await this.mediator.query(query);
+      const track = await this.mediator.query(query) as Track;
       
-      if (!track) {
+    if (!track) {
         throw DomainError.trackNotFound(trackId);
-      }
+    }
 
       return {
         name: track.metadata.name,
@@ -342,7 +357,7 @@ export class MusicArrangementService {
     } catch (error) {
       if (error instanceof DomainError) {
         throw new Error(`${error.code}: ${error.message}`);
-      }
+  }
       throw error;
     }
   }
@@ -350,7 +365,7 @@ export class MusicArrangementService {
   async getDebugInfo(trackId: string): Promise<DebugInfoDTO> {
     try {
       const query = new GetTrackByIdQuery(TrackId.fromString(trackId));
-      const track = await this.mediator.query(query);
+      const track = await this.mediator.query(query) as Track;
       
       if (!track) {
         throw DomainError.trackNotFound(trackId);
@@ -365,7 +380,7 @@ export class MusicArrangementService {
     } catch (error) {
       if (error instanceof DomainError) {
         throw new Error(`${error.code}: ${error.message}`);
-      }
+  }
       throw error;
     }
   }
@@ -373,14 +388,14 @@ export class MusicArrangementService {
   async validateTrackState(trackId: string): Promise<ValidationResultDTO> {
     try {
       const query = new GetTrackWithClipsQuery(TrackId.fromString(trackId));
-      const track = await this.mediator.query(query);
+      const track = await this.mediator.query(query) as Track;
       
-      if (!track) {
+    if (!track) {
         return {
           valid: false,
           errors: ['Track not found']
         };
-      }
+    }
 
       // Perform domain validation
       const errors: string[] = [];
@@ -388,7 +403,7 @@ export class MusicArrangementService {
       // Add validation logic here
       if (track.clips.size === 0) {
         errors.push('Track has no clips');
-      }
+  }
 
       return {
         valid: errors.length === 0,
@@ -401,4 +416,4 @@ export class MusicArrangementService {
       };
     }
   }
-}
+} 

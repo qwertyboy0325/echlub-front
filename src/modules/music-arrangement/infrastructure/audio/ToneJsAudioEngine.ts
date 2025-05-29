@@ -110,7 +110,7 @@ export class ToneJsAudioEngine {
       console.log('Tone.js audio context started');
 
       // Setup master channel
-      this.masterChannel = new Tone.Gain(0.8).toDestination();
+      this.masterChannel = new Tone.Gain(0.8);
       
       // Setup master effects chain
       this.setupMasterEffects();
@@ -311,25 +311,99 @@ export class ToneJsAudioEngine {
    */
   public scheduleMidiNotes(trackId: string, notes: MidiNote[], startTime: string): void {
     const channel = this.mixerChannels.get(trackId);
-    
     if (!channel || !channel.synth) {
+      console.error(`MIDI track not found or no synth available: ${trackId}`, {
+        channelExists: !!channel,
+        synthExists: !!channel?.synth,
+        availableChannels: Array.from(this.mixerChannels.keys())
+      });
       throw DomainError.operationNotPermitted('scheduleMidiNotes', 'MIDI track not found');
     }
 
     try {
-      notes.forEach(note => {
-        const noteStartTime = `${startTime} + ${note.range.start}`;
-        const noteDuration = note.range.length;
-        const velocity = note.velocity / 127; // Normalize velocity
-        
-        // Convert MIDI note to frequency
-        const frequency = Tone.Frequency(note.pitch, 'midi');
-        
-        // Schedule note
-        channel.synth.triggerAttackRelease(frequency, noteDuration, noteStartTime, velocity);
+      console.log(`Scheduling ${notes.length} MIDI notes on track ${trackId}:`, notes.map(n => ({
+        pitch: n.pitch,
+        velocity: n.velocity,
+        start: n.range.start,
+        length: n.range.length
+      })));
+
+      notes.forEach((note, index) => {
+        try {
+          // Convert milliseconds to seconds for Tone.js
+          const noteStartTimeMs = typeof note.range.start === 'number' ? note.range.start : 0;
+          const noteDurationMs = typeof note.range.length === 'number' ? note.range.length : 1000;
+          
+          const noteStartTimeSeconds = noteStartTimeMs / 1000;
+          const noteDurationSeconds = Math.max(noteDurationMs / 1000, 0.1); // Minimum 0.1 seconds
+          
+          // Calculate absolute start time - FIXED LOGIC
+          let absoluteStartTime: string | number;
+          
+          // 🔧 TRANSPORT SYNC FIX: 使用相對時間確保與 Transport 同步
+          // 這樣音符會響應暫停/停止指令
+          if (noteStartTimeSeconds === 0) {
+            // 第一個音符立即播放（相對於當前 transport 時間）
+            absoluteStartTime = '+0.01';
+          } else {
+            // 其他音符使用相對時間，這樣它們會與 transport 同步
+            absoluteStartTime = `+${noteStartTimeSeconds}`;
+          }
+          
+          const velocity = Math.max(0.1, Math.min(1, note.velocity / 127)); // Normalize velocity with bounds
+          
+          // Convert MIDI note to frequency
+          const frequency = Tone.Frequency(note.pitch, 'midi');
+          
+          console.log(`🎵 Scheduling note ${index + 1}/${notes.length}:`, {
+            pitch: note.pitch,
+            frequency: frequency.toFrequency(),
+            noteStartTimeMs,
+            noteStartTimeSeconds,
+            absoluteStartTime,
+            duration: noteDurationSeconds,
+            velocity,
+            transportPlaying: this.transportState.isPlaying
+          });
+          
+          // Schedule note with error handling
+          try {
+            // 🔧 TRANSPORT INTEGRATION: 使用 Transport.schedule 確保與傳輸同步
+            // 這樣音符會正確響應暫停/停止指令
+            if (typeof absoluteStartTime === 'string' && absoluteStartTime.startsWith('+')) {
+              // 相對時間 - 使用 Transport.schedule 確保同步
+              Tone.Transport.schedule((time: number) => {
+                try {
+                  channel.synth.triggerAttackRelease(frequency, noteDurationSeconds, time, velocity);
+                  console.log(`✅ Note ${note.pitch} played via Transport at ${time}`);
+                } catch (synthError) {
+                  console.error(`❌ Synth trigger failed for note ${note.pitch}:`, synthError);
+                }
+              }, absoluteStartTime);
+              console.log(`✅ Note ${note.pitch} scheduled via Transport at ${absoluteStartTime}`);
+            } else {
+              // 絕對時間 - 直接調度（備用方案）
+              channel.synth.triggerAttackRelease(frequency, noteDurationSeconds, absoluteStartTime, velocity);
+              console.log(`✅ Note ${note.pitch} scheduled directly at ${absoluteStartTime}`);
+            }
+          } catch (scheduleError) {
+            console.error(`❌ Failed to schedule note ${note.pitch}:`, scheduleError);
+            
+            // Fallback: try immediate playback
+            try {
+              channel.synth.triggerAttackRelease(frequency, noteDurationSeconds, undefined, velocity);
+              console.log(`✅ Note ${note.pitch} played immediately as fallback`);
+            } catch (fallbackError) {
+              console.error(`❌ Fallback playback also failed for note ${note.pitch}:`, fallbackError);
+            }
+          }
+          
+        } catch (noteError) {
+          console.error(`❌ Error processing note ${index}:`, noteError, note);
+        }
       });
 
-      console.log(`MIDI notes scheduled: ${notes.length} notes on track ${trackId} at ${startTime}`);
+      console.log(`✅ MIDI notes scheduling completed: ${notes.length} notes on track ${trackId} at ${startTime}`);
 
     } catch (error) {
       console.error('Error scheduling MIDI notes:', error);
@@ -360,11 +434,14 @@ export class ToneJsAudioEngine {
   public stopTransport(): void {
     try {
       Tone.Transport.stop();
+      // 🔧 清除所有已調度的事件，防止音符在停止後繼續播放
+      Tone.Transport.cancel();
+      
       this.transportState.isPlaying = false;
       this.transportState.isPaused = false;
       this.transportState.position = '0:0:0';
       this.eventCallbacks.onTransportStop?.();
-      console.log('Transport stopped');
+      console.log('Transport stopped and all scheduled events cancelled');
 
     } catch (error) {
       console.error('Error stopping transport:', error);
@@ -604,9 +681,12 @@ export class ToneJsAudioEngine {
     // Add master limiter
     const limiter = new Tone.Limiter(-3);
 
-    // Connect master effects chain
+    // Connect master effects chain CORRECTLY
+    // masterChannel should connect TO the effects, not FROM them
     this.masterChannel.connect(compressor).connect(limiter).toDestination();
     this.masterEffects = [compressor, limiter];
+    
+    console.log('Master effects chain setup: masterChannel -> compressor -> limiter -> destination');
   }
 
   private setupTransport(): void {
@@ -628,24 +708,60 @@ export class ToneJsAudioEngine {
   }
 
   private createSynthesizer(type: string): any {
+    let synth: any;
+    
     switch (type) {
       case 'synth':
-        return new Tone.Synth();
+        synth = new Tone.Synth({
+          oscillator: {
+            type: "sine"
+          },
+          envelope: {
+            attack: 0.01,
+            decay: 0.1,
+            sustain: 0.3,
+            release: 0.5
+          }
+        });
+        break;
       case 'fmSynth':
-        return new Tone.FMSynth();
+        synth = new Tone.FMSynth();
+        break;
       case 'amSynth':
-        return new Tone.AMSynth();
+        synth = new Tone.AMSynth();
+        break;
       case 'polySynth':
-        return new Tone.PolySynth();
+        synth = new Tone.PolySynth();
+        break;
       case 'monoSynth':
-        return new Tone.MonoSynth();
+        synth = new Tone.MonoSynth();
+        break;
       case 'membraneSynth':
-        return new Tone.MembraneSynth();
+        synth = new Tone.MembraneSynth();
+        break;
       case 'metalSynth':
-        return new Tone.MetalSynth();
+        synth = new Tone.MetalSynth();
+        break;
       default:
-        return new Tone.Synth();
+        synth = new Tone.Synth({
+          oscillator: {
+            type: "sine"
+          },
+          envelope: {
+            attack: 0.01,
+            decay: 0.1,
+            sustain: 0.3,
+            release: 0.5
+          }
+        });
     }
+    
+    // Set appropriate volume to avoid clipping
+    synth.volume.value = -12; // -12dB
+    
+    console.log(`Created synthesizer: ${type} with volume ${synth.volume.value}dB`);
+    
+    return synth;
   }
 
   private createEffectsChain(effectConfigs: AudioEffectConfig[]): any[] {
@@ -687,5 +803,83 @@ export class ToneJsAudioEngine {
    */
   public static getVersion(): string {
     return typeof Tone !== 'undefined' ? Tone.version : 'Not available';
+  }
+
+  /**
+   * Debug method: Test MIDI note playback directly
+   */
+  public async testMidiNote(trackId: string, pitch: number = 60, velocity: number = 100, duration: number = 1000): Promise<void> {
+    try {
+      console.log(`🔧 Testing MIDI note directly: trackId=${trackId}, pitch=${pitch}`);
+      
+      const channel = this.mixerChannels.get(trackId);
+      if (!channel || !channel.synth) {
+        console.error('❌ No channel or synth found for testing');
+        return;
+      }
+
+      // Test 1: Direct synth connection
+      console.log('🔧 Test 1: Direct synth to destination');
+      const testSynth = new Tone.Synth().toDestination();
+      const frequency = Tone.Frequency(pitch, 'midi');
+      const normalizedVelocity = velocity / 127;
+      const durationSeconds = duration / 1000;
+      
+      testSynth.triggerAttackRelease(frequency, durationSeconds, '+0.1', normalizedVelocity);
+      
+      // Clean up test synth
+      setTimeout(() => {
+        testSynth.dispose();
+      }, duration + 500);
+
+      // Test 2: Channel synth direct to destination
+      console.log('🔧 Test 2: Channel synth direct to destination');
+      const originalConnections = channel.synth.output.numberOfOutputs;
+      console.log(`Original synth connections: ${originalConnections}`);
+      
+      // Temporarily connect directly to destination
+      const tempConnection = channel.synth.toDestination();
+      channel.synth.triggerAttackRelease(frequency, durationSeconds, '+1.5', normalizedVelocity);
+      
+      // Restore original connection after test
+      setTimeout(() => {
+        tempConnection.disconnect();
+        // Reconnect to original chain
+        channel.synth.connect(channel.gainNode);
+      }, duration + 1000);
+
+      console.log('🔧 MIDI test completed');
+
+    } catch (error) {
+      console.error('❌ Error testing MIDI note:', error);
+    }
+  }
+
+  /**
+   * Debug method: Check audio chain connectivity
+   */
+  public debugAudioChain(trackId: string): void {
+    const channel = this.mixerChannels.get(trackId);
+    if (!channel) {
+      console.error(`❌ No channel found: ${trackId}`);
+      return;
+    }
+
+    console.log(`🔧 Audio chain debug for track ${trackId}:`);
+    console.log(`- Synth exists: ${!!channel.synth}`);
+    console.log(`- Synth outputs: ${channel.synth?.output?.numberOfOutputs || 0}`);
+    console.log(`- Gain node exists: ${!!channel.gainNode}`);
+    console.log(`- Gain value: ${channel.gainNode?.gain?.value || 'N/A'}`);
+    console.log(`- Pan node exists: ${!!channel.panNode}`);
+    console.log(`- Pan value: ${channel.panNode?.pan?.value || 'N/A'}`);
+    console.log(`- Master channel exists: ${!!this.masterChannel}`);
+    console.log(`- Master volume: ${this.masterChannel?.gain?.value || 'N/A'}`);
+    console.log(`- Effects count: ${channel.effects?.length || 0}`);
+    console.log(`- Is muted: ${channel.isMuted}`);
+    console.log(`- Is solo: ${channel.isSolo}`);
+    
+    // Test audio context state
+    console.log(`- Audio context state: ${Tone.context.state}`);
+    console.log(`- Transport state: ${Tone.Transport.state}`);
   }
 } 

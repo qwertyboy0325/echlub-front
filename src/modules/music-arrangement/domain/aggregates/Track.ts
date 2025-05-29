@@ -71,7 +71,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   private _trackId: TrackId;
   private _ownerId: PeerId;
   private _trackType: TrackType;
-  private _clips: Map<ClipId, Clip>;
+  private _clips: Map<string, Clip>;
   private _metadata: TrackMetadata;
   private _collaborationState: CollaborationState;
 
@@ -79,7 +79,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
     trackId: TrackId,
     ownerId?: PeerId,
     trackType?: TrackType,
-    clips?: Map<ClipId, Clip>,
+    clips?: Map<string, Clip>,
     metadata?: TrackMetadata,
     collaborationState?: CollaborationState,
     createdAt?: Date,
@@ -107,7 +107,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
     const track = new Track(trackId);
     
     // Raise event instead of direct state change
-    track.raiseEvent(new TrackCreatedEvent(trackId, ownerId, trackType));
+    track.raiseEvent(new TrackCreatedEvent(trackId, ownerId, trackType, metadata));
     return track;
   }
 
@@ -128,7 +128,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
 
   // Remove clip from track
   public removeClip(clipId: ClipId): void {
-    const clip = this._clips.get(clipId);
+    const clip = this._clips.get(clipId.toString());
     if (!clip) {
       throw DomainError.clipNotFound(clipId.toString());
     }
@@ -138,7 +138,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
 
   // Move clip within track
   public moveClip(clipId: ClipId, newRange: TimeRangeVO): void {
-    const clip = this._clips.get(clipId);
+    const clip = this._clips.get(clipId.toString());
     if (!clip) {
       throw DomainError.clipNotFound(clipId.toString());
     }
@@ -161,7 +161,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
       throw DomainError.trackTypeMismatch('addMidiNote', this._trackType.toString());
     }
     
-    const clip = this._clips.get(clipId);
+    const clip = this._clips.get(clipId.toString());
     if (!clip || clip.getType() !== ClipType.MIDI) {
       throw DomainError.clipTypeMismatch('MIDI', clip?.getType().toString() || 'unknown');
     }
@@ -171,7 +171,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   public removeMidiNoteFromClip(clipId: ClipId, noteId: MidiNoteId): void {
-    const clip = this._clips.get(clipId);
+    const clip = this._clips.get(clipId.toString());
     if (!clip || clip.getType() !== ClipType.MIDI) {
       throw DomainError.clipTypeMismatch('MIDI', clip?.getType().toString() || 'unknown');
     }
@@ -186,7 +186,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   public updateMidiNote(clipId: ClipId, noteId: MidiNoteId, newNote: MidiNote): void {
-    const clip = this._clips.get(clipId);
+    const clip = this._clips.get(clipId.toString());
     if (!clip || clip.getType() !== ClipType.MIDI) {
       throw DomainError.clipTypeMismatch('MIDI', clip?.getType().toString() || 'unknown');
     }
@@ -201,7 +201,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   public quantizeMidiClip(clipId: ClipId, quantizeValue: QuantizeValue): void {
-    const clip = this._clips.get(clipId);
+    const clip = this._clips.get(clipId.toString());
     if (!clip || clip.getType() !== ClipType.MIDI) {
       throw DomainError.clipTypeMismatch('MIDI', clip?.getType().toString() || 'unknown');
     }
@@ -212,7 +212,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   public transposeMidiClip(clipId: ClipId, semitones: number): void {
-    const clip = this._clips.get(clipId);
+    const clip = this._clips.get(clipId.toString());
     if (!clip || clip.getType() !== ClipType.MIDI) {
       throw DomainError.clipTypeMismatch('MIDI', clip?.getType().toString() || 'unknown');
     }
@@ -228,7 +228,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
       throw DomainError.trackTypeMismatch('setAudioClipGain', this._trackType.toString());
     }
 
-    const clip = this._clips.get(clipId);
+    const clip = this._clips.get(clipId.toString());
     if (!clip || clip.getType() !== ClipType.AUDIO) {
       throw DomainError.clipTypeMismatch('AUDIO', clip?.getType().toString() || 'unknown');
     }
@@ -289,7 +289,24 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   private applyTrackCreatedEvent(event: TrackCreatedEvent): void {
     this._trackId = event.trackId;
     this._ownerId = event.ownerId;
-    this._trackType = event.trackType;
+    this._metadata = event.metadata;
+    
+    // Ensure TrackType is properly reconstructed from event data
+    if (event.trackType instanceof TrackType) {
+      this._trackType = event.trackType;
+    } else {
+      // Handle case where trackType is serialized as plain object
+      const trackTypeData = event.trackType as any;
+      if (trackTypeData.props && trackTypeData.props.type) {
+        this._trackType = TrackType.fromString(trackTypeData.props.type);
+      } else if (typeof trackTypeData === 'string') {
+        this._trackType = TrackType.fromString(trackTypeData);
+      } else {
+        // Fallback to instrument type
+        this._trackType = TrackType.instrument();
+      }
+    }
+    
     this._clips = new Map();
     this._collaborationState = { 
       canApplyOperation: () => true, 
@@ -302,19 +319,22 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
     // Since we don't have the clip instance in the event, we create a placeholder
     // that will be replaced by the actual clip in the command handler
     
-    console.log(`Clip ${event.clipId.toString()} added to track ${event.trackId.toString()}`);
+    console.log(`Applying ClipAddedToTrackEvent: Clip ${event.clipId.toString()} added to track ${event.trackId.toString()}`);
     
-    // Create a placeholder entry - this will be replaced by the actual clip
-    // when the command handler calls addClipToState
-    // This maintains the event sourcing pattern while ensuring state consistency
+    // Note: The actual clip will be added via addClipToState() method
+    // This event application just records that a clip was added
+    // The command handler is responsible for calling addClipToState() with the actual clip instance
+    
+    // For event sourcing consistency, we mark that this clip exists
+    // The actual clip data will be loaded by the repository's loadWithClips method
   }
 
   private applyClipRemovedFromTrackEvent(event: ClipRemovedFromTrackEvent): void {
-    this._clips.delete(event.clipId);
+    this._clips.delete(event.clipId.toString());
   }
 
   private applyClipMovedInTrackEvent(event: ClipMovedInTrackEvent): void {
-    const clip = this._clips.get(event.clipId);
+    const clip = this._clips.get(event.clipId.toString());
     if (clip) {
       // Apply the range change to the clip
       clip.moveToRange(event.newRange);
@@ -326,7 +346,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   private applyMidiNoteAddedEvent(event: MidiNoteAddedEvent): void {
-    const clip = this._clips.get(event.clipId);
+    const clip = this._clips.get(event.clipId.toString());
     if (clip && clip.getType() === ClipType.MIDI) {
       const midiClip = clip as MidiClip;
       midiClip.addNote(event.note);
@@ -334,7 +354,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   private applyMidiNoteRemovedEvent(event: MidiNoteRemovedEvent): void {
-    const clip = this._clips.get(event.clipId);
+    const clip = this._clips.get(event.clipId.toString());
     if (clip && clip.getType() === ClipType.MIDI) {
       const midiClip = clip as MidiClip;
       midiClip.removeNote(event.noteId);
@@ -342,7 +362,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   private applyMidiNoteUpdatedEvent(event: MidiNoteUpdatedEvent): void {
-    const clip = this._clips.get(event.clipId);
+    const clip = this._clips.get(event.clipId.toString());
     if (clip && clip.getType() === ClipType.MIDI) {
       const midiClip = clip as MidiClip;
       midiClip.updateNote(event.noteId, event.newNote);
@@ -350,7 +370,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   private applyMidiClipQuantizedEvent(event: MidiClipQuantizedEvent): void {
-    const clip = this._clips.get(event.clipId);
+    const clip = this._clips.get(event.clipId.toString());
     if (clip && clip.getType() === ClipType.MIDI) {
       const midiClip = clip as MidiClip;
       midiClip.quantizeNotes(event.quantizeValue);
@@ -358,7 +378,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   private applyMidiClipTransposedEvent(event: MidiClipTransposedEvent): void {
-    const clip = this._clips.get(event.clipId);
+    const clip = this._clips.get(event.clipId.toString());
     if (clip && clip.getType() === ClipType.MIDI) {
       const midiClip = clip as MidiClip;
       midiClip.transposeNotes(event.semitones);
@@ -366,7 +386,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   private applyMidiClipNotesReplacedEvent(event: MidiClipNotesReplacedEvent): void {
-    const clip = this._clips.get(event.clipId);
+    const clip = this._clips.get(event.clipId.toString());
     if (clip && clip.getType() === ClipType.MIDI) {
       const midiClip = clip as MidiClip;
       // Replace all notes with the provided notes
@@ -376,7 +396,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   private applyAudioClipGainChangedEvent(event: AudioClipGainChangedEvent): void {
-    const clip = this._clips.get(event.clipId);
+    const clip = this._clips.get(event.clipId.toString());
     if (clip && clip.getType() === ClipType.AUDIO) {
       const audioClip = clip as AudioClip;
       audioClip.setGain(event.gain);
@@ -432,8 +452,8 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   private validateNoOverlapExcept(range: TimeRangeVO, excludeClipId: ClipId): void {
-    for (const [clipId, clip] of this._clips) {
-      if (!clipId.equals(excludeClipId) && clip.range.intersects(range)) {
+    for (const [clipIdStr, clip] of this._clips) {
+      if (clipIdStr !== excludeClipId.toString() && clip.range.intersects(range)) {
         throw DomainError.clipOverlap();
       }
     }
@@ -476,7 +496,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
     return this._trackType; 
   }
 
-  public get clips(): ReadonlyMap<ClipId, Clip> { 
+  public get clips(): ReadonlyMap<string, Clip> { 
     return this._clips; 
   }
 
@@ -498,16 +518,16 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
   }
 
   public getClip(clipId: ClipId): Clip | undefined { 
-    return this._clips.get(clipId); 
+    return this._clips.get(clipId.toString()); 
   }
 
   public getMidiClip(clipId: ClipId): MidiClip | undefined {
-    const clip = this._clips.get(clipId);
+    const clip = this._clips.get(clipId.toString());
     return clip && clip.getType() === ClipType.MIDI ? clip as MidiClip : undefined;
   }
 
   public getAudioClip(clipId: ClipId): AudioClip | undefined {
-    const clip = this._clips.get(clipId);
+    const clip = this._clips.get(clipId.toString());
     return clip && clip.getType() === ClipType.AUDIO ? clip as AudioClip : undefined;
   }
 
@@ -516,7 +536,7 @@ export class Track extends EventSourcedAggregateRoot<TrackId> {
     // This method is used by command handlers to add clips to track state
     // after domain events have been raised and applied
     // It ensures the clip is immediately available for subsequent operations
-    this._clips.set(clip.clipId, clip);
+    this._clips.set(clip.clipId.toString(), clip);
     console.log(`Clip ${clip.clipId.toString()} added to track state. Total clips: ${this._clips.size}`);
   }
 } 

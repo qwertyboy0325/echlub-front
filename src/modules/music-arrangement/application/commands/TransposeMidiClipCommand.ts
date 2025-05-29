@@ -8,6 +8,7 @@ export class TransposeMidiClipCommand implements ICommand<void> {
   constructor(
     public readonly trackId: TrackId,
     public readonly clipId: ClipId,
-    public readonly semitones: number
+    public readonly semitones: number,
+    public readonly userId: string
   ) {}
 } 

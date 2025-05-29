@@ -9,6 +9,7 @@ export class MoveClipCommand implements ICommand<void> {
   constructor(
     public readonly trackId: TrackId,
     public readonly clipId: ClipId,
-    public readonly newRange: TimeRangeVO
+    public readonly newRange: TimeRangeVO,
+    public readonly userId: string
   ) {}
 } 

@@ -2,7 +2,7 @@ import { Container } from 'inversify';
 import { MusicArrangementTypes } from './MusicArrangementTypes';
 
 // Repositories
-import { TrackRepositoryImpl } from '../infrastructure/repositories/TrackRepositoryImpl';
+import { EventSourcedTrackRepository } from '../infrastructure/repositories/EventSourcedTrackRepository';
 import type { TrackRepository } from '../domain/repositories/TrackRepository';
 import { ClipRepositoryImpl } from '../infrastructure/repositories/ClipRepositoryImpl';
 import type { ClipRepository } from '../domain/repositories/ClipRepository';
@@ -33,6 +33,11 @@ import { JamClockTickHandler } from '../application/handlers/JamClockTickHandler
 // Services
 import { MusicArrangementService } from '../application/services/MusicArrangementService';
 import { EventSynchronizerService } from '../application/services/EventSynchronizerService';
+import { UndoRedoService } from '../application/services/UndoRedoService';
+import { SimpleMusicArrangementService } from '../application/services/SimpleMusicArrangementService';
+
+// Infrastructure
+import { EventStore, InMemoryEventStore } from '../infrastructure/events/EventStore';
 
 // Core Services
 import { IntegrationEventBus } from '../../../core/events/IntegrationEventBus';
@@ -57,6 +62,7 @@ export class MusicArrangementContainer {
   }
 
   private bindDependencies(): void {
+    this.bindInfrastructure();
     this.bindRepositories();
     this.bindCommandHandlers();
     this.bindQueryHandlers();
@@ -65,9 +71,15 @@ export class MusicArrangementContainer {
     this.bindAdapters();
   }
 
+  private bindInfrastructure(): void {
+    this.container.bind<EventStore>(MusicArrangementTypes.EventStore)
+      .to(InMemoryEventStore)
+      .inSingletonScope();
+  }
+
   private bindRepositories(): void {
     this.container.bind<TrackRepository>(MusicArrangementTypes.TrackRepository)
-      .to(TrackRepositoryImpl)
+      .to(EventSourcedTrackRepository)
       .inSingletonScope();
 
     this.container.bind<ClipRepository>(MusicArrangementTypes.ClipRepository)
@@ -161,12 +173,21 @@ export class MusicArrangementContainer {
       .inSingletonScope();
 
     // ✅ Main Application Service - The primary entry point
-    this.container.bind(MusicArrangementTypes.MusicArrangementService)
+    this.container.bind<MusicArrangementService>(MusicArrangementTypes.MusicArrangementService)
       .to(MusicArrangementService)
       .inSingletonScope();
 
     this.container.bind(MusicArrangementTypes.EventSynchronizerService)
       .to(EventSynchronizerService)
+      .inSingletonScope();
+
+    this.container.bind(MusicArrangementTypes.UndoRedoService)
+      .to(UndoRedoService)
+      .inSingletonScope();
+
+    // ✅ Simplified Service for Testing
+    this.container.bind<SimpleMusicArrangementService>(MusicArrangementTypes.SimpleMusicArrangementService)
+      .to(SimpleMusicArrangementService)
       .inSingletonScope();
   }
 

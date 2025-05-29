@@ -70,14 +70,20 @@ export class ToneJsIntegratedAdapter {
    */
   public async initialize(): Promise<void> {
     if (this.isInitialized) {
+      console.log('ToneJsIntegratedAdapter already initialized, skipping...');
       return;
     }
 
     try {
+      console.log('🔧 [ToneJsIntegratedAdapter] Starting initialization...');
+      
       // Initialize Tone.js audio engine
+      console.log('🔧 [ToneJsIntegratedAdapter] Initializing audio engine...');
       await this.audioEngine.initialize();
+      console.log('✅ [ToneJsIntegratedAdapter] Audio engine initialized');
 
       // Setup audio engine callbacks
+      console.log('🔧 [ToneJsIntegratedAdapter] Setting up audio engine callbacks...');
       this.audioEngine.setEventCallbacks({
         onTransportStart: () => {
           this.handleTransportStateChange();
@@ -95,16 +101,26 @@ export class ToneJsIntegratedAdapter {
           this.events.onError?.(error);
         }
       });
+      console.log('✅ [ToneJsIntegratedAdapter] Audio engine callbacks set');
 
       // Create default session
+      console.log('🔧 [ToneJsIntegratedAdapter] Creating default session...');
       this.currentSession = this.createDefaultSession();
+      
+      if (this.currentSession) {
+        console.log(`✅ [ToneJsIntegratedAdapter] Default session created: ${this.currentSession.id}`);
+      } else {
+        throw new Error('Failed to create default session');
+      }
 
       this.isInitialized = true;
-      console.log('Tone.js Integrated Adapter initialized successfully');
+      console.log('✅ Tone.js Integrated Adapter initialized successfully');
 
     } catch (error) {
-      console.error('Failed to initialize Tone.js Integrated Adapter:', error);
-      throw DomainError.operationNotPermitted('initialize', 'Integrated adapter initialization failed');
+      console.error('❌ Failed to initialize Tone.js Integrated Adapter:', error);
+      this.isInitialized = false;
+      this.currentSession = null;
+      throw DomainError.operationNotPermitted('initialize', `Integrated adapter initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -134,7 +150,7 @@ export class ToneJsIntegratedAdapter {
       // Create audio track configuration
       const audioConfig: AudioTrackConfig = {
         id: trackId,
-        name: track.metadata.name,
+        name: track.metadata?.name || `Track ${trackId}`,
         volume: mixerState.volume,
         pan: mixerState.pan,
         muted: mixerState.muted,
@@ -225,6 +241,17 @@ export class ToneJsIntegratedAdapter {
     try {
       const clipId = midiClip.clipId.toString();
       const notes = midiClip.notes;
+      
+      console.log(`[ToneJsIntegratedAdapter] Scheduling MIDI clip: ${clipId}`);
+      console.log(`[ToneJsIntegratedAdapter] Track ID: ${trackId}`);
+      console.log(`[ToneJsIntegratedAdapter] Start time: ${startTime}`);
+      console.log(`[ToneJsIntegratedAdapter] Notes count: ${notes.length}`);
+      console.log(`[ToneJsIntegratedAdapter] Notes data:`, notes.map(n => ({
+        pitch: n.pitch,
+        velocity: n.velocity,
+        start: n.range.start,
+        length: n.range.length
+      })));
       
       // Schedule MIDI notes
       this.audioEngine.scheduleMidiNotes(trackId, notes, startTime);
@@ -400,13 +427,46 @@ export class ToneJsIntegratedAdapter {
   // Private methods
 
   private createDefaultSession(): PlaybackSession {
-    return {
-      id: `session_${Date.now()}`,
-      tracks: new Map(),
-      masterVolume: 0.8,
-      transportState: this.audioEngine.getTransportState(),
-      isRecording: false
-    };
+    try {
+      console.log('🔧 [ToneJsIntegratedAdapter] Getting transport state for session...');
+      const transportState = this.audioEngine.getTransportState();
+      console.log('✅ [ToneJsIntegratedAdapter] Transport state obtained');
+      
+      const session = {
+        id: `session_${Date.now()}`,
+        tracks: new Map(),
+        masterVolume: 0.8,
+        transportState,
+        isRecording: false
+      };
+      
+      console.log(`🔧 [ToneJsIntegratedAdapter] Session created with ID: ${session.id}`);
+      return session;
+    } catch (error) {
+      console.error('❌ [ToneJsIntegratedAdapter] Error creating default session:', error);
+      
+      // Fallback session with minimal transport state
+      const fallbackSession = {
+        id: `session_${Date.now()}`,
+        tracks: new Map(),
+        masterVolume: 0.8,
+        transportState: {
+          isPlaying: false,
+          isPaused: false,
+          position: '0:0:0',
+          bpm: 120,
+          timeSignature: [4, 4] as [number, number],
+          swing: 0,
+          loopStart: '0:0:0',
+          loopEnd: '4:0:0',
+          loopEnabled: false
+        },
+        isRecording: false
+      };
+      
+      console.log(`🔧 [ToneJsIntegratedAdapter] Fallback session created with ID: ${fallbackSession.id}`);
+      return fallbackSession;
+    }
   }
 
   private handleTransportStateChange(): void {
@@ -530,5 +590,120 @@ export class ToneJsIntegratedAdapter {
         release: 0.1
       }
     };
+  }
+
+  /**
+   * Play a single MIDI note immediately (for testing/preview)
+   */
+  public async playMidiNote(
+    note: number,
+    velocity: number = 127,
+    duration: number = 1000,
+    instrumentType: string = 'synth'
+  ): Promise<void> {
+    try {
+      if (!this.isInitialized) {
+        await this.initialize();
+      }
+
+      // Create a temporary synthesizer for immediate playback using Tone.js directly
+      let synth: any;
+      switch (instrumentType) {
+        case 'fmSynth':
+          synth = new (window as any).Tone.FMSynth();
+          break;
+        case 'amSynth':
+          synth = new (window as any).Tone.AMSynth();
+          break;
+        case 'polySynth':
+          synth = new (window as any).Tone.PolySynth();
+          break;
+        case 'monoSynth':
+          synth = new (window as any).Tone.MonoSynth();
+          break;
+        default:
+          synth = new (window as any).Tone.Synth();
+      }
+      
+      // 設置音量以避免過響
+      synth.volume.value = -12; // 降低音量
+      synth.toDestination();
+      
+      // Convert MIDI note to frequency using Tone.js
+      const frequency = (window as any).Tone.Frequency(note, 'midi');
+      const normalizedVelocity = velocity / 127;
+      const durationInSeconds = duration / 1000;
+      
+      // 使用 Tone.js 的 now() 來確保精確的時間控制
+      const now = (window as any).Tone.now();
+      
+      // 播放音符，使用精確的時間控制
+      synth.triggerAttack(frequency, now, normalizedVelocity);
+      
+      // 在指定時間後停止音符
+      synth.triggerRelease(now + durationInSeconds);
+      
+      // 確保合成器在音符結束後被清理
+      setTimeout(() => {
+        try {
+          // 強制停止所有聲音
+          if (synth && typeof synth.triggerRelease === 'function') {
+            synth.triggerRelease();
+          }
+          
+          // 斷開連接
+          if (synth && typeof synth.disconnect === 'function') {
+            synth.disconnect();
+          }
+          
+          // 清理合成器
+          if (synth && typeof synth.dispose === 'function') {
+            synth.dispose();
+          }
+          
+          console.log(`MIDI note synth disposed: ${note}`);
+        } catch (disposeError) {
+          console.warn(`Error disposing synth for note ${note}:`, disposeError);
+        }
+      }, duration + 500); // 給更多時間確保音符完全結束
+
+      console.log(`MIDI note played: ${note} (${frequency}Hz) for ${durationInSeconds}s`);
+
+    } catch (error) {
+      console.error('Error playing MIDI note:', error);
+      throw DomainError.operationNotPermitted('playMidiNote', `Failed to play MIDI note: ${error}`);
+    }
+  }
+
+  /**
+   * Debug method: Test MIDI note playback directly
+   */
+  public async testMidiNote(trackId: string, pitch: number = 60, velocity: number = 100, duration: number = 1000): Promise<void> {
+    try {
+      if (!this.isInitialized) {
+        await this.initialize();
+      }
+      
+      await this.audioEngine.testMidiNote(trackId, pitch, velocity, duration);
+    } catch (error) {
+      console.error('Error testing MIDI note:', error);
+      throw DomainError.operationNotPermitted('testMidiNote', `Failed to test MIDI note: ${error}`);
+    }
+  }
+
+  /**
+   * Debug method: Check audio chain connectivity
+   */
+  public debugAudioChain(trackId: string): void {
+    try {
+      if (!this.isInitialized) {
+        console.error('❌ Adapter not initialized');
+        return;
+      }
+      
+      this.audioEngine.debugAudioChain(trackId);
+    } catch (error) {
+      console.error('Error debugging audio chain:', error);
+    }
   }
 } 

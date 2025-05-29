@@ -8,6 +8,7 @@ export class SetAudioClipGainCommand implements ICommand<void> {
   constructor(
     public readonly trackId: TrackId,
     public readonly clipId: ClipId,
-    public readonly gain: number // 0.0 to 1.0
+    public readonly gain: number,
+    public readonly userId: string
   ) {}
 } 

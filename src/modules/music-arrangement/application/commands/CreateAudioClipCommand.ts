@@ -12,6 +12,7 @@ export class CreateAudioClipCommand implements ICommand<ClipId> {
     public readonly trackId: TrackId,
     public readonly range: TimeRangeVO,
     public readonly audioSource: AudioSourceRef,
-    public readonly metadata: ClipMetadata
+    public readonly metadata: ClipMetadata,
+    public readonly userId: string
   ) {}
 } 

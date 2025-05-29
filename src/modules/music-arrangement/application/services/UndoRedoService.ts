@@ -1,3 +1,4 @@
+import { injectable, inject } from 'inversify';
 import { DomainEvent } from '../../../../core/events/DomainEvent';
 import { UndoableEvent } from '../../domain/events/MidiEvents';
 import type { EventStore } from '../../infrastructure/events/EventStore';
@@ -5,6 +6,7 @@ import type { TrackRepository } from '../../domain/repositories/TrackRepository'
 import { Track } from '../../domain/aggregates/Track';
 import { TrackId } from '../../domain/value-objects/TrackId';
 import { DomainError } from '../../domain/errors/DomainError';
+import { MusicArrangementTypes } from '../../di/MusicArrangementTypes';
 
 /**
  * Command for undo/redo operations
@@ -43,13 +45,16 @@ interface UndoRedoStackEntry {
  * Manages undo/redo operations using event sourcing
  * Maintains separate undo/redo stacks per aggregate
  */
+@injectable()
 export class UndoRedoService {
   private undoStacks: Map<string, UndoRedoStackEntry[]> = new Map();
   private redoStacks: Map<string, UndoRedoStackEntry[]> = new Map();
   private readonly maxStackSize: number = 50; // Configurable stack size
 
   constructor(
+    @inject(MusicArrangementTypes.EventStore)
     private eventStore: EventStore,
+    @inject(MusicArrangementTypes.TrackRepository)
     private trackRepository: TrackRepository
   ) {}
 

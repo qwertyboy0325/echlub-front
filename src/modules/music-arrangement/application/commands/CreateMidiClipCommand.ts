@@ -12,6 +12,8 @@ export class CreateMidiClipCommand implements ICommand<ClipId> {
     public readonly trackId: TrackId,
     public readonly range: TimeRangeVO,
     public readonly instrument: InstrumentRef,
-    public readonly metadata: ClipMetadata
+    public readonly metadata: ClipMetadata,
+    public readonly name: string,
+    public readonly userId: string
   ) {}
 } 

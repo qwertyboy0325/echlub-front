@@ -9,6 +9,7 @@ export class RemoveMidiNoteCommand implements ICommand<void> {
   constructor(
     public readonly trackId: TrackId,
     public readonly clipId: ClipId,
-    public readonly noteId: MidiNoteId
+    public readonly noteId: MidiNoteId,
+    public readonly userId: string
   ) {}
 } 

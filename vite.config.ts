@@ -4,7 +4,13 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // 禁用 React Fast Refresh 以避免與瀏覽器擴展衝突
+      include: /\.(jsx|tsx)$/, // 只對 React 文件啟用
+      exclude: /\.html$/ // 排除 HTML 文件
+    })
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

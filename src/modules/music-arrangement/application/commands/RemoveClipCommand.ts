@@ -7,6 +7,7 @@ export class RemoveClipCommand implements ICommand<void> {
 
   constructor(
     public readonly trackId: TrackId,
-    public readonly clipId: ClipId
+    public readonly clipId: ClipId,
+    public readonly userId: string
   ) {}
 } 

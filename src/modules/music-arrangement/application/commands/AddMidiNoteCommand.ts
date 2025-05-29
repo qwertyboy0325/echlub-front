@@ -12,6 +12,7 @@ export class AddMidiNoteCommand implements ICommand<MidiNoteId> {
     public readonly clipId: ClipId,
     public readonly pitch: number,
     public readonly velocity: number,
-    public readonly range: TimeRangeVO
+    public readonly range: TimeRangeVO,
+    public readonly userId: string
   ) {}
 } 

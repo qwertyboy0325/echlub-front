@@ -20,7 +20,8 @@ export class TrackCreatedEvent extends DomainEvent {
   constructor(
     public readonly trackId: TrackId,
     public readonly ownerId: PeerId,
-    public readonly trackType: TrackType
+    public readonly trackType: TrackType,
+    public readonly metadata: TrackMetadata
   ) {
     super('TrackCreated', trackId.toString());
   }

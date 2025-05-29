@@ -35,7 +35,12 @@ export const MusicArrangementTypes = {
 
   // Services
   MusicArrangementService: Symbol.for('MusicArrangement.MusicArrangementService'),
+  SimpleMusicArrangementService: Symbol.for('SimpleMusicArrangementService'),
   EventSynchronizerService: Symbol.for('MusicArrangement.EventSynchronizerService'),
+  UndoRedoService: Symbol.for('MusicArrangement.UndoRedoService'),
+
+  // Infrastructure
+  EventStore: Symbol.for('MusicArrangement.EventStore'),
 
   // Adapters
   CollaborationAdapter: Symbol.for('MusicArrangement.CollaborationAdapter'),
