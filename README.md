@@ -1,170 +1,278 @@
-# ECHLUB DAW
+# 🎵 EchLub Frontend
 
-ECHLUB DAW 是一個基於 Web 技術的數位音頻工作站（Digital Audio Workstation），提供專業級的音頻編輯、混音和製作功能。支持多人即時協作，讓音樂製作更加便捷和有趣。
+A modern, modular music collaboration platform built with **Clean Architecture** principles, featuring real-time collaboration, advanced music arrangement capabilities, and comprehensive bounded context separation.
 
-## 功能特點
+## 🚧 Development Status
 
-### 核心功能
+**⚠️ UI Layer In Development**: The user interface layer is currently under active development. The core business logic modules are complete and fully tested.
 
-- 🎵 多軌音頻編輯
-- 🎚️ 專業混音工具
-- 🎼 MIDI 支持
-- 🎹 虛擬樂器
-- 🎛️ 音頻效果器
-- 🎨 波形可視化
-- 🎯 精確的時間軸控制
-- 🔄 實時音頻處理
+## 🏗️ Architecture Overview
 
-### 協作功能
+This project implements a **Domain-Driven Design (DDD)** approach with **Clean Architecture**, featuring:
 
-- 👥 多人即時編輯
-- 💬 即時聊天和評論
-- 👀 實時游標追蹤
-- 🔒 軌道鎖定機制
-- 📝 編輯歷史記錄
-- 🔄 衝突解決機制
+- **🎯 Bounded Contexts**: Each domain is isolated in its own module
+- **📦 Dependency Injection**: Full IoC container implementation with Inversify
+- **🔄 Event Sourcing**: Complete audit trail with event replay capabilities
+- **⚡ CQRS Pattern**: Command/Query separation for optimal performance
+- **🎮 Command Pattern**: All operations executed through mediators
+- **🔙 Undo/Redo System**: User-scoped operation history with batch operations
 
-### 技術特點
+## 📋 Core Modules
 
-- 🌐 基於 Web 技術，無需安裝
-- ⚡ 高性能音頻引擎
-- 🎨 流暢的用戶界面
-- 🔄 實時協作支持
-- 💾 自動保存和版本控制
-- 📱 響應式設計
-- 🔐 安全的用戶認證
-- 🌍 全球部署支持
+### 🎼 Music Arrangement BC
+**Location**: `src/modules/music-arrangement/`
 
-## 技術棧
+The heart of the music creation system, providing comprehensive Digital Audio Workstation (DAW) functionality.
 
-- **前端框架**：TypeScript + React
-- **音頻處理**：Web Audio API
-- **圖形渲染**：PixiJS
-- **狀態管理**：自定義狀態管理系統
-- **構建工具**：Webpack + Babel
-- **測試框架**：Jest
-- **協作功能**：
-  - WebSocket 實時通信
-  - CRDT 衝突解決
-  - WebRTC 音頻流
-  - 權限管理系統
+**Key Features**:
+- ✅ **Complete Event Sourcing** - All operations recorded as events
+- ✅ **Undo/Redo System** - User-scoped with batch operations
+- ✅ **Tone.js Integration** - Full audio engine with MIDI playback
+- ✅ **Real-time Collaboration** - WebRTC audio buffer processing
+- ✅ **Track Management** - Audio, MIDI, and Bus tracks
+- ✅ **Clip System** - Audio and MIDI clips with time-based operations
+- ✅ **MIDI Processing** - Note editing, quantization, transposition
+- ✅ **Audio Engine** - Professional audio routing and effects
 
-## 快速開始
+**Architecture**:
+```
+├── application/          # Use cases and services
+│   ├── commands/        # Command definitions
+│   ├── handlers/        # Command/Query handlers
+│   ├── services/        # Application services
+│   └── mediator/        # CQRS mediator
+├── domain/              # Core business logic
+│   ├── aggregates/      # Track aggregate
+│   ├── entities/        # Clips, MIDI notes
+│   ├── events/          # Domain events
+│   └── value-objects/   # Time ranges, IDs, metadata
+├── infrastructure/      # External concerns
+│   ├── audio/          # Tone.js integration
+│   ├── events/         # Event store implementation
+│   └── repositories/   # Data persistence
+└── integration/         # Cross-module adapters
+```
 
-### 環境要求
+### 🤝 Collaboration BC
+**Location**: `src/modules/collaboration/`
 
-- Node.js >= 18
-- npm >= 9
-- WebSocket 服務器
-- 數據庫服務
+Real-time multi-user collaboration system with WebRTC peer-to-peer connections.
 
-### 安裝
+**Key Features**:
+- ✅ **Room Management** - Create, join, leave rooms
+- ✅ **WebRTC Signaling** - P2P connection establishment
+- ✅ **Real-time Sync** - Audio buffer sharing
+- ✅ **Connection Resilience** - Automatic reconnection
+- ✅ **User Management** - Peer discovery and state sync
 
+### 🎯 Jam Session BC
+**Location**: `src/modules/jam-session/`
+
+Structured music collaboration with rounds, roles, and session management.
+
+**Key Features**:
+- ✅ **Session Lifecycle** - Create, start, end sessions
+- ✅ **Round Management** - Timed collaboration rounds
+- ✅ **Role Assignment** - Player roles and responsibilities
+- ✅ **State Synchronization** - Real-time session state
+
+### 👤 Identity BC
+**Location**: `src/modules/identity/`
+
+User authentication and profile management.
+
+**Key Features**:
+- ✅ **User Registration/Login** - Secure authentication
+- ✅ **Profile Management** - User data and preferences
+- ✅ **Password Management** - Secure password operations
+
+### 🎚️ Track BC
+**Location**: `src/modules/track/`
+
+Track-specific operations and metadata management.
+
+**Key Features**:
+- ✅ **Track Types** - Audio, Instrument, Bus tracks
+- ✅ **Plugin Management** - Audio effects and instruments
+- ✅ **Routing System** - Audio signal routing
+- ✅ **Clip Management** - Track-clip relationships
+
+## 🛠️ Technology Stack
+
+### Core Technologies
+- **TypeScript** - Type-safe development
+- **Vite** - Fast build tool and dev server
+- **React** - UI framework (in development)
+- **Tone.js** - Web Audio API abstraction
+
+### Architecture & Patterns
+- **Inversify** - Dependency injection container
+- **Jest** - Testing framework with 65%+ coverage
+- **ESLint** - Code quality and consistency
+- **Clean Architecture** - Layered architecture pattern
+
+### Audio & Collaboration
+- **WebRTC** - Peer-to-peer communication
+- **Web Audio API** - Low-level audio processing
+- **Socket.io** - Real-time signaling (planned)
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 20+
+- npm or yarn
+
+### Installation
 ```bash
-# 克隆專案
-git clone https://github.com/televoidstudio/echlub_front.git
+# Clone the repository
+git clone <repository-url>
+cd echlub-front
 
-# 進入專案目錄
-cd echlub_front
-
-# 安裝依賴
+# Install dependencies
 npm install
-```
 
-### 環境變量設置
-
-專案使用環境變量來配置API連接等設置。請創建下列環境文件：
-
-#### 開發環境 (.env.development 或 .env)
-```
-VITE_API_BASE_URL=http://localhost:3000/api
-```
-
-#### 生產環境 (.env.production)
-```
-VITE_API_BASE_URL=https://api.example.com/api
-```
-
-環境變量說明：
-- `VITE_API_BASE_URL`: API服務的基礎URL
-
-### 開發
-
-```bash
-# 啟動開發服務器
+# Start development server
 npm run dev
-
-# 運行測試
-npm test
-
-# 構建專案（默認生產環境）
-npm run build
-
-# 構建開發環境版本
-npm run build:dev
-
-# 構建生產環境版本
-npm run build:prod
 ```
 
-## 專案結構
+### Available Scripts
+```bash
+# Development
+npm run dev              # Start dev server
+npm run build           # Production build
+npm run preview         # Preview production build
 
-``` bash
-echlub_front/
-├── src/                    # 源代碼
-│   ├── data/              # 數據層
-│   ├── services/          # 服務層
-│   ├── utils/             # 工具類
-│   ├── collaboration/     # 協作功能
-│   └── __tests__/         # 測試文件
-├── docs/                   # 文檔
-│   └── architecture/      # 架構文檔
-├── public/                # 靜態資源
-└── package.json          # 項目配置
+# Code Quality
+npm run lint            # Run ESLint
+npm run lint:fix        # Fix ESLint issues
+npm run type-check      # TypeScript type checking
+
+# Testing
+npm run test            # Run tests
+npm run test:watch      # Watch mode
+npm run test:coverage   # Coverage report
+npm run test:ci         # CI-optimized tests
+
+# Full CI Pipeline
+npm run ci              # Type check + lint + test + build
 ```
 
-## 文檔
+## 📊 Test Coverage
 
-詳細文檔請參考 [架構文檔](docs/architecture/README.md)
+Current test coverage: **65%+** across all modules
 
-## 貢獻指南
+- **Music Arrangement BC**: Comprehensive unit and integration tests
+- **Collaboration BC**: E2E collaboration flow tests
+- **Jam Session BC**: Session lifecycle and state management tests
+- **Identity BC**: Authentication and user management tests
+- **Track BC**: Track operations and plugin management tests
 
-1. Fork 本專案
-2. 創建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 開啟 Pull Request
+## 🏛️ Clean Architecture Principles
 
-## 版本歷史
+### Dependency Rule
+Dependencies point inward only:
+```
+UI Layer → Application Layer → Domain Layer
+Infrastructure Layer → Application Layer
+```
 
-- 0.1.0
-  - 初始版本
-  - 基本音頻編輯功能
-  - 多軌支持
-  - 波形顯示
+### Layer Responsibilities
 
-- 0.2.0 (計劃中)
-  - 多人即時協作
-  - 實時聊天功能
-  - 權限管理系統
-  - 協作衝突解決
+**Domain Layer** (Core Business Logic)
+- Entities, Value Objects, Aggregates
+- Domain Events and Business Rules
+- No external dependencies
 
-## 授權
+**Application Layer** (Use Cases)
+- Commands, Queries, Handlers
+- Application Services and DTOs
+- Orchestrates domain operations
 
-本專案採用 MIT 授權 - 詳見 [LICENSE](LICENSE) 文件
+**Infrastructure Layer** (External Concerns)
+- Database, File System, Web APIs
+- Framework-specific implementations
+- Adapters for external services
 
-## 聯繫方式
+**UI Layer** (Presentation) - *In Development*
+- React components and hooks
+- State management
+- User interaction handling
 
-- 專案維護者：[Ezra Wu]
-- 電子郵件：[Ezra40907@gmail.com]
-- 專案鏈接：[https://github.com/televoidstudio/echlub_front](https://github.com/televoidstudio/echlub_front)
+## 🔧 Module Integration
 
-## 致謝
+Each bounded context exposes a clean interface through:
 
-- Web Audio API
-- PixiJS
-- React
-- TypeScript
-- WebSocket
-- CRDT
-- WebRTC
+1. **Service Layer** - Main entry point for external access
+2. **DTOs** - Data transfer objects for cross-boundary communication
+3. **Event Bus** - Domain event publishing/subscribing
+4. **Dependency Injection** - Proper IoC container setup
+
+Example integration:
+```typescript
+// Get music arrangement service
+const musicService = container.get<MusicArrangementService>(
+  MusicArrangementTypes.MusicArrangementService
+);
+
+// Create a track
+const trackId = await musicService.createTrack({
+  ownerId: 'user123',
+  type: 'instrument',
+  name: 'Piano Track'
+});
+```
+
+## 🎯 Roadmap
+
+### Phase 1: Core Architecture ✅
+- [x] Bounded context separation
+- [x] Clean architecture implementation
+- [x] Event sourcing system
+- [x] Dependency injection setup
+
+### Phase 2: Music Engine ✅
+- [x] Music Arrangement BC
+- [x] Audio engine integration
+- [x] MIDI processing
+- [x] Undo/redo system
+
+### Phase 3: Collaboration ✅
+- [x] Real-time collaboration
+- [x] WebRTC integration
+- [x] Session management
+- [x] User management
+
+### Phase 4: UI Development 🚧
+- [ ] React component library
+- [ ] DAW interface
+- [ ] Collaboration UI
+- [ ] User management interface
+
+### Phase 5: Advanced Features 📋
+- [ ] Plugin system
+- [ ] Advanced audio effects
+- [ ] Cloud synchronization
+- [ ] Mobile support
+
+## 🤝 Contributing
+
+1. Follow Clean Architecture principles
+2. Maintain bounded context isolation
+3. Write comprehensive tests
+4. Use TypeScript strictly
+5. Follow existing code patterns
+
+## 📄 License
+
+[License information to be added]
+
+## 🔗 Related Documentation
+
+- [Music Arrangement BC Documentation](src/modules/music-arrangement/README.md)
+- [Collaboration BC Documentation](src/modules/collaboration/README.md)
+- [Architecture Decision Records](docs/)
+- [API Documentation](docs/api/)
+
+---
+
+**Built with ❤️ using Clean Architecture and Domain-Driven Design**
