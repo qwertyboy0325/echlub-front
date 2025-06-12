@@ -5,6 +5,10 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import CollaborationPage from './pages/Collaboration/CollaborationPage';
+import MusicArrangementDemo from './pages/Collaboration/MusicArrangementDemo';
+import DAWPage from './pages/DAWPage';
+import DAWInterface from './ui/components/DAWInterface';
+import { BPMTestPage } from './ui/components/BPMTestPage';
 
 interface AppProps {
   diContainer: Container;
@@ -55,6 +59,34 @@ const MainApp: React.FC<{diContainer: Container}> = ({diContainer}) => {
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <a 
+          href="/demo"
+          style={{ 
+            padding: '12px 24px', 
+            backgroundColor: '#667eea', 
+            color: 'white', 
+            textDecoration: 'none',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          🎵 架構演示
+        </a>
+        <a 
+          href="/daw"
+          style={{ 
+            padding: '12px 24px', 
+            backgroundColor: '#e53e3e', 
+            color: 'white', 
+            textDecoration: 'none',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          🎚️ DAW界面
+        </a>
+        <a 
           href="/collaboration"
           style={{ 
             padding: '12px 24px', 
@@ -67,6 +99,20 @@ const MainApp: React.FC<{diContainer: Container}> = ({diContainer}) => {
           }}
         >
           協作房間
+        </a>
+        <a 
+          href="/bpm-test"
+          style={{ 
+            padding: '12px 24px', 
+            backgroundColor: '#8b5cf6', 
+            color: 'white', 
+            textDecoration: 'none',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          🧪 BPM測試
         </a>
       </div>
       
@@ -132,6 +178,24 @@ const App: React.FC<AppProps> = ({ diContainer }) => {
                 <CollaborationPage diContainer={diContainer} />
               </ProtectedRoute>
             }
+          />
+          
+          {/* 🎵 直接演示路由 - 繞過驗證，用於學校作業展示 */}
+          <Route 
+            path="/demo" 
+            element={<MusicArrangementDemo diContainer={diContainer} />} 
+          />
+          
+          {/* 🎚️ DAW界面路由 - 繞過驗證，用於直接展示 */}
+          <Route 
+            path="/daw" 
+            element={<DAWPage />} 
+          />
+          
+          {/* 🧪 BPM测试页面 - 用于调试BPM功能 */}
+          <Route 
+            path="/bpm-test" 
+            element={<BPMTestPage />} 
           />
           
           {/* 兼容舊版路由，重定向到新路徑 */}

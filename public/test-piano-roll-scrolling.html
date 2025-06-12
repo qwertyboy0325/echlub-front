@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎹 Piano Roll 捲動測試</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f172a;
+            color: #f1f5f9;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .piano-roll {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            height: 700px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #475569;
+            margin-bottom: 16px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .btn:hover {
+            background: #2563eb;
+        }
+        
+        .btn.small {
+            padding: 4px 8px;
+            font-size: 10px;
+        }
+        
+        .piano-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .piano-keys {
+            width: 80px;
+            background: #334155;
+            border-right: 1px solid #475569;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .piano-key {
+            height: 16px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            border-bottom: 1px solid #64748b;
+            cursor: pointer;
+            font-size: 10px;
+            user-select: none;
+        }
+        
+        .piano-key.white {
+            background: #475569;
+            color: #f1f5f9;
+        }
+        
+        .piano-key.black {
+            background: #334155;
+            color: #94a3b8;
+        }
+        
+        .piano-key:hover {
+            opacity: 0.8;
+        }
+        
+        .note-grid {
+            flex: 1;
+            background: #0f172a;
+            position: relative;
+            overflow: auto;
+        }
+        
+        .grid-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-image: 
+                linear-gradient(to bottom, transparent 15px, #1e293b 16px),
+                linear-gradient(to right, transparent 31px, #334155 32px);
+            background-size: 32px 16px;
+        }
+        
+        .time-ruler {
+            position: sticky;
+            top: 0;
+            left: 0;
+            height: 20px;
+            background: #1e293b;
+            border-bottom: 1px solid #475569;
+            display: flex;
+            align-items: center;
+            z-index: 20;
+        }
+        
+        .beat-marker {
+            width: 128px;
+            height: 100%;
+            border-right: 1px solid #475569;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #94a3b8;
+            flex-shrink: 0;
+        }
+        
+        .note {
+            position: absolute;
+            background: #22c55e;
+            border: 1px solid #16a34a;
+            border-radius: 2px;
+            height: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding-left: 4px;
+            font-size: 10px;
+            color: white;
+            overflow: hidden;
+            transition: all 0.1s ease;
+        }
+        
+        .note:hover {
+            background: #16a34a;
+            transform: scale(1.02);
+        }
+        
+        .note.selected {
+            background: #60a5fa;
+            border-color: #3b82f6;
+        }
+        
+        .info {
+            background: #1e293b;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .scroll-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .position-info {
+            background: #334155;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        
+        .log {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            height: 120px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎹 Piano Roll 捲動測試</h1>
+        
+        <div class="info">
+            <h3>捲動功能測試</h3>
+            <p>• 垂直捲動：瀏覽完整 88 鍵鋼琴範圍 (A0-C8)</p>
+            <p>• 水平捲動：瀏覽長時間軸 (16 小節)</p>
+            <p>• 同步捲動：鋼琴鍵與音符網格同步</p>
+            <p>• 快速導航：點擊按鈕跳到特定音域</p>
+        </div>
+        
+        <div class="scroll-controls">
+            <span>快速導航:</span>
+            <button class="btn small" onclick="scrollToOctave(0)">A0-A1</button>
+            <button class="btn small" onclick="scrollToOctave(2)">C2-C3</button>
+            <button class="btn small" onclick="scrollToOctave(4)">C4-C5 (中音)</button>
+            <button class="btn small" onclick="scrollToOctave(6)">C6-C7</button>
+            <button class="btn small" onclick="scrollToOctave(8)">C8</button>
+            
+            <div style="margin-left: auto;" class="position-info" id="positionInfo">
+                捲動位置: 0, 0
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="addTestNotes()">🎵 添加測試音符</button>
+            <button class="btn" onclick="addFullRange()">🎼 全音域測試</button>
+            <button class="btn" onclick="addLongSequence()">⏱️ 長序列測試</button>
+            <button class="btn" onclick="clearAllNotes()">🗑️ 清空音符</button>
+            <button class="btn" onclick="scrollToNotes()">📍 定位到音符</button>
+        </div>
+        
+        <div class="piano-roll">
+            <div class="header">
+                <h3>Piano Roll Editor - 88 Keys × 16 Measures</h3>
+                <div class="controls">
+                    <button class="btn">Quantize</button>
+                    <button class="btn">Humanize</button>
+                </div>
+            </div>
+            
+            <div class="piano-content">
+                <div class="piano-keys" id="pianoKeys">
+                    <!-- Piano keys will be generated here -->
+                </div>
+                
+                <div class="note-grid" id="noteGrid">
+                    <div class="grid-background" id="gridBackground"></div>
+                    
+                    <div class="time-ruler" id="timeRuler">
+                        <!-- Time ruler will be generated here -->
+                    </div>
+                    
+                    <div id="notesContainer" style="position: absolute; top: 20px; left: 0;">
+                        <!-- MIDI notes will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info">
+            <h3>操作日誌</h3>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        class PianoRollScrollTest {
+            constructor() {
+                this.audioContext = null;
+                this.notes = [];
+                this.nextNoteId = 1;
+                this.measures = 16; // 16 measures
+                this.initAudio();
+                this.generatePianoKeys();
+                this.generateTimeRuler();
+                this.setupGridBackground();
+                this.setupEventListeners();
+                this.updateDisplay();
+                this.scrollToOctave(4); // Start at middle C
+                this.log('🎹 Piano Roll 捲動測試初始化完成');
+            }
+            
+            initAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.log('✅ Web Audio API 初始化成功');
+                } catch (error) {
+                    this.log('❌ Web Audio API 初始化失敗: ' + error.message);
+                }
+            }
+            
+            generatePianoKeys() {
+                const pianoKeys = document.getElementById('pianoKeys');
+                pianoKeys.style.height = `${88 * 16}px`;
+                
+                // Generate all 88 keys (A0 to C8)
+                for (let i = 0; i < 88; i++) {
+                    const note = 87 - i; // C8 to A0
+                    const midiNote = note + 21; // Convert to MIDI (A0 = 21)
+                    const octave = Math.floor((note + 9) / 12);
+                    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                    const noteName = noteNames[(note + 9) % 12];
+                    const isBlackKey = noteName.includes('#');
+                    
+                    const keyEl = document.createElement('div');
+                    keyEl.className = `piano-key ${isBlackKey ? 'black' : 'white'}`;
+                    keyEl.style.position = 'absolute';
+                    keyEl.style.top = `${i * 16}px`;
+                    keyEl.style.left = '0';
+                    keyEl.style.right = '0';
+                    keyEl.style.height = '16px';
+                    keyEl.textContent = !isBlackKey ? `${noteName}${octave}` : '';
+                    keyEl.dataset.midiNote = midiNote;
+                    keyEl.title = `${noteName}${octave} (MIDI: ${midiNote})`;
+                    
+                    keyEl.addEventListener('mousedown', () => {
+                        this.playNote(midiNote, 80, 300);
+                        this.log(`🎹 播放鋼琴鍵: ${noteName}${octave} (MIDI: ${midiNote})`);
+                    });
+                    
+                    pianoKeys.appendChild(keyEl);
+                }
+            }
+            
+            generateTimeRuler() {
+                const timeRuler = document.getElementById('timeRuler');
+                timeRuler.style.minWidth = `${this.measures * 128}px`;
+                
+                for (let i = 0; i < this.measures; i++) {
+                    const marker = document.createElement('div');
+                    marker.className = 'beat-marker';
+                    marker.textContent = i + 1;
+                    timeRuler.appendChild(marker);
+                }
+            }
+            
+            setupGridBackground() {
+                const gridBackground = document.getElementById('gridBackground');
+                gridBackground.style.width = `${this.measures * 128}px`;
+                gridBackground.style.height = `${88 * 16}px`;
+            }
+            
+            setupEventListeners() {
+                const pianoKeys = document.getElementById('pianoKeys');
+                const noteGrid = document.getElementById('noteGrid');
+                
+                // Sync scrolling
+                pianoKeys.addEventListener('scroll', (e) => {
+                    noteGrid.scrollTop = e.target.scrollTop;
+                    this.updatePositionInfo();
+                });
+                
+                noteGrid.addEventListener('scroll', (e) => {
+                    pianoKeys.scrollTop = e.target.scrollTop;
+                    this.updatePositionInfo();
+                });
+                
+                // Click to add notes
+                noteGrid.addEventListener('mousedown', (e) => {
+                    if (e.target === noteGrid || e.target.id === 'gridBackground' || e.target.id === 'notesContainer') {
+                        this.handleGridClick(e);
+                    }
+                });
+                
+                noteGrid.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                });
+            }
+            
+            updatePositionInfo() {
+                const noteGrid = document.getElementById('noteGrid');
+                const positionInfo = document.getElementById('positionInfo');
+                
+                const scrollX = noteGrid.scrollLeft;
+                const scrollY = noteGrid.scrollTop;
+                const measure = Math.floor(scrollX / 128) + 1;
+                const midiNote = 108 - Math.floor(scrollY / 16); // Top note
+                
+                positionInfo.textContent = `小節: ${measure}, 音符: ${midiNote}, 捲動: ${scrollX}, ${scrollY}`;
+            }
+            
+            handleGridClick(e) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left + e.currentTarget.scrollLeft;
+                const y = e.clientY - rect.top + e.currentTarget.scrollTop - 20; // Subtract ruler height
+                
+                if (y < 0) return; // Clicked in ruler area
+                
+                // Calculate note position
+                const noteIndex = Math.floor(y / 16);
+                const midiNote = (87 - noteIndex) + 21;
+                const startTime = Math.max(0, Math.floor(x / 32)); // Snap to beats
+                
+                // Check if it's a valid range
+                if (midiNote >= 21 && midiNote <= 108 && startTime < this.measures * 4) {
+                    this.addNote(midiNote, 80, startTime, 1);
+                    this.playNote(midiNote, 80, 200);
+                }
+            }
+            
+            addNote(pitch, velocity, startTime, duration) {
+                const note = {
+                    id: `note-${this.nextNoteId++}`,
+                    pitch,
+                    velocity,
+                    startTime,
+                    duration,
+                    isSelected: false
+                };
+                
+                this.notes.push(note);
+                this.updateDisplay();
+                this.log(`➕ 添加音符: MIDI ${pitch}, 時間: ${startTime}, 持續: ${duration} beats`);
+            }
+            
+            deleteNote(noteId) {
+                const index = this.notes.findIndex(n => n.id === noteId);
+                if (index !== -1) {
+                    const note = this.notes[index];
+                    this.notes.splice(index, 1);
+                    this.updateDisplay();
+                    this.log(`🗑️ 刪除音符: MIDI ${note.pitch}`);
+                }
+            }
+            
+            updateDisplay() {
+                const container = document.getElementById('notesContainer');
+                container.innerHTML = '';
+                container.style.width = `${this.measures * 128}px`;
+                container.style.height = `${88 * 16}px`;
+                
+                this.notes.forEach(note => {
+                    const noteEl = document.createElement('div');
+                    noteEl.className = 'note';
+                    if (note.isSelected) noteEl.classList.add('selected');
+                    
+                    // Calculate position
+                    const noteIndex = 87 - (note.pitch - 21);
+                    const top = noteIndex * 16;
+                    const left = note.startTime * 32;
+                    const width = note.duration * 32;
+                    
+                    noteEl.style.top = `${top}px`;
+                    noteEl.style.left = `${left}px`;
+                    noteEl.style.width = `${width}px`;
+                    noteEl.textContent = note.pitch;
+                    noteEl.title = `Pitch: ${note.pitch}, Velocity: ${note.velocity}, Start: ${note.startTime}, Duration: ${note.duration}`;
+                    
+                    noteEl.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.playNote(note.pitch, note.velocity, 200);
+                        this.log(`🎵 播放音符: MIDI ${note.pitch}`);
+                    });
+                    
+                    noteEl.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        this.deleteNote(note.id);
+                    });
+                    
+                    container.appendChild(noteEl);
+                });
+            }
+            
+            scrollToOctave(octave) {
+                const pianoKeys = document.getElementById('pianoKeys');
+                const noteGrid = document.getElementById('noteGrid');
+                
+                // Calculate scroll position for the octave
+                let targetMidi;
+                if (octave === 0) targetMidi = 21; // A0
+                else if (octave === 8) targetMidi = 108; // C8
+                else targetMidi = 12 * octave; // C of the octave
+                
+                const noteIndex = 87 - (targetMidi - 21);
+                const scrollPosition = Math.max(0, noteIndex * 16 - 200); // Center in view
+                
+                pianoKeys.scrollTop = scrollPosition;
+                noteGrid.scrollTop = scrollPosition;
+                
+                this.log(`📍 捲動到第 ${octave} 八度 (MIDI: ${targetMidi})`);
+            }
+            
+            scrollToNotes() {
+                if (this.notes.length === 0) {
+                    this.log('⚠️ 沒有音符可定位');
+                    return;
+                }
+                
+                // Find the bounds of all notes
+                const minPitch = Math.min(...this.notes.map(n => n.pitch));
+                const maxPitch = Math.max(...this.notes.map(n => n.pitch));
+                const minTime = Math.min(...this.notes.map(n => n.startTime));
+                const maxTime = Math.max(...this.notes.map(n => n.startTime + n.duration));
+                
+                const noteGrid = document.getElementById('noteGrid');
+                const pianoKeys = document.getElementById('pianoKeys');
+                
+                // Center on the note range
+                const centerPitch = (minPitch + maxPitch) / 2;
+                const centerTime = (minTime + maxTime) / 2;
+                
+                const noteIndex = 87 - (centerPitch - 21);
+                const scrollY = Math.max(0, noteIndex * 16 - 300);
+                const scrollX = Math.max(0, centerTime * 32 - 400);
+                
+                pianoKeys.scrollTop = scrollY;
+                noteGrid.scrollTop = scrollY;
+                noteGrid.scrollLeft = scrollX;
+                
+                this.log(`📍 定位到音符範圍: MIDI ${minPitch}-${maxPitch}, 時間 ${minTime}-${maxTime}`);
+            }
+            
+            playNote(midiNote, velocity = 80, duration = 500) {
+                if (!this.audioContext) return;
+                
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    const frequency = 440 * Math.pow(2, (midiNote - 69) / 12);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.value = frequency;
+                    oscillator.type = 'sawtooth';
+                    
+                    const volume = (velocity / 127) * 0.2;
+                    const currentTime = this.audioContext.currentTime;
+                    
+                    gainNode.gain.setValueAtTime(0, currentTime);
+                    gainNode.gain.linearRampToValueAtTime(volume, currentTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + (duration / 1000));
+                    
+                    oscillator.start(currentTime);
+                    oscillator.stop(currentTime + (duration / 1000));
+                    
+                } catch (error) {
+                    this.log(`❌ 播放音符失敗: ${error.message}`);
+                }
+            }
+            
+            log(message) {
+                const logEl = document.getElementById('log');
+                const timestamp = new Date().toLocaleTimeString();
+                logEl.textContent += `[${timestamp}] ${message}\n`;
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+        }
+        
+        // Initialize
+        const pianoRoll = new PianoRollScrollTest();
+        
+        // Global functions
+        function scrollToOctave(octave) {
+            pianoRoll.scrollToOctave(octave);
+        }
+        
+        function addTestNotes() {
+            // Add notes in middle range
+            const notes = [60, 64, 67, 72]; // C major chord
+            notes.forEach((pitch, index) => {
+                pianoRoll.addNote(pitch, 80, index * 2, 1.5);
+            });
+            pianoRoll.log('🎵 添加測試音符 (C大調和弦)');
+        }
+        
+        function addFullRange() {
+            // Add notes across full range
+            for (let octave = 1; octave < 8; octave++) {
+                const pitch = 12 * octave; // C of each octave
+                pianoRoll.addNote(pitch, 80, octave - 1, 1);
+            }
+            pianoRoll.log('🎼 添加全音域測試音符');
+        }
+        
+        function addLongSequence() {
+            // Add a long sequence across measures
+            const scale = [60, 62, 64, 65, 67, 69, 71, 72]; // C major scale
+            for (let measure = 0; measure < 8; measure++) {
+                scale.forEach((pitch, index) => {
+                    const startTime = measure * 4 + index * 0.5;
+                    pianoRoll.addNote(pitch, 80, startTime, 0.4);
+                });
+            }
+            pianoRoll.log('⏱️ 添加長序列測試 (8小節音階)');
+        }
+        
+        function clearAllNotes() {
+            pianoRoll.notes = [];
+            pianoRoll.updateDisplay();
+            pianoRoll.log('🗑️ 清空所有音符');
+        }
+        
+        function scrollToNotes() {
+            pianoRoll.scrollToNotes();
+        }
+        
+        pianoRoll.log('💡 提示: 使用捲軸或快速導航按鈕瀏覽不同音域');
+        pianoRoll.log('🖱️ 左鍵點擊網格添加音符，右鍵點擊音符刪除');
+    </script>
+</body>
+</html> 
