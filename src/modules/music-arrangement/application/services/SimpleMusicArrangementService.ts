@@ -1,5 +1,6 @@
 import { injectable, inject } from 'inversify';
 import { MusicArrangementTypes } from '../../di/MusicArrangementTypes';
+import { PerformanceMonitor } from '../../../../ui/utils/PerformanceOptimizations';
 
 // Command Handlers
 import type { CreateTrackCommandHandler } from '../handlers/CreateTrackCommandHandler';
@@ -106,22 +107,36 @@ export class SimpleMusicArrangementService {
   }
 
   async createTrack(ownerId: string, type: string, name: string): Promise<string> {
+    const endTiming = PerformanceMonitor.startOperation('service.createTrack', 'music-arrangement');
+    
     try {
       const trackType = TrackType.fromString(type);
       const command = new CreateTrackCommand(ownerId, trackType, name, ownerId);
+      
+      // Time the command handler execution
+      const handlerEndTiming = PerformanceMonitor.startOperation('createTrackHandler.handle', 'domain');
       const trackId = await this.createTrackHandler.handle(command);
+      handlerEndTiming();
       
       console.log(`🔧 [Service] Track created with ID: ${trackId}, attempting to add to global adapter...`);
       
       // Automatically add the track to the global adapter
       try {
         console.log(`🔧 [Service] Loading track from repository: ${trackId}`);
+        
+        const repoEndTiming = PerformanceMonitor.startOperation('trackRepository.loadWithClips', 'domain');
         const track = await this.trackRepository.loadWithClips(TrackId.fromString(trackId));
+        repoEndTiming();
+        
         if (track) {
           console.log(`🔧 [Service] Track loaded successfully: ${track.name}, type: ${track.trackType.value}`);
           const toneJsAdapter = await this.getGlobalAdapter();
           console.log(`🔧 [Service] Global adapter obtained, creating track in adapter...`);
+          
+          const adapterEndTiming = PerformanceMonitor.startOperation('adapter.createTrackFromAggregate', 'integration');
           await toneJsAdapter.createTrackFromAggregate(track);
+          adapterEndTiming();
+          
           console.log(`🔧 Track automatically added to global adapter: ${trackId}`);
         } else {
           console.warn(`⚠️ Track not found in repository after creation: ${trackId}`);
@@ -132,8 +147,10 @@ export class SimpleMusicArrangementService {
         // Don't fail the track creation if adapter fails
       }
       
+      endTiming();
       return trackId;
     } catch (error) {
+      endTiming();
       if (error instanceof DomainError) {
         throw new Error(`${error.code}: ${error.message}`);
       }
@@ -147,6 +164,8 @@ export class SimpleMusicArrangementService {
     instrument: { type: string; name: string },
     name: string
   ): Promise<string> {
+    const endTiming = PerformanceMonitor.startOperation('service.createMidiClip', 'music-arrangement');
+    
     try {
       const range = new TimeRangeVO(timeRange.startTime, timeRange.endTime - timeRange.startTime);
       const instrumentRef = InstrumentRef.synth(instrument.type, instrument.name);
@@ -161,9 +180,14 @@ export class SimpleMusicArrangementService {
         'default-user'
       );
       
+      const handlerEndTiming = PerformanceMonitor.startOperation('createMidiClipHandler.handle', 'domain');
       const clipId = await this.createMidiClipHandler.handle(command);
+      handlerEndTiming();
+      
+      endTiming();
       return clipId.toString();
     } catch (error) {
+      endTiming();
       if (error instanceof DomainError) {
         throw new Error(`${error.code}: ${error.message}`);
       }
@@ -207,6 +231,8 @@ export class SimpleMusicArrangementService {
     velocity: number,
     timeRange: { startTime: number; endTime: number }
   ): Promise<string> {
+    const endTiming = PerformanceMonitor.startOperation('service.addMidiNote', 'music-arrangement');
+    
     try {
       const range = new TimeRangeVO(timeRange.startTime, timeRange.endTime - timeRange.startTime);
       
@@ -219,9 +245,14 @@ export class SimpleMusicArrangementService {
         'default-user'
       );
       
+      const handlerEndTiming = PerformanceMonitor.startOperation('addMidiNoteHandler.handle', 'domain');
       const noteId = await this.addMidiNoteHandler.handle(command);
+      handlerEndTiming();
+      
+      endTiming();
       return noteId.toString();
     } catch (error) {
+      endTiming();
       if (error instanceof DomainError) {
         throw new Error(`${error.code}: ${error.message}`);
       }
@@ -736,100 +767,4 @@ export class SimpleMusicArrangementService {
       throw error;
     }
   }
-
-  /**
-   * Debug method: Test MIDI note playback on a specific track
-   */
-  async testTrackMidiNote(trackId: string, pitch: number = 60, velocity: number = 100, duration: number = 1000): Promise<void> {
-    try {
-      console.log(`🔧 [SimpleMusicArrangementService] Testing MIDI note on track: ${trackId}`);
-      
-      // Get global adapter
-      const toneJsAdapter = await this.getGlobalAdapter();
-      
-      // Check if track exists
-      const currentSession = toneJsAdapter.getCurrentSession();
-      const trackExists = currentSession?.tracks.has(trackId);
-      
-      if (!trackExists) {
-        console.log(`🔧 Track ${trackId} doesn't exist, creating it first...`);
-        
-        // Load track from repository
-        const track = await this.trackRepository.loadWithClips(TrackId.fromString(trackId));
-        if (!track) {
-          throw new Error(`Track not found: ${trackId}`);
-        }
-        
-        // Create track in adapter
-        await toneJsAdapter.createTrackFromAggregate(track);
-        console.log(`🔧 Track ${trackId} created in adapter`);
-      }
-      
-      // Test MIDI note directly through adapter
-      await toneJsAdapter.testMidiNote(trackId, pitch, velocity, duration);
-      
-      console.log(`✅ Track MIDI test completed for ${trackId}`);
-      
-    } catch (error) {
-      console.error(`❌ Error testing track MIDI note:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Debug method: Test multiple MIDI notes playback
-   */
-  async testMultipleMidiNotes(trackId: string): Promise<void> {
-    try {
-      console.log(`🔧 [SimpleMusicArrangementService] Testing multiple MIDI notes on track: ${trackId}`);
-      
-      // Get global adapter
-      const toneJsAdapter = await this.getGlobalAdapter();
-      
-      // Check if track exists
-      const currentSession = toneJsAdapter.getCurrentSession();
-      const trackExists = currentSession?.tracks.has(trackId);
-      
-      if (!trackExists) {
-        console.log(`🔧 Track ${trackId} doesn't exist, creating it first...`);
-        
-        // Load track from repository
-        const track = await this.trackRepository.loadWithClips(TrackId.fromString(trackId));
-        if (!track) {
-          throw new Error(`Track not found: ${trackId}`);
-        }
-        
-        // Create track in adapter
-        await toneJsAdapter.createTrackFromAggregate(track);
-        console.log(`🔧 Track ${trackId} created in adapter`);
-      }
-      
-      // Start transport first
-      console.log(`🔧 Starting transport for multiple notes test...`);
-      toneJsAdapter.startPlayback();
-      
-      // Create test notes with different start times
-      const testNotes = [
-        { pitch: 60, velocity: 100, range: { start: 0, length: 500 } },      // C4 at 0ms
-        { pitch: 64, velocity: 100, range: { start: 500, length: 500 } },    // E4 at 500ms
-        { pitch: 67, velocity: 100, range: { start: 1000, length: 500 } },   // G4 at 1000ms
-        { pitch: 72, velocity: 100, range: { start: 1500, length: 500 } }    // C5 at 1500ms
-      ];
-      
-      console.log(`🔧 Scheduling ${testNotes.length} test notes...`);
-      
-      // Use the audio engine directly to schedule notes
-      const audioEngine = (toneJsAdapter as any).audioEngine;
-      if (audioEngine) {
-        audioEngine.scheduleMidiNotes(trackId, testNotes, '0:0:0');
-        console.log(`✅ Multiple MIDI notes test scheduled successfully`);
-      } else {
-        throw new Error('Audio engine not available');
-      }
-      
-    } catch (error) {
-      console.error(`❌ Error testing multiple MIDI notes:`, error);
-      throw error;
-    }
-  }
-} 
+}
