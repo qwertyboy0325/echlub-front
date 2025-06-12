@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { Container } from 'inversify';
 import { IdentityModule } from './modules/identity';
 import { configureCollaborationContainer } from './modules/collaboration/di/container';
+import { AppContainerManager } from './core/di/AppContainerManager';
 import App from './App';
 import 'reflect-metadata';
 import './index.css';
@@ -31,14 +32,20 @@ container.bind(TYPES.EventBus).to(SimpleEventBus).inSingletonScope();
 // 配置協作模組
 configureCollaborationContainer(container);
 
+// 初始化應用程式容器管理器
+const appContainerManager = AppContainerManager.initialize(container);
+
+// 載入並初始化所有模組
+appContainerManager.loadModules().catch(console.error);
+
 // 初始化 UniqueId
 UniqueId.initialize();
 
 // 將容器導出供其他模組使用
-export { container };
+export { container, appContainerManager };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App diContainer={container} />
-  </React.StrictMode>
+  // Temporarily disable StrictMode to fix PIXI.js instability
+  // TODO: Implement proper StrictMode-compatible PIXI.js initialization
+  <App diContainer={container} />
 ); 
