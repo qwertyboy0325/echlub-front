@@ -158,6 +158,15 @@ Current test coverage: **65%+** across all modules
 - **Jam Session BC**: Session lifecycle and state management tests
 - **Identity BC**: Authentication and user management tests
 
+## 📚 文檔導覽
+
+完整的專案文檔請參閱：[📚 文檔索引](docs/README.md)
+
+### 🔥 核心文檔
+- [架構改進計劃](docs/architecture/architecture-improvement-plan.md) - 架構分析與改進路線圖
+- [戰略架構分析](docs/architecture/strategic-analysis.md) - 深度技術與戰略評估
+- [分層架構指南](docs/architecture/layered-architecture.md) - Clean Architecture 實現
+
 ## 🏛️ Clean Architecture Principles
 
 ### Dependency Rule
