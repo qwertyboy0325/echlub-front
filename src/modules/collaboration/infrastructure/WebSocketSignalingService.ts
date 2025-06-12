@@ -364,192 +364,170 @@ export class WebSocketSignalingService implements SignalingService {
   }
 
   /**
-   * Send message to signaling server
-   * @param message Signaling message
+   * Send message
+   * @param message Message to send
+   * @returns Promise that resolves when message is sent
    */
-  sendMessage(message: any): boolean {
+  async sendMessage(message: any): Promise<void> {
+    // Check if socket is available and connected
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      console.error('%c WebSocket not connected, cannot send message ', 'background: #e74c3c; color: white; padding: 2px 5px; border-radius: 3px;');
-      return false;
+      console.error('%cCannot send message %c- WebSocket not connected', 
+        'background: #e74c3c; color: white; padding: 2px 5px; border-radius: 3px;',
+        'color: #e74c3c; font-weight: bold;');
+      console.error('%cSocket state: %c' + (this.socket ? this.socket.readyState : 'null'), 
+        'color: #7f8c8d;', 'color: #e74c3c; font-weight: bold;');
+      throw new Error('WebSocket not connected');
     }
     
     try {
-      const stringifiedMessage = JSON.stringify(message);
+      // If message is not a string, stringify it
+      const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
       
-      // Basic message logging
-      console.log(`%c[WebSocketSignalingService] %cSending message type: ${message.type || 'Unknown type'}`, 
+      console.log('%c[SEND_MESSAGE] %cSending message via WebSocket %c- Type: ' + (typeof message === 'string' ? 'string' : 'object'), 
+        'background: #2980b9; color: white; padding: 2px 5px; border-radius: 3px;',
+        'color: #2c3e50;',
+        'color: #2c3e50; font-weight: bold;');
+      console.log('%c[SEND_MESSAGE] Message content: %c' + messageStr, 
         'color: #3498db; font-weight: bold;', 'color: #2c3e50;');
       
-      // Special handling for JOIN message
-      if (message.type === 'join') {
-        console.log('%c==================================================', 'color: #3498db;');
-        console.log('%c[JOIN_MESSAGE_DETAILS] %cSending JOIN message', 
-          'background: #2980b9; color: white; padding: 2px 5px; border-radius: 3px;', 
-          'color: #2c3e50; font-weight: bold;');
-        console.log('%c[JOIN_MESSAGE_DETAILS] %cMessage type: %c' + message.type, 
-          'color: #3498db;', 'color: #7f8c8d;', 'color: #2c3e50; font-weight: bold;');
-        console.log('%c[JOIN_MESSAGE_DETAILS] %croomId: %c"' + (message.payload?.roomId || 'Unspecified') + '"', 
-          'color: #3498db;', 'color: #7f8c8d;', 'color: #27ae60; font-weight: bold;');
-        console.log('%c[JOIN_MESSAGE_DETAILS] %cpeerId: %c"' + (message.payload?.peerId || 'Unspecified') + '"', 
-          'color: #3498db;', 'color: #7f8c8d;', 'color: #8e44ad; font-weight: bold;');
-        console.log('%c[JOIN_MESSAGE_DETAILS] %cWebSocket readyState: %c' + this.socket.readyState + 
-          ' (' + (this.socket.readyState === 1 ? 'OPEN ✅' : 'NOT OPEN ❌') + ')', 
-          'color: #3498db;', 'color: #7f8c8d;', 
-          this.socket.readyState === 1 ? 'color: #27ae60; font-weight: bold;' : 'color: #e74c3c; font-weight: bold;');
-        console.log('%c[JOIN_MESSAGE_DETAILS] %cComplete message: %c' + stringifiedMessage, 
-          'color: #3498db;', 'color: #7f8c8d;', 'color: #2c3e50;');
-        console.log('%c[JOIN_MESSAGE_DETAILS] %cMessage byte length: %c' + new TextEncoder().encode(stringifiedMessage).length, 
-          'color: #3498db;', 'color: #7f8c8d;', 'color: #2c3e50; font-weight: bold;');
-        console.log('%c==================================================', 'color: #3498db;');
-      } else {
-        console.log(`%c[WebSocketSignalingService] %cSending complete message content: ${stringifiedMessage}`, 
-          'color: #3498db; font-weight: bold;', 'color: #2c3e50;');
-      }
+      // Send message
+      this.socket.send(messageStr);
       
-      this.socket.send(stringifiedMessage);
-      return true;
-    } catch (err) {
-      console.error('%cFailed to send WebSocket message: %c' + err, 
-        'background: #e74c3c; color: white; padding: 2px 5px; border-radius: 3px;', 
-        'color: #e74c3c;');
-      return false;
+      console.log('%c[SEND_MESSAGE] ✅ Message sent successfully', 
+        'background: #27ae60; color: white; padding: 2px 5px; border-radius: 3px;');
+    } catch (error) {
+      console.error('%c[SEND_MESSAGE] ❌ Message sending failed %c- Error: ' + error, 
+        'background: #e74c3c; color: white; padding: 2px 5px; border-radius: 3px;',
+        'color: #e74c3c; font-weight: bold;');
+      throw error;
     }
   }
 
   /**
-   * Send connection request (Offer)
+   * Send Offer to remote peer
    * @param to Target peer ID
-   * @param offer SDP offer
+   * @param offer WebRTC offer
    */
-  sendOffer(to: PeerId, offer: RTCSessionDescriptionInit): boolean {
-    if (!this.roomId || !this.peerId) {
-      console.error('Not connected to room, cannot send Offer');
-      return false;
-    }
-    
-    return this.sendMessage({
+  async sendOffer(to: PeerId, offer: RTCSessionDescriptionInit): Promise<void> {
+    const message = {
       type: 'offer',
       payload: {
-        roomId: this.roomId,
-        from: this.peerId,
         to: to.toString(),
-        offer
+        offer: offer
       }
-    });
-  }
-
-  /**
-   * Send connection response (Answer)
-   * @param to Target peer ID
-   * @param answer SDP answer
-   */
-  sendAnswer(to: PeerId, answer: RTCSessionDescriptionInit): boolean {
-    if (!this.roomId || !this.peerId) {
-      console.error('Not connected to room, cannot send Answer');
-      return false;
-    }
+    };
     
-    return this.sendMessage({
+    console.log(`%c[sendOffer] %cSending Offer to peer: ${to.toString()}`, 
+      'color: #e67e22; font-weight: bold;', 'color: #2c3e50;');
+    
+    await this.sendMessage(message);
+  }
+  
+  /**
+   * Send Answer to remote peer
+   * @param to Target peer ID
+   * @param answer WebRTC answer
+   */
+  async sendAnswer(to: PeerId, answer: RTCSessionDescriptionInit): Promise<void> {
+    const message = {
       type: 'answer',
       payload: {
-        roomId: this.roomId,
-        from: this.peerId,
         to: to.toString(),
-        answer
+        answer: answer
       }
-    });
+    };
+    
+    console.log(`%c[sendAnswer] %cSending Answer to peer: ${to.toString()}`, 
+      'color: #27ae60; font-weight: bold;', 'color: #2c3e50;');
+    
+    await this.sendMessage(message);
   }
-
+  
   /**
-   * Send ICE candidate
+   * Send ICE Candidate to remote peer
    * @param to Target peer ID
    * @param candidate ICE candidate
    */
-  sendIceCandidate(to: PeerId, candidate: RTCIceCandidate): boolean {
-    if (!this.roomId || !this.peerId) {
-      console.error('Not connected to room, cannot send ICE candidate');
-      return false;
-    }
-    
-    return this.sendMessage({
+  async sendIceCandidate(to: PeerId, candidate: RTCIceCandidate): Promise<void> {
+    const message = {
       type: 'ice-candidate',
       payload: {
-        roomId: this.roomId,
-        from: this.peerId,
         to: to.toString(),
-        candidate: {
-          candidate: candidate.candidate,
-          sdpMid: candidate.sdpMid,
-          sdpMLineIndex: candidate.sdpMLineIndex
-        }
+        candidate: candidate
       }
-    });
+    };
+    
+    console.log(`%c[sendIceCandidate] %cSending ICE Candidate to peer: ${to.toString()}`, 
+      'color: #9b59b6; font-weight: bold;', 'color: #2c3e50;');
+    
+    await this.sendMessage(message);
   }
-
+  
   /**
-   * Activate fallback mode
+   * Activate fallback mode for peer
    * @param to Target peer ID
    */
-  activateFallback(to: PeerId): boolean {
-    if (!this.roomId || !this.peerId) {
-      console.error('Not connected to room, cannot activate fallback mode');
-      return false;
-    }
-    
-    return this.sendMessage({
+  async activateFallback(to: PeerId): Promise<void> {
+    const message = {
       type: 'webrtc-fallback-activate',
       payload: {
-        roomId: this.roomId,
-        from: this.peerId,
         to: to.toString()
       }
-    });
-  }
-
-  /**
-   * Send relay data
-   * @param to Target peer ID
-   * @param channel Channel name
-   * @param data Data to relay
-   */
-  relayData(to: PeerId, channel: string, data: any): boolean {
-    if (!this.roomId || !this.peerId) {
-      console.error('Not connected to room, cannot send relay data');
-      return false;
-    }
+    };
     
-    return this.sendMessage({
+    console.log(`%c[activateFallback] %cActivating fallback for peer: ${to.toString()}`, 
+      'color: #f39c12; font-weight: bold;', 'color: #2c3e50;');
+    
+    await this.sendMessage(message);
+  }
+  
+  /**
+   * Relay data to peer via signaling server
+   * @param to Target peer ID
+   * @param channel Data channel name
+   * @param data Data to relay
+   * @returns Promise<boolean> indicating success
+   */
+  async relayData(to: PeerId, channel: string, data: any): Promise<boolean> {
+    const message = {
       type: 'relay-data',
       payload: {
-        roomId: this.roomId,
-        from: this.peerId,
         to: to.toString(),
         payload: {
-          channel,
-          data
+          channel: channel,
+          data: data
         }
       }
-    });
-  }
-
-  /**
-   * Send reconnect request
-   * @param to Target peer ID
-   */
-  sendReconnectRequest(to: PeerId): boolean {
-    if (!this.roomId || !this.peerId) {
-      console.error('Not connected to room, cannot send reconnect request');
+    };
+    
+    console.log(`%c[relayData] %cRelaying data to peer: ${to.toString()}, channel: ${channel}`, 
+      'color: #3498db; font-weight: bold;', 'color: #2c3e50;');
+    
+    try {
+      await this.sendMessage(message);
+      return true;
+    } catch (error) {
+      console.error(`Failed to relay data to peer ${to.toString()}:`, error);
       return false;
     }
-    
-    return this.sendMessage({
+  }
+  
+  /**
+   * Send reconnection request to peer
+   * @param to Target peer ID
+   */
+  async sendReconnectRequest(to: PeerId): Promise<void> {
+    const message = {
       type: 'reconnect-request',
       payload: {
-        roomId: this.roomId,
-        from: this.peerId,
         to: to.toString()
       }
-    });
+    };
+    
+    console.log(`%c[sendReconnectRequest] %cSending reconnect request to peer: ${to.toString()}`, 
+      'color: #e74c3c; font-weight: bold;', 'color: #2c3e50;');
+    
+    await this.sendMessage(message);
   }
 
   /**
@@ -1071,3 +1049,7 @@ export class WebSocketSignalingService implements SignalingService {
     return true;
   }
 } 
+
+
+
+

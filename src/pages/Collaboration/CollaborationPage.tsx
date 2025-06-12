@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import RoomsPage from './RoomsPage';
 import RoomPage from './RoomPage';
 import TestPage from './TestPage';
+import MusicArrangementDemo from './MusicArrangementDemo';
 import { initializeCollaborationModule } from '../../modules/collaboration';
 import { PeerId } from '../../modules/collaboration/domain/value-objects/PeerId';
 import { v4 as uuidv4 } from 'uuid';
@@ -44,13 +45,15 @@ const CollaborationPage: React.FC<CollaborationPageProps> = ({ diContainer }) =>
         <nav className="collaboration-nav">
           <a className="nav-link" href="/">首頁</a>
           <a className="nav-link" href="/collaboration/rooms">房間列表</a>
+          <a className="nav-link" href="/collaboration/demo">🎵 架構演示</a>
           <a className="nav-link" href="/collaboration/test">測試頁面</a>
         </nav>
       </header>
       
       <main className="collaboration-content">
         <Routes>
-          <Route path="/" element={<Navigate to="rooms" replace />} />
+          <Route path="/" element={<Navigate to="demo" replace />} />
+          <Route path="demo" element={<MusicArrangementDemo diContainer={diContainer} />} />
           <Route path="rooms" element={<RoomsPage diContainer={diContainer} />} />
           <Route path="room/:roomId" element={<RoomPage diContainer={diContainer} />} />
           <Route path="test" element={<TestPage diContainer={diContainer} />} />

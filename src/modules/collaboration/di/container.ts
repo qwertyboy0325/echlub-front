@@ -32,10 +32,18 @@ import { WebSocketSignalingService } from '../infrastructure/WebSocketSignalingS
 import type { PeerConnectionManager } from '../domain/interfaces/PeerConnectionManager';
 import { WebRTCPeerConnectionManager } from '../infrastructure/WebRTCPeerConnectionManager';
 
+// Event Bus
+import { IntegrationEventBus } from '../../../core/event-bus/IntegrationEventBus';
+
 /**
  * 配置 Collaboration 模塊的依賴注入容器
  */
 export const configureCollaborationContainer = (container: Container): void => {
+  // 註冊 IntegrationEventBus
+  container.bind<IntegrationEventBus>('IntegrationEventBus')
+    .to(IntegrationEventBus)
+    .inSingletonScope();
+
   // 註冊倉儲
   container.bind<IRoomRepository>(CollaborationTypes.RoomRepository)
     .to(InMemoryRoomRepository)
