@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎹 Piano Roll MIDI 測試</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f172a;
+            color: #f1f5f9;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .piano {
+            display: flex;
+            flex-direction: column;
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        
+        .piano-key {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            margin: 1px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.1s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .piano-key.white {
+            background: #475569;
+            color: #f1f5f9;
+        }
+        
+        .piano-key.black {
+            background: #334155;
+            color: #94a3b8;
+            margin-left: 40px;
+            width: calc(100% - 40px);
+        }
+        
+        .piano-key:hover {
+            transform: translateX(4px);
+        }
+        
+        .piano-key.white:hover {
+            background: #64748b;
+        }
+        
+        .piano-key.black:hover {
+            background: #475569;
+        }
+        
+        .piano-key.playing {
+            background: #3b82f6 !important;
+            color: white !important;
+            transform: translateX(8px);
+        }
+        
+        .info {
+            background: #1e293b;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 16px;
+            margin: 20px 0;
+        }
+        
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        button:active {
+            background: #1d4ed8;
+        }
+        
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        input[type="range"] {
+            width: 150px;
+        }
+        
+        .log {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎹 Piano Roll MIDI 測試</h1>
+        
+        <div class="info">
+            <h3>功能測試</h3>
+            <p>• 點擊鋼琴鍵來播放 MIDI 音符</p>
+            <p>• 使用 Web Audio API 合成器</p>
+            <p>• 支援 MIDI 音符範圍：C2-C6 (36-84)</p>
+            <p>• 鋸齒波合成器 + ADSR 包絡</p>
+        </div>
+        
+        <div class="controls">
+            <button onclick="testScale()">🎵 播放 C 大調音階</button>
+            <button onclick="testChord()">🎶 播放 C 大三和弦</button>
+            <button onclick="clearLog()">🗑️ 清除日誌</button>
+            <div class="volume-control">
+                <span>音量:</span>
+                <input type="range" id="volumeSlider" min="0" max="100" value="30">
+                <span id="volumeValue">30%</span>
+            </div>
+        </div>
+        
+        <div class="piano" id="piano">
+            <!-- Piano keys will be generated here -->
+        </div>
+        
+        <div class="info">
+            <h3>播放日誌</h3>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        class PianoRollMIDI {
+            constructor() {
+                this.audioContext = null;
+                this.masterVolume = 0.3;
+                this.activeOscillators = new Map();
+                this.initAudioContext();
+                this.generatePiano();
+                this.setupVolumeControl();
+            }
+            
+            initAudioContext() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.log('✅ Web Audio API 初始化成功');
+                } catch (error) {
+                    this.log('❌ Web Audio API 初始化失敗: ' + error.message);
+                }
+            }
+            
+            generatePiano() {
+                const piano = document.getElementById('piano');
+                const notes = [
+                    { note: 84, name: 'C6', isBlack: false },
+                    { note: 83, name: 'B5', isBlack: false },
+                    { note: 82, name: 'A#5', isBlack: true },
+                    { note: 81, name: 'A5', isBlack: false },
+                    { note: 80, name: 'G#5', isBlack: true },
+                    { note: 79, name: 'G5', isBlack: false },
+                    { note: 78, name: 'F#5', isBlack: true },
+                    { note: 77, name: 'F5', isBlack: false },
+                    { note: 76, name: 'E5', isBlack: false },
+                    { note: 75, name: 'D#5', isBlack: true },
+                    { note: 74, name: 'D5', isBlack: false },
+                    { note: 73, name: 'C#5', isBlack: true },
+                    { note: 72, name: 'C5', isBlack: false },
+                    { note: 71, name: 'B4', isBlack: false },
+                    { note: 70, name: 'A#4', isBlack: true },
+                    { note: 69, name: 'A4', isBlack: false },
+                    { note: 68, name: 'G#4', isBlack: true },
+                    { note: 67, name: 'G4', isBlack: false },
+                    { note: 66, name: 'F#4', isBlack: true },
+                    { note: 65, name: 'F4', isBlack: false },
+                    { note: 64, name: 'E4', isBlack: false },
+                    { note: 63, name: 'D#4', isBlack: true },
+                    { note: 62, name: 'D4', isBlack: false },
+                    { note: 61, name: 'C#4', isBlack: true },
+                    { note: 60, name: 'C4', isBlack: false },
+                    { note: 59, name: 'B3', isBlack: false },
+                    { note: 58, name: 'A#3', isBlack: true },
+                    { note: 57, name: 'A3', isBlack: false },
+                    { note: 56, name: 'G#3', isBlack: true },
+                    { note: 55, name: 'G3', isBlack: false },
+                    { note: 54, name: 'F#3', isBlack: true },
+                    { note: 53, name: 'F3', isBlack: false },
+                    { note: 52, name: 'E3', isBlack: false },
+                    { note: 51, name: 'D#3', isBlack: true },
+                    { note: 50, name: 'D3', isBlack: false },
+                    { note: 49, name: 'C#3', isBlack: true },
+                    { note: 48, name: 'C3', isBlack: false },
+                    { note: 47, name: 'B2', isBlack: false },
+                    { note: 46, name: 'A#2', isBlack: true },
+                    { note: 45, name: 'A2', isBlack: false },
+                    { note: 44, name: 'G#2', isBlack: true },
+                    { note: 43, name: 'G2', isBlack: false },
+                    { note: 42, name: 'F#2', isBlack: true },
+                    { note: 41, name: 'F2', isBlack: false },
+                    { note: 40, name: 'E2', isBlack: false },
+                    { note: 39, name: 'D#2', isBlack: true },
+                    { note: 38, name: 'D2', isBlack: false },
+                    { note: 37, name: 'C#2', isBlack: true },
+                    { note: 36, name: 'C2', isBlack: false }
+                ];
+                
+                notes.forEach(({ note, name, isBlack }) => {
+                    const keyEl = document.createElement('div');
+                    keyEl.className = `piano-key ${isBlack ? 'black' : 'white'}`;
+                    keyEl.textContent = `${name} (${note})`;
+                    keyEl.dataset.note = note;
+                    
+                    keyEl.addEventListener('mousedown', () => {
+                        this.playNote(note, 80, 500);
+                        keyEl.classList.add('playing');
+                    });
+                    
+                    keyEl.addEventListener('mouseup', () => {
+                        this.stopNote(note);
+                        keyEl.classList.remove('playing');
+                    });
+                    
+                    keyEl.addEventListener('mouseleave', () => {
+                        this.stopNote(note);
+                        keyEl.classList.remove('playing');
+                    });
+                    
+                    piano.appendChild(keyEl);
+                });
+            }
+            
+            setupVolumeControl() {
+                const slider = document.getElementById('volumeSlider');
+                const valueDisplay = document.getElementById('volumeValue');
+                
+                slider.addEventListener('input', (e) => {
+                    this.masterVolume = parseInt(e.target.value) / 100;
+                    valueDisplay.textContent = e.target.value + '%';
+                    this.log(`🔊 音量設置為: ${e.target.value}%`);
+                });
+            }
+            
+            playNote(midiNote, velocity = 80, duration = 500) {
+                if (!this.audioContext) return;
+                
+                try {
+                    // Stop existing note if playing
+                    this.stopNote(midiNote);
+                    
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    // Convert MIDI note to frequency
+                    const frequency = 440 * Math.pow(2, (midiNote - 69) / 12);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.value = frequency;
+                    oscillator.type = 'sawtooth';
+                    
+                    // Volume based on velocity and master volume
+                    const volume = (velocity / 127) * this.masterVolume;
+                    
+                    // ADSR Envelope
+                    const currentTime = this.audioContext.currentTime;
+                    gainNode.gain.setValueAtTime(0, currentTime);
+                    gainNode.gain.linearRampToValueAtTime(volume, currentTime + 0.01); // Attack
+                    gainNode.gain.setValueAtTime(volume, currentTime + 0.1); // Sustain
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + (duration / 1000)); // Release
+                    
+                    oscillator.start(currentTime);
+                    oscillator.stop(currentTime + (duration / 1000));
+                    
+                    // Store oscillator for potential early stopping
+                    this.activeOscillators.set(midiNote, { oscillator, gainNode });
+                    
+                    // Clean up when note ends
+                    oscillator.onended = () => {
+                        this.activeOscillators.delete(midiNote);
+                    };
+                    
+                    this.log(`🎵 播放音符: MIDI ${midiNote} (${frequency.toFixed(2)}Hz), 力度: ${velocity}, 持續: ${duration}ms`);
+                    
+                } catch (error) {
+                    this.log(`❌ 播放音符失敗: ${error.message}`);
+                }
+            }
+            
+            stopNote(midiNote) {
+                const noteData = this.activeOscillators.get(midiNote);
+                if (noteData) {
+                    try {
+                        const currentTime = this.audioContext.currentTime;
+                        noteData.gainNode.gain.cancelScheduledValues(currentTime);
+                        noteData.gainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.05);
+                        noteData.oscillator.stop(currentTime + 0.05);
+                        this.activeOscillators.delete(midiNote);
+                        this.log(`🔇 停止音符: MIDI ${midiNote}`);
+                    } catch (error) {
+                        this.log(`⚠️ 停止音符時出錯: ${error.message}`);
+                    }
+                }
+            }
+            
+            log(message) {
+                const logEl = document.getElementById('log');
+                const timestamp = new Date().toLocaleTimeString();
+                logEl.textContent += `[${timestamp}] ${message}\n`;
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+        }
+        
+        // Initialize
+        const pianoRoll = new PianoRollMIDI();
+        
+        // Test functions
+        function testScale() {
+            const cMajorScale = [60, 62, 64, 65, 67, 69, 71, 72]; // C4 to C5
+            let delay = 0;
+            
+            pianoRoll.log('🎵 播放 C 大調音階...');
+            
+            cMajorScale.forEach((note, index) => {
+                setTimeout(() => {
+                    pianoRoll.playNote(note, 80, 300);
+                    
+                    // Visual feedback
+                    const keyEl = document.querySelector(`[data-note="${note}"]`);
+                    if (keyEl) {
+                        keyEl.classList.add('playing');
+                        setTimeout(() => keyEl.classList.remove('playing'), 300);
+                    }
+                }, delay);
+                delay += 200;
+            });
+        }
+        
+        function testChord() {
+            const cMajorChord = [60, 64, 67]; // C4, E4, G4
+            
+            pianoRoll.log('🎶 播放 C 大三和弦...');
+            
+            cMajorChord.forEach(note => {
+                pianoRoll.playNote(note, 80, 1000);
+                
+                // Visual feedback
+                const keyEl = document.querySelector(`[data-note="${note}"]`);
+                if (keyEl) {
+                    keyEl.classList.add('playing');
+                    setTimeout(() => keyEl.classList.remove('playing'), 1000);
+                }
+            });
+        }
+        
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+            pianoRoll.log('📝 日誌已清除');
+        }
+        
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            const keyMap = {
+                'a': 60, 'w': 61, 's': 62, 'e': 63, 'd': 64, 'f': 65, 't': 66, 'g': 67, 'y': 68, 'h': 69, 'u': 70, 'j': 71, 'k': 72
+            };
+            
+            const note = keyMap[e.key.toLowerCase()];
+            if (note && !e.repeat) {
+                pianoRoll.playNote(note, 80, 200);
+                const keyEl = document.querySelector(`[data-note="${note}"]`);
+                if (keyEl) {
+                    keyEl.classList.add('playing');
+                }
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            const keyMap = {
+                'a': 60, 'w': 61, 's': 62, 'e': 63, 'd': 64, 'f': 65, 't': 66, 'g': 67, 'y': 68, 'h': 69, 'u': 70, 'j': 71, 'k': 72
+            };
+            
+            const note = keyMap[e.key.toLowerCase()];
+            if (note) {
+                pianoRoll.stopNote(note);
+                const keyEl = document.querySelector(`[data-note="${note}"]`);
+                if (keyEl) {
+                    keyEl.classList.remove('playing');
+                }
+            }
+        });
+        
+        pianoRoll.log('🎹 Piano Roll MIDI 測試初始化完成');
+        pianoRoll.log('💡 提示: 可以使用鍵盤 AWSEDFTGYHJK 來播放音符');
+    </script>
+</body>
+</html> 

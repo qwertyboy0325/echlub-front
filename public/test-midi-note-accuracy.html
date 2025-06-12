@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎼 MIDI 音符準確度測試</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f172a;
+            color: #f1f5f9;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .note-test {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        
+        .note-card {
+            background: #334155;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .note-card:hover {
+            background: #3b82f6;
+            transform: translateY(-2px);
+        }
+        
+        .note-card.playing {
+            background: #22c55e;
+            transform: scale(1.05);
+        }
+        
+        .note-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .note-info {
+            font-size: 11px;
+            color: #94a3b8;
+            font-family: 'Monaco', monospace;
+        }
+        
+        .frequency {
+            font-size: 10px;
+            color: #60a5fa;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .btn:hover {
+            background: #2563eb;
+        }
+        
+        .btn.active {
+            background: #22c55e;
+        }
+        
+        .log {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .method-test {
+            background: #334155;
+            border-radius: 6px;
+            padding: 16px;
+        }
+        
+        .error {
+            color: #ef4444;
+        }
+        
+        .success {
+            color: #22c55e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎼 MIDI 音符準確度測試</h1>
+        
+        <div class="test-section">
+            <h3>標準音符測試</h3>
+            <p>點擊下面的音符來測試是否正確。A4 = 440Hz 應該聽起來像標準調音器的 A 音。</p>
+            
+            <div class="note-test" id="standardNotes">
+                <!-- Standard notes will be generated here -->
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>音符計算方法比較</h3>
+            
+            <div class="comparison">
+                <div class="method-test">
+                    <h4>當前方法 (可能有問題)</h4>
+                    <div id="currentMethod"></div>
+                </div>
+                
+                <div class="method-test">
+                    <h4>標準方法 (正確)</h4>
+                    <div id="standardMethod"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>八度測試</h3>
+            <p>每個八度的 C 音應該聽起來相似，但高度遞增。</p>
+            
+            <div class="controls">
+                <button class="btn" onclick="testOctaves()">🎵 測試八度序列</button>
+                <button class="btn" onclick="testChromaticScale()">🎶 測試半音階</button>
+                <button class="btn" onclick="testTuningReference()">🎯 測試調音參考</button>
+            </div>
+            
+            <div class="note-test" id="octaveTest">
+                <!-- Octave test notes will be generated here -->
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>頻率對照表</h3>
+            <div id="frequencyTable" style="font-family: monospace; font-size: 12px; line-height: 1.6;">
+                <!-- Frequency table will be generated here -->
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>診斷日誌</h3>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        class MidiAccuracyTest {
+            constructor() {
+                this.audioContext = null;
+                this.initAudio();
+                this.generateStandardNotes();
+                this.generateOctaveTest();
+                this.compareCalculationMethods();
+                this.generateFrequencyTable();
+                this.log('🎼 MIDI 音符準確度測試初始化完成');
+            }
+            
+            initAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.log('✅ Web Audio API 初始化成功');
+                } catch (error) {
+                    this.log('❌ Web Audio API 初始化失敗: ' + error.message);
+                }
+            }
+            
+            generateStandardNotes() {
+                const container = document.getElementById('standardNotes');
+                
+                // Test important reference notes
+                const testNotes = [
+                    { midi: 21, name: 'A0', expectedFreq: 27.5 },
+                    { midi: 33, name: 'A1', expectedFreq: 55.0 },
+                    { midi: 45, name: 'A2', expectedFreq: 110.0 },
+                    { midi: 57, name: 'A3', expectedFreq: 220.0 },
+                    { midi: 69, name: 'A4', expectedFreq: 440.0 }, // Tuning reference
+                    { midi: 60, name: 'C4', expectedFreq: 261.63 }, // Middle C
+                    { midi: 72, name: 'C5', expectedFreq: 523.25 },
+                    { midi: 81, name: 'A5', expectedFreq: 880.0 },
+                    { midi: 84, name: 'C6', expectedFreq: 1046.5 },
+                    { midi: 108, name: 'C8', expectedFreq: 4186.0 }
+                ];
+                
+                testNotes.forEach(({ midi, name, expectedFreq }) => {
+                    const card = document.createElement('div');
+                    card.className = 'note-card';
+                    
+                    const calculatedFreq = this.midiToFrequency(midi);
+                    const currentMethodFreq = this.currentMethodFrequency(midi);
+                    const error = Math.abs(calculatedFreq - expectedFreq);
+                    const isAccurate = error < 0.1;
+                    
+                    card.innerHTML = `
+                        <div class="note-name">${name}</div>
+                        <div class="note-info">MIDI: ${midi}</div>
+                        <div class="frequency ${isAccurate ? 'success' : 'error'}">
+                            計算: ${calculatedFreq.toFixed(2)}Hz<br>
+                            期望: ${expectedFreq.toFixed(2)}Hz<br>
+                            誤差: ${error.toFixed(2)}Hz
+                        </div>
+                    `;
+                    
+                    card.addEventListener('mousedown', () => {
+                        card.classList.add('playing');
+                        this.playNote(midi, 80, 1000);
+                        this.log(`🎵 播放 ${name} (MIDI: ${midi}) - ${calculatedFreq.toFixed(2)}Hz`);
+                        
+                        setTimeout(() => {
+                            card.classList.remove('playing');
+                        }, 1000);
+                    });
+                    
+                    container.appendChild(card);
+                });
+            }
+            
+            generateOctaveTest() {
+                const container = document.getElementById('octaveTest');
+                
+                // Test C notes across octaves
+                for (let octave = 1; octave <= 7; octave++) {
+                    const midi = 12 * octave; // C of each octave
+                    const freq = this.midiToFrequency(midi);
+                    
+                    const card = document.createElement('div');
+                    card.className = 'note-card';
+                    card.innerHTML = `
+                        <div class="note-name">C${octave}</div>
+                        <div class="note-info">MIDI: ${midi}</div>
+                        <div class="frequency">${freq.toFixed(2)}Hz</div>
+                    `;
+                    
+                    card.addEventListener('mousedown', () => {
+                        card.classList.add('playing');
+                        this.playNote(midi, 80, 800);
+                        this.log(`🎵 播放 C${octave} (MIDI: ${midi}) - ${freq.toFixed(2)}Hz`);
+                        
+                        setTimeout(() => {
+                            card.classList.remove('playing');
+                        }, 800);
+                    });
+                    
+                    container.appendChild(card);
+                }
+            }
+            
+            compareCalculationMethods() {
+                const currentContainer = document.getElementById('currentMethod');
+                const standardContainer = document.getElementById('standardMethod');
+                
+                // Test a few notes with both methods
+                const testMidi = [60, 69, 72]; // C4, A4, C5
+                
+                let currentHtml = '<div style="font-family: monospace; font-size: 12px;">';
+                let standardHtml = '<div style="font-family: monospace; font-size: 12px;">';
+                
+                testMidi.forEach(midi => {
+                    const currentCalc = this.currentMethodCalculation(midi);
+                    const standardCalc = this.standardMethodCalculation(midi);
+                    
+                    currentHtml += `MIDI ${midi}: ${currentCalc}<br>`;
+                    standardHtml += `MIDI ${midi}: ${standardCalc}<br>`;
+                });
+                
+                currentHtml += '</div>';
+                standardHtml += '</div>';
+                
+                currentContainer.innerHTML = currentHtml;
+                standardContainer.innerHTML = standardHtml;
+            }
+            
+            currentMethodCalculation(midi) {
+                // This is what our current code might be doing wrong
+                const note = 87 - (midi - 21); // This might be incorrect
+                const octave = Math.floor((note + 9) / 12);
+                const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                const noteName = noteNames[(note + 9) % 12];
+                const freq = this.currentMethodFrequency(midi);
+                
+                return `${noteName}${octave} - ${freq.toFixed(2)}Hz`;
+            }
+            
+            standardMethodCalculation(midi) {
+                // Standard MIDI calculation
+                const noteNumber = midi % 12;
+                const octave = Math.floor(midi / 12) - 1;
+                const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                const noteName = noteNames[noteNumber];
+                const freq = this.midiToFrequency(midi);
+                
+                return `${noteName}${octave} - ${freq.toFixed(2)}Hz`;
+            }
+            
+            currentMethodFrequency(midi) {
+                // Simulate what our current code might be calculating
+                const note = 87 - (midi - 21);
+                return 440 * Math.pow(2, (note - 48) / 12); // This might be wrong
+            }
+            
+            midiToFrequency(midi) {
+                // Standard MIDI to frequency conversion
+                // A4 (MIDI 69) = 440 Hz
+                return 440 * Math.pow(2, (midi - 69) / 12);
+            }
+            
+            generateFrequencyTable() {
+                const container = document.getElementById('frequencyTable');
+                let html = '<table style="width: 100%; border-collapse: collapse;">';
+                html += '<tr style="background: #475569;"><th style="padding: 8px; border: 1px solid #64748b;">MIDI</th><th style="padding: 8px; border: 1px solid #64748b;">音符</th><th style="padding: 8px; border: 1px solid #64748b;">頻率 (Hz)</th><th style="padding: 8px; border: 1px solid #64748b;">用途</th></tr>';
+                
+                const importantNotes = [
+                    { midi: 21, note: 'A0', usage: '最低音A' },
+                    { midi: 24, note: 'C1', usage: '最低音C' },
+                    { midi: 36, note: 'C2', usage: '低音C' },
+                    { midi: 48, note: 'C3', usage: '小字組C' },
+                    { midi: 60, note: 'C4', usage: '中央C (Middle C)' },
+                    { midi: 69, note: 'A4', usage: '標準調音 440Hz' },
+                    { midi: 72, note: 'C5', usage: '高音C' },
+                    { midi: 84, note: 'C6', usage: '超高音C' },
+                    { midi: 108, note: 'C8', usage: '最高音C' }
+                ];
+                
+                importantNotes.forEach(({ midi, note, usage }) => {
+                    const freq = this.midiToFrequency(midi);
+                    html += `<tr><td style="padding: 8px; border: 1px solid #64748b;">${midi}</td><td style="padding: 8px; border: 1px solid #64748b;">${note}</td><td style="padding: 8px; border: 1px solid #64748b;">${freq.toFixed(2)}</td><td style="padding: 8px; border: 1px solid #64748b;">${usage}</td></tr>`;
+                });
+                
+                html += '</table>';
+                container.innerHTML = html;
+            }
+            
+            playNote(midiNote, velocity = 80, duration = 500) {
+                if (!this.audioContext) return;
+                
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    const frequency = this.midiToFrequency(midiNote);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.value = frequency;
+                    oscillator.type = 'sine'; // Use sine wave for pure tone testing
+                    
+                    const volume = (velocity / 127) * 0.3;
+                    const currentTime = this.audioContext.currentTime;
+                    
+                    gainNode.gain.setValueAtTime(0, currentTime);
+                    gainNode.gain.linearRampToValueAtTime(volume, currentTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + (duration / 1000));
+                    
+                    oscillator.start(currentTime);
+                    oscillator.stop(currentTime + (duration / 1000));
+                    
+                } catch (error) {
+                    this.log(`❌ 播放音符失敗: ${error.message}`);
+                }
+            }
+            
+            log(message) {
+                const logEl = document.getElementById('log');
+                const timestamp = new Date().toLocaleTimeString();
+                logEl.textContent += `[${timestamp}] ${message}\n`;
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+        }
+        
+        // Initialize
+        const test = new MidiAccuracyTest();
+        
+        // Test functions
+        function testOctaves() {
+            test.log('🎵 測試八度序列...');
+            const octaves = [24, 36, 48, 60, 72, 84, 96]; // C1 to C7
+            
+            octaves.forEach((midi, index) => {
+                setTimeout(() => {
+                    test.playNote(midi, 80, 600);
+                    const freq = test.midiToFrequency(midi);
+                    test.log(`  八度 ${index + 1}: C${index + 1} (MIDI: ${midi}) - ${freq.toFixed(2)}Hz`);
+                }, index * 800);
+            });
+        }
+        
+        function testChromaticScale() {
+            test.log('🎶 測試半音階 (C4-C5)...');
+            
+            for (let i = 0; i < 13; i++) {
+                const midi = 60 + i; // C4 to C5
+                setTimeout(() => {
+                    test.playNote(midi, 80, 300);
+                    const freq = test.midiToFrequency(midi);
+                    test.log(`  半音 ${i + 1}: MIDI ${midi} - ${freq.toFixed(2)}Hz`);
+                }, i * 350);
+            }
+        }
+        
+        function testTuningReference() {
+            test.log('🎯 測試調音參考音 A4 (440Hz)...');
+            
+            // Play A4 multiple times for reference
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    test.playNote(69, 80, 1000); // A4
+                    test.log(`  A4 參考音 ${i + 1}: 440.00Hz`);
+                }, i * 1200);
+            }
+        }
+        
+        test.log('💡 提示: 點擊音符卡片來測試音高是否正確');
+        test.log('🎯 A4 應該聽起來像標準調音器的 440Hz');
+        test.log('🎵 相同音名的不同八度應該聽起來相似但高低不同');
+    </script>
+</body>
+</html> 
